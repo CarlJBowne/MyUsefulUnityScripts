@@ -8,7 +8,7 @@ public static class _ExtMethodsJson
 {
     /// <summary>
     /// Loads a JToken from a file with the specified path and filename.
-    /// <br />*Must be used with one a newly constructed JToken via new().
+    /// <br />*Call using a newly constructed JToken and access the return value for result.
     /// </summary>
     /// <param name="path">The path of the file.</param>
     /// <param name="filename">The filename.</param>
@@ -16,7 +16,7 @@ public static class _ExtMethodsJson
     public static JToken LoadJsonFromFile(this JToken THIS, string path, string filename)
     {
         if (!Directory.Exists(path)) return null;
-        if (!File.Exists($"{path}/{filename}.json")) return null;
+        if (!File.Exists(Path.Combine(path, $"{filename}.json"))) return null;
         using StreamReader load = File.OpenText($"{path}/{filename}.json");
         THIS = JObject.Parse(load.ReadToEnd());
         return THIS;
@@ -29,7 +29,7 @@ public static class _ExtMethodsJson
     public static void SaveToFile(this JToken THIS, string path, string filename)
     {
         if (!Directory.Exists(path)) Directory.CreateDirectory(path);
-        using StreamWriter file = File.CreateText($"{path}/{filename}.json");
+        using StreamWriter file = File.CreateText(Path.Combine(path, $"{filename}.json"));
         file.WriteLine(THIS.ToString());
     }
 

@@ -11,12 +11,14 @@ using S = ISingleton<GlobalPrefabs>;
 [CreateAssetMenu(fileName = "Global Prefabs", menuName = "Global Prefabs", order = 0)]
 public class GlobalPrefabs : ScriptableObject, ISingleton<GlobalPrefabs>
 {
+    #region Boiler Plate
     private static GlobalPrefabs _instance;
+    private ISingleton<GlobalPrefabs> Interface = _instance;
     public static GlobalPrefabs Get() => S.Get(ref _instance);
     public static bool TryGet(ref GlobalPrefabs _instance) => S.TryGet(Get, out _instance);
 
-    void Awake() => (this as S).Initialize(ref _instance);
-    void OnEnable() => (this as S).Initialize(ref _instance);
+    void Awake() => Interface.Initialize(ref _instance);
+    void OnEnable() => Interface.Initialize(ref _instance);
 
     void ISingleton<GlobalPrefabs>.OnInitialize()
     {
@@ -28,11 +30,15 @@ public class GlobalPrefabs : ScriptableObject, ISingleton<GlobalPrefabs>
 #endif
     }
 
+    #endregion Boiler Plate
+
+
     public List<Singleton> singletons;
     public static List<Singleton> Singletons => Get().singletons;
 
 #if AYellowPaper
-    [SerializeField] AYellowpaper.SerializedCollections.SerializedDictionary<string, GameObject> dictionary;
+    [SerializeField] AYellowpaper.SerializedCollections.SerializedDictionary<string, GameObject> namedDictionary;
+    public static AYellowpaper.SerializedCollections.SerializedDictionary<string, GameObject> NamedDictionary => Get().namedDictionary;
 #else
 
     [SerializeField] GameObject[] NamedPrefabs;
@@ -41,9 +47,9 @@ public class GlobalPrefabs : ScriptableObject, ISingleton<GlobalPrefabs>
 
 #endif
 
-    public GameObject this[string name] => Get().dictionary[name];
-    public static GameObject NamedPrefab(string name) => Get().dictionary[name];
-    public static bool TryNamedPrefab(string name, out GameObject result) => Get().dictionary.TryGetValue(name, out result);
+    public GameObject this[string name] => Get().namedDictionary[name];
+    public static GameObject NamedPrefab(string name) => Get().namedDictionary[name];
+    public static bool TryNamedPrefab(string name, out GameObject result) => Get().namedDictionary.TryGetValue(name, out result);
 
 
 

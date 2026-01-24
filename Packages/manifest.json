@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.starlightshadows.hierarchystatemachine": "https://github.com/StarLightShadowsX/HierarchyStateMachine.git",
     "com.unity.addressables": "1.21.21",
     "com.unity.collab-proxy": "2.0.5",
     "com.unity.feature.development": "1.0.2",

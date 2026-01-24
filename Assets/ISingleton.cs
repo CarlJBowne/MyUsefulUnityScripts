@@ -288,6 +288,7 @@ public static class TypeHelpers
     }
 
     public static bool IsPrefab(this Transform This) => !This.gameObject.scene.IsValid();
+    public static bool IsPrefab(this GameObject This) => !This.scene.IsValid();
 }
 
 #if UNITY_EDITOR
@@ -303,15 +304,18 @@ class SingletonScriptableAPP : UnityEditor.AssetPostprocessor
 }
 #endif
 
+/// <summary>
+/// A basic Example of a Singleton MonoBehavior.
+/// </summary>
 public abstract class SingletonMonoBasic<T> : MonoBehaviour, ISingleton<T> where T : MonoBehaviour, ISingleton<T>, new()
 {
-    protected static T I;
-    protected ISingleton<T> S => this;
-    public static T Get() => ISingleton<T>.Get(ref I);
+    protected static T Instance;
+    protected ISingleton<T> Interface => this;
+    public static T Get() => ISingleton<T>.Get(ref Instance);
     public static bool TryGet(out T result) => ISingleton<T>.TryGet(Get, out result);
 
-    public void Awake() => S.Initialize(ref I);
-    private void OnDestroy() => S.DeInitialize(ref I);
+    public void Awake() => Interface.Initialize(ref Instance);
+    private void OnDestroy() => Interface.DeInitialize(ref Instance);
 
     //This redirection isn't necessary if creating the coding from scratch.
     //Just use the first two methods to override Initialization and DeInitialization functionality.
@@ -322,15 +326,15 @@ public abstract class SingletonMonoBasic<T> : MonoBehaviour, ISingleton<T> where
 }
 public abstract class SingletonAsset<T> : ScriptableObject, ISingleton<T> where T : ScriptableObject, ISingleton<T>, new()
 {
-    protected static T I;
-    protected ISingleton<T> S => this;
-    public static T Get() => ISingleton<T>.Get(ref I);
+    protected static T Instance;
+    protected ISingleton<T> Interface => this;
+    public static T Get() => ISingleton<T>.Get(ref Instance);
     public static bool TryGet(out T result) => ISingleton<T>.TryGet(Get, out result);
 
 
-    protected void OnEnable() => S.Initialize(ref I);
-    public void Awake() => S.Initialize(ref I);
-    protected virtual void OnDestroy() => S.DeInitialize(ref I);
+    protected void OnEnable() => Interface.Initialize(ref Instance);
+    public void Awake() => Interface.Initialize(ref Instance);
+    protected virtual void OnDestroy() => Interface.DeInitialize(ref Instance);
 
     //This redirection isn't necessary if creating the coding from scratch.
     //Just use the first two methods to override Initialization and DeInitialization functionality.
@@ -341,9 +345,9 @@ public abstract class SingletonAsset<T> : ScriptableObject, ISingleton<T> where 
 }
 public abstract class SingletonPlain<T> : ScriptableObject, ISingleton<T> where T : ScriptableObject, ISingleton<T>, new()
 {
-    protected static T I;
-    protected ISingleton<T> S => this;
-    public static T Get() => ISingleton<T>.Get(ref I, ISingleton<T>.Create);
+    protected static T Instance;
+    protected ISingleton<T> Interface => this;
+    public static T Get() => ISingleton<T>.Get(ref Instance, ISingleton<T>.Create);
     public static bool TryGet(out T result) => ISingleton<T>.TryGet(Get, out result);
 
     //This redirection isn't necessary if creating the coding from scratch.
