@@ -9,9 +9,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e0619cad2ae77241a0ccba264e47d39, type: 3}
-  m_Name: GlobalAssetRegistry
-  m_EditorClassIdentifier: Assembly-CSharp::GlobalAssetRegistry
-  assets: []
-  typedPrefabs: []
-  namedPrefabs: []
+  m_Script: {fileID: 11500000, guid: 44f80326f4ffb3c4e83aa9c7de28db2a, type: 3}
+  m_Name: SavedValueRegistry
+  m_EditorClassIdentifier: Assembly-CSharp::SaveSystem.SavedValueRegistry
