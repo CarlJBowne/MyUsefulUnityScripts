@@ -78,16 +78,16 @@ public class Pauseable : MonoBehaviour
 
 			if (value)
 			{
-				s_rb_velocity = comp.velocity;
+				s_rb_velocity = comp.linearVelocity;
 				s_rb_angularVelocity = comp.angularVelocity;
-				comp.velocity = Vector3.zero;
+				comp.linearVelocity = Vector3.zero;
 				comp.angularVelocity = Vector3.zero;
 				comp.Sleep();
 			}
 			else
 			{
 				comp.WakeUp();
-				comp.velocity = s_rb_velocity;
+				comp.linearVelocity = s_rb_velocity;
 				comp.angularVelocity = s_rb_angularVelocity;
 			}
 		}

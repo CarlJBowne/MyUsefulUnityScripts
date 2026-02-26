@@ -13,6 +13,6 @@ public class BasicMovementTester : MonoBehaviour
 
 	private void FixedUpdate()
 	{
-		rb.velocity = new(Input.GetAxis("Horizontal") * 10, Input.GetAxis("Vertical") * 10f);
+		rb.linearVelocity = new(Input.GetAxis("Horizontal") * 10, Input.GetAxis("Vertical") * 10f);
 	}
 }

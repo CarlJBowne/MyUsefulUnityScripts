@@ -69,7 +69,9 @@ public class ObjectPool
     private void NewInstance()
     {
         GameObject pooledObject = Object.Instantiate(prefabObject);
-        PoolableObject poolable = pooledObject.GetOrAddComponent<PoolableObject>();
+
+        PoolableObject poolable;
+        if (!pooledObject.TryGetComponent(out poolable)) poolable = pooledObject.AddComponent<PoolableObject>();
         poolable.transform.parent = parent;
         poolable.pool = this;
         poolable.onDeactivate += OnDeActivate;

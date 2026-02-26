@@ -8,7 +8,7 @@ using UnityEditor;
 #endif
 
 [CreateAssetMenu(fileName = "NewSOCollection", menuName ="SO Collection"), System.Serializable]
-public class ScriptableCollection : ScriptableObject, ICustomSerialized
+public class ScriptableCollection : ScriptableObject
 {
     public string selectedType = null;
     public string SelectedType => selectedType;

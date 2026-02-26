@@ -1,7 +1,7 @@
 ﻿using AYellowpaper.SerializedCollections;
 using UnityEngine;
 
-public class GlobalAudioCaller : SingletonMonoBasic<GlobalAudioCaller>
+public class GlobalAudioCaller : MonoBehaviour
 {
 
 	private AudioSource source;
@@ -11,7 +11,7 @@ public class GlobalAudioCaller : SingletonMonoBasic<GlobalAudioCaller>
 
 
 
-	protected override void OnInitialize() => Init();
+	//protected override void OnInitialize() => Init();
 
     void Init()
 	{

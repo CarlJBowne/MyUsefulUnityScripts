@@ -196,7 +196,7 @@ public interface ISingleton<T> : Singleton where T : UnityEngine.Object, ISingle
 
     public static T FromPreloaded() => UnityEngine.Object.Instantiate(Resources.FindObjectsOfTypeAll<T>()[0]);
 
-//#if UNITY_ADDRESSABLES_EXIST
+#if UNITY_ADDRESSABLES_EXIST
     /// <summary>
     /// Instantiates a Prefab using the Addressables System. 
     /// </summary>
@@ -225,7 +225,7 @@ public interface ISingleton<T> : Singleton where T : UnityEngine.Object, ISingle
         else throw new Exception("This Singleton type doesn't have a path attached. Add SingletonPath Interface.");
         throw new Exception($"Unable to create instance of Singleton: {typeof(T)} for some unclear reason.");
     }
-//#endif
+#endif
 
 
 

@@ -78,8 +78,8 @@ public class AudioCaller : MonoBehaviour
 	{
 		if (remote) { remote.PlaySound(name, volume, warn); return; }
 
-		if (GetClip(out AudioClip clip, name, warn))
-            GlobalAudioCaller.Get().PlaySound(clip, volume);
+		//if (GetClip(out AudioClip clip, name, warn))
+        //    GlobalAudioCaller.Get().PlaySound(clip, volume);
 	}
 	/// <summary>
 	/// Plays a Sound using the Global Audio Caller. (Not affected by 3D Space.)

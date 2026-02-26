@@ -26,7 +26,7 @@ public class PoolableObject : MonoBehaviour
         Rigidbody rigid = rb;
         if (!rigid) return;
 
-        rigid.velocity = relative ? transform.TransformDirection(velocity) : velocity;
+        rigid.linearVelocity = relative ? transform.TransformDirection(velocity) : velocity;
         rigid.angularVelocity = Vector3.zero;
 
     }
