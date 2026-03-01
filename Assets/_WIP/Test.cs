@@ -9,27 +9,44 @@ using System;
 
 public class Test : MonoBehaviour
 {
-    public Polymorph.ListOf<PolymorphTest> testList = new();
-}
 
-[System.Serializable]
-public abstract class PolymorphTest : Polymorph
-{
-    public string str = "";
 
-    [System.Serializable]
-    public class Int : PolymorphTest
+
+    private void Start()
     {
-        public int I = 1;
+        fun();
     }
-    [System.Serializable]
-    public class Float : PolymorphTest
+
+    
+    void fun()
     {
-        public float F = 1.0f;
-    }
-    [System.Serializable]
-    public class Char : PolymorphTest
-    {
-        public char C = 'a';
-    }
+		int time1 = UnitTest(()=> 
+		{
+			Vector3 result = Direction.upRight;
+		});
+		int time2 = UnitTest(()=> 
+		{
+
+		});
+
+
+
+		Debug.LogFormat("Addition: {0}, Aggressive {1}", time1, time2);
+
+
+	}
+
+	public int UnitTest(Action action)
+	{
+		Stopwatch time = new();
+		time.Start();
+		for (int i = 0; i < 100000000; i++)
+		{
+			action();
+		}
+		time.Stop();
+		return (int)time.ElapsedMilliseconds;
+	}
+
+
 }
