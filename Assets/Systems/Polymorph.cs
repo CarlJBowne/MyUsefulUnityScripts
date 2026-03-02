@@ -5,8 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Collections;
-//using _Polymorph_Helpers;
-using VisualElementsHelpers;
+using _Polymorph_Helpers;
 
 
 #if UNITY_EDITOR
@@ -455,6 +454,10 @@ public abstract class Polymorph
         private VisualElement collection;
         private List<Item> itemElements = new();
 
+        // Foldout pieces
+        private Label foldoutArrow;
+        private bool foldoutState = true;
+
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             rootProperty = property;
@@ -526,6 +529,37 @@ public abstract class Polymorph
                 }
             };
 
+            // Foldout arrow - left side
+            foldoutArrow = new("▾")
+            {
+                name = "listof-foldout",
+                style =
+                {
+                    width = 18,
+                    fontSize = 25,
+                    unityTextAlign = TextAnchor.MiddleCenter,
+                    marginRight = 6,
+                    color = .75f.Gray()
+                }
+            };
+            foldoutArrow.RegisterCallback<ClickEvent>((evt) =>
+            {
+                // Toggle persistent expanded state if possible, otherwise toggle internal state
+                if (rootProperty != null)
+                {
+                    rootProperty.isExpanded = !rootProperty.isExpanded;
+                    try { rootProperty.serializedObject.ApplyModifiedProperties(); } catch { }
+                }
+                else
+                {
+                    foldoutState = !foldoutState;
+                }
+                UpdateFoldoutVisuals();
+                evt.StopPropagation();
+            });
+            foldoutArrow.HoverEvents(v => foldoutArrow.style.color = v ? Color.white : .75f.Gray());
+            headerBar.Add(foldoutArrow);
+
             // Title label
             titleLabel = new(rootProperty.displayName)
             {
@@ -575,12 +609,7 @@ public abstract class Polymorph
                 },
             };
             headerBar.Add(addButton);
-
-            addButton.RegisterCallback<MouseOverEvent>(HoverEvent);
-            addButton.RegisterCallback<MouseLeaveEvent>(HoverEvent);
-
-            void HoverEvent(UnityEngine.UIElements.EventBase e) =>
-                addButton.style.color = e is MouseOverEvent ? Color.softYellow : Color.white;
+            addButton.HoverEvents(value => addButton.style.color = value ? Color.cyan : Color.white);
 
             // Collection container
             collection = new()
@@ -596,11 +625,23 @@ public abstract class Polymorph
                     flexDirection = FlexDirection.Column
                 }
             };
+
+            // Initialize foldout visual state
+            UpdateFoldoutVisuals();
         }
 
+        private void UpdateFoldoutVisuals()
+        {
+            bool expanded = foldoutState;
+            if (rootProperty != null) expanded = rootProperty.isExpanded;
+
+            collection.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
+            if (foldoutArrow != null) foldoutArrow.text = expanded ? "▾" : "▸";
+        }
 
         void TypeChosen(Type chosen)
         {
+            rootProperty.isExpanded = true;
 #if UNITY_EDITOR
             try
             {
@@ -663,6 +704,8 @@ public abstract class Polymorph
                 item.body.Bind(rootProperty.serializedObject);
             }
 
+            // Ensure foldout visuals reflect current state after building items.
+            UpdateFoldoutVisuals();
         }
 
         void RemoveItem(int i)
@@ -690,6 +733,7 @@ public abstract class Polymorph
             itemElements[i].parent.Remove(itemElements[i]);
             itemElements.RemoveAt(i);
         }
+
 
 
 
@@ -727,9 +771,6 @@ public abstract class Polymorph
                 Add(body);
                 body.ChangeButton.style.visibility = Visibility.Hidden;
 
-                // Defensive bind
-                //try { body.Bind(rootProperty.serializedObject); } catch { }
-
                 var removeBtn = new Button(() => RemoveCall(this.id))
                 {
                     text = "-",
@@ -747,6 +788,7 @@ public abstract class Polymorph
                 };
                 removeBtn.RegisterCallback<ClickEvent>((evt) => evt.StopPropagation());
                 Add(removeBtn);
+                removeBtn.HoverEvents(value => removeBtn.style.color = value ? new(1,.2f,.2f) : Color.white);
             }
 
             public SerializedProperty itemProperty { get; private set; }
@@ -760,7 +802,7 @@ public abstract class Polymorph
 #endif
 }
 
-/*
+
 namespace _Polymorph_Helpers
 {
     static class XtensionsPolymorph
@@ -774,6 +816,13 @@ namespace _Polymorph_Helpers
             result = V.Q<T>(name, className) ?? null;
             return result != null;
         }
+
+        public static Color Gray(this float v) => new(v, v, v);
+
+        public static void HoverEvents(this VisualElement ve, Action<bool> Eve)
+        {
+            ve.RegisterCallback<MouseOverEvent>(_ => Eve(true));
+            ve.RegisterCallback<MouseLeaveEvent>(_ => Eve(false));
+        }
     }
 }
-*/
