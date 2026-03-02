@@ -5,7 +5,9 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Collections;
-using _Polymorph_Helpers;
+//using _Polymorph_Helpers;
+using VisualElementsHelpers;
+
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,6 +17,37 @@ using UnityEditor.UIElements;
 [System.Serializable]
 public abstract class Polymorph
 {
+    [System.Serializable]
+    public class ListOf<T> : IList<T> where T : Polymorph
+    {
+        [SerializeField, SerializeReference]
+        public List<T> items = new();
+
+        // IList<T> implementation - delegate to the inner list.
+        #region IList implementation
+        public T this[int index]
+        {
+            get => items[index];
+            set => items[index] = value;
+        }
+
+        public int Count => items.Count;
+        public bool IsReadOnly => ((ICollection<T>)items).IsReadOnly;
+
+        public void Add(T item) => items.Add(item);
+        public void Clear() => items.Clear();
+        public bool Contains(T item) => items.Contains(item);
+        public void CopyTo(T[] array, int arrayIndex) => items.CopyTo(array, arrayIndex);
+        public IEnumerator<T> GetEnumerator() => items.GetEnumerator();
+        public int IndexOf(T item) => items.IndexOf(item);
+        public void Insert(int index, T item) => items.Insert(index, item);
+        public bool Remove(T item) => items.Remove(item);
+        public void RemoveAt(int index) => items.RemoveAt(index);
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => ((System.Collections.IEnumerable)items).GetEnumerator();
+        #endregion
+    }
+
+
 #if UNITY_EDITOR
 
     public virtual bool OverrideBody(VisualElement.Hierarchy container, SerializedProperty property) => false;
@@ -63,7 +96,12 @@ public abstract class Polymorph
     [CustomPropertyDrawer(typeof(Polymorph), true)]
     public class Drawer : PropertyDrawer
     {
-        public override VisualElement CreatePropertyGUI(SerializedProperty property) => new HeaderDrawer(property);
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            var res = new HeaderDrawer(property);
+            res.name = "FUCK";
+            return res;
+        }
     }
 
     //Note: Consider making a "No Choosing Header" option, but that's more or less useless so maybe ignore this.
@@ -83,7 +121,7 @@ public abstract class Polymorph
                 name = $"HeaderDrawer-PropertyField__{p.name}"
             };
             if (!this.Contains(propertyField)) this.Add(propertyField);
-            typeButton ??= new Button(TypeButtonClick)
+            changeButton ??= new Button(TypeButtonClick)
             {
                 name = "Type Chooser",
                 text = "*",
@@ -104,7 +142,7 @@ public abstract class Polymorph
                             top = 0
                         }
             };
-            if (!this.Contains(typeButton)) this.Add(typeButton);
+            if (!this.Contains(changeButton)) this.Add(changeButton);
             if (TryCacheFoldout()) foldout.value = true;
 
             // Schedule Delayed building of the Layout.
@@ -122,6 +160,7 @@ public abstract class Polymorph
                 label.style.right = 0;
                 label.style.flexGrow = 1;
                 label.style.height = EditorGUIUtility.singleLineHeight;
+                label.style.unityTextAlign = TextAnchor.MiddleLeft;
             }
 
             TryCacheFoldout();
@@ -131,6 +170,8 @@ public abstract class Polymorph
             if (this.QCache(out toggle, className: "unity-foldout__checkmark"))
             {
                 toggle.style.marginRight = 1;
+                toggle.style.marginBottom = 0;
+                toggle.style.marginTop = 0;
                 if (CurrentType == null) toggle.value = false;
             }
 
@@ -138,6 +179,7 @@ public abstract class Polymorph
 
             if (property.managedReferenceValue is not null and Polymorph O && bodyInvalid)
             {
+                //if (contentContainer == null) return;
                 if (O.OverrideBody(contentContainer.hierarchy, property))
                     contentContainer.Bind(property.serializedObject);
 
@@ -182,7 +224,7 @@ public abstract class Polymorph
 
         //Pieces
         PropertyField propertyField;
-        Button typeButton;
+        Button changeButton;
         Toggle toggle;
         Foldout foldout;
         Label label;
@@ -191,14 +233,19 @@ public abstract class Polymorph
 
 
         //Data
-        SerializedProperty property;
-        Type BaseType;
-        Type CurrentType;
+        public SerializedProperty property { get; protected set; }
+        public Type BaseType { get; protected set; }
+        public Type CurrentType { get; protected set; }
         bool bodyInvalid = true;
-
-
         public Action<Type> OnTypeChanged;
         public bool drawnSuccessfully { get; private set; } = false;
+
+        #region PartGetters
+
+        public Button ChangeButton => changeButton;
+
+        #endregion
+
 
         //VisualElement bodyDrawer;
         //bool bodyInvalidated = true;
@@ -381,63 +428,34 @@ public abstract class Polymorph
         }
     }
 
-#endif
-
-    [System.Serializable]
-    public class ListOf<T> : UnityEngine.Object, IList<T> where T : Polymorph
-    {
-        [SerializeField, SerializeReference]
-        public List<T> items = new();
-
-        // IList<T> implementation - delegate to the inner list.
-        #region IList implementation
-        public T this[int index]
-        {
-            get => items[index];
-            set => items[index] = value;
-        }
-
-        public int Count => items.Count;
-        public bool IsReadOnly => ((ICollection<T>)items).IsReadOnly;
-
-        public void Add(T item) => items.Add(item);
-        public void Clear() => items.Clear();
-        public bool Contains(T item) => items.Contains(item);
-        public void CopyTo(T[] array, int arrayIndex) => items.CopyTo(array, arrayIndex);
-        public IEnumerator<T> GetEnumerator() => items.GetEnumerator();
-        public int IndexOf(T item) => items.IndexOf(item);
-        public void Insert(int index, T item) => items.Insert(index, item);
-        public bool Remove(T item) => items.Remove(item);
-        public void RemoveAt(int index) => items.RemoveAt(index);
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => ((System.Collections.IEnumerable)items).GetEnumerator();
-        #endregion
-    }
-
-#if UNITY_EDITOR
     [CustomPropertyDrawer(typeof(ListOf<>), true)]
     public class ListOfDrawer : PropertyDrawer
     {
+        // Stored visual pieces to resemble VisualElementsHelpers.SuperList structure
+        private SerializedProperty rootProperty;
+        private SerializedProperty listProperty;
+        private Type baseType;
+        private VisualElement root;
+        private VisualElement headerBar;
+        private Label titleLabel;
+        private Label counterLabel;
+        private Button addButton;
+        private VisualElement collection;
+        private List<Item> itemElements = new();
+
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            var root = new VisualElement();
+            rootProperty = property;
+
+            // Root
+            root = new VisualElement();
             root.name = $"ListOfDrawer-{property.propertyPath}";
 
-
             // Backing array property (robust resolution)
-            SerializedProperty itemsProp = null;
-
-            itemsProp = property.FindPropertyRelative("items");
-            itemsProp ??= property.FindPropertyRelative("Items");
-
-
-            if (itemsProp == null)
-            {
-                // If still null, throw a clearer editor-time exception so the developer can inspect the property path.
-                throw new Exception($"Polymorph.ListOfDrawer: Could not resolve 'items' SerializedProperty for '{property.propertyPath}'.");
-            }
+            listProperty = property.FindPropertyRelative("items")
+                ?? throw new Exception($"Polymorph.ListOfDrawer: Could not resolve 'items' SerializedProperty for '{property.propertyPath}'.");
 
             // Resolve element (generic) type from FieldInfo where possible
-            Type elementType = null;
             try
             {
                 var fi = fieldInfo;
@@ -447,264 +465,289 @@ public abstract class Polymorph
                     if (ft.IsGenericType)
                     {
                         var args = ft.GetGenericArguments();
-                        if (args != null && args.Length > 0) elementType = args[0];
+                        if (args != null && args.Length > 0) baseType = args[0];
                     }
                 }
             }
-            catch
-            {
-                elementType = null;
-            }
+            catch { baseType = null; }
 
-            // Header bar
-            VisualElement headerBar = new()
-            {
-                style =
-                {
-                    flexDirection = FlexDirection.Row,
-                    alignItems = Align.Center,
-                    marginBottom = 2
-                }
-            };
+            // Establish visual elements and styling
+            EstablishVisualElements();
 
-            var titleLabel = new Label(property.displayName)
-            {
-                name = "listof-title",
-                style =
-                {
-                    flexGrow = 1,
-                    unityTextAlign = TextAnchor.MiddleLeft
-                }
-            };
-            headerBar.Add(titleLabel);
-
-            var counterLabel = new Label((itemsProp != null) ? itemsProp.arraySize.ToString() : "0")
-            {
-                name = "listof-counter",
-                style =
-                {
-                    width = 40,
-                    unityTextAlign = TextAnchor.MiddleRight
-                }
-            };
-            headerBar.Add(counterLabel);
-
-
-            // Collection container
-            var collection = new VisualElement()
-            {
-                name = "listof-collection",
-                style =
-                {
-                    flexDirection = FlexDirection.Column,
-                    paddingLeft = 2,
-                    paddingRight = 2
-                }
-            };
-
-            var addButton = new Button(
-                () =>
-            {
-                // When clicked, show type chooser and add the chosen type (or null choice) to the list.
-                Type baseType = elementType ?? typeof(Polymorph);
-                Polymorph.ShowChooseTypeMenu(baseType, false, (chosen) =>
-                {
-#if UNITY_EDITOR
-                    try
-                    {
-                        if (itemsProp == null) return;
-                        itemsProp.serializedObject.Update();
-
-                        // Increase array size
-                        int newIndex = itemsProp.arraySize;
-                        itemsProp.arraySize++;
-                        itemsProp.serializedObject.ApplyModifiedProperties();
-
-                        // Resolve the newly created element property
-                        itemsProp.serializedObject.Update();
-                        if (newIndex < itemsProp.arraySize)
-                        {
-                            var newElem = itemsProp.GetArrayElementAtIndex(newIndex);
-                            if (newElem != null)
-                            {
-                                try
-                                {
-                                    if (chosen != null)
-                                    {
-                                        // Try to set as managed reference if supported
-                                        if (newElem.propertyType == SerializedPropertyType.ManagedReference)
-                                        {
-                                            newElem.managedReferenceValue = Activator.CreateInstance(chosen);
-                                        }
-                                        else
-                                        {
-                                            // Fallback: attempt managed reference assignment anyway (defensive)
-                                            try { newElem.managedReferenceValue = Activator.CreateInstance(chosen); }
-                                            catch { }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Null choice -> leave default (or null)
-                                        if (newElem.propertyType == SerializedPropertyType.ManagedReference)
-                                            newElem.managedReferenceValue = null;
-                                    }
-                                }
-                                catch { /* swallow instantiation errors */ }
-                            }
-                        }
-
-                        itemsProp.serializedObject.ApplyModifiedProperties();
-                    }
-                    catch { /* swallow editor-time exceptions */ }
-
-                    // Rebuild UI to reflect change
-                    Rebuild();
-#endif
-                });
-            })
-            {
-                text = "+",
-                name = "listof-add",
-                style =
-                {
-                    width = 22,
-                    height = 18
-                }
-            };
-            headerBar.Add(addButton);
-
+            // Add to root
             root.Add(headerBar);
-
             root.Add(collection);
 
-            // Local helper: rebuild UI from serialized property
-            void Rebuild()
-            {
-                collection.Clear();
-                counterLabel.text = (itemsProp != null) ? itemsProp.arraySize.ToString() : "0";
-
-#if UNITY_EDITOR
-                if (itemsProp == null) return;
-                itemsProp.serializedObject.Update();
-                int size = itemsProp.arraySize;
-
-                for (int i = 0; i < size; i++)
-                {
-                    SerializedProperty elemProp = itemsProp.GetArrayElementAtIndex(i);
-                    VisualElement row = new()
-                    {
-                        style =
-                        {
-                            flexDirection = FlexDirection.Row,
-                            alignItems = Align.Center,
-                            marginBottom = 2
-                        }
-                    };
-
-                    // Drag glyph (visual only)
-                    var glyph = new Label("≡")
-                    {
-                        name = "listof-grab",
-                        style =
-                        {
-                            width = 18,
-                            unityTextAlign = TextAnchor.MiddleCenter,
-                            marginRight = 4
-                        }
-                    };
-                    row.Add(glyph);
-
-                    // Body: Use Polymorph.HeaderDrawer for polymorph editing if the element represents a Polymorph-like object.
-                    VisualElement body = null;
-                    try
-                    {
-                        // If the element property is compatible with Polymorph.HeaderDrawer, use it.
-                        // HeaderDrawer expects a SerializedProperty pointing at a Polymorph-like managed reference.
-                        body = new Polymorph.HeaderDrawer(elemProp);
-                        body.style.flexGrow = 1;
-                    }
-                    catch
-                    {
-                        // Fallback: use a default PropertyField
-                        try
-                        {
-                            var pf = new PropertyField(elemProp);
-                            pf.style.flexGrow = 1;
-                            body = pf;
-                        }
-                        catch
-                        {
-                            body = new Label("(unable to draw element)");
-                        }
-                    }
-
-                    // Bind the body defensively
-                    try { body.Bind(property.serializedObject); } catch { }
-
-                    row.Add(body);
-
-                    // Remove button
-                    var removeBtn = new Button(() =>
-                    {
-                        try
-                        {
-                            if (itemsProp == null) return;
-                            itemsProp.serializedObject.Update();
-
-                            // Delete once; for object references Unity may leave a null placeholder
-                            itemsProp.DeleteArrayElementAtIndex(i);
-
-                            // If after deletion there is still an element at that index and it's an object reference & null, delete again.
-                            if (i < itemsProp.arraySize)
-                            {
-                                var maybeElem = itemsProp.GetArrayElementAtIndex(i);
-                                if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
-                                {
-                                    itemsProp.DeleteArrayElementAtIndex(i);
-                                }
-                            }
-
-                            // Update counter and apply changes
-                            if (counterLabel != null) counterLabel.text = itemsProp.arraySize.ToString();
-                            itemsProp.serializedObject.ApplyModifiedProperties();
-                        }
-                        catch { /* swallow */ }
-
-                        // Rebuild UI after removal
-                        Rebuild();
-                    })
-                    {
-                        text = "-",
-                        name = "listof-remove",
-                        style =
-                        {
-                            width = 20,
-                            marginLeft = 6
-                        }
-                    };
-                    removeBtn.RegisterCallback<ClickEvent>((evt) => evt.StopPropagation());
-                    row.Add(removeBtn);
-
-                    collection.Add(row);
-                }
-
-                // Ensure foldout-like visibility: nothing special here
-#endif
-            }
-
             // Initial build
-            Rebuild();
+            BuildItems();
 
             // Bind root for prefab/apply support (defensive)
             try { root.Bind(property.serializedObject); } catch { }
 
             return root;
         }
+
+        // Helper: creates and styles headerBar, titleLabel, counterLabel, addButton, collection
+        private void EstablishVisualElements()
+        {
+            // Header bar
+            headerBar = new()
+            {
+                name = "listof-headerbar",
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    alignItems = Align.Center,
+                    height = 20,
+                    backgroundColor = .2078432f.Gray(),
+                    borderRightColor = .1411765f.Gray(),
+                    borderLeftColor = .1411765f.Gray(),
+                    borderTopColor = .1411765f.Gray(),
+                    borderBottomColor = .1411765f.Gray(),
+                    borderRightWidth = 1,
+                    borderLeftWidth = 1,
+                    borderTopWidth = 1,
+                    borderBottomWidth = 1,
+                    paddingLeft = 4,
+                    borderTopLeftRadius = 6,
+                    borderTopRightRadius = 6
+                }
+            };
+
+            // Title label
+            titleLabel = new(rootProperty.displayName)
+            {
+                name = "listof-title",
+                style =
+                {
+                    flexGrow = 1,
+                    fontSize = 12,
+                    unityTextAlign = TextAnchor.MiddleLeft,
+                    color = .82f.Gray(),
+                }
+            };
+            headerBar.Add(titleLabel);
+
+            // Counter label
+            counterLabel = new((listProperty != null) ? listProperty.arraySize.ToString() : "0")
+            {
+                name = "listof-counter",
+                style =
+                {
+                    width = 36,
+                    unityTextAlign = TextAnchor.MiddleRight,
+                    color = .85f.Gray(),
+                    marginRight = 6
+                }
+            };
+            headerBar.Add(counterLabel);
+
+            // Add button
+            addButton = new(() => Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen))
+            {
+                text = "+",
+                name = "listof-add",
+                style =
+                {
+                    width = 24,
+                    height = 18,
+                    backgroundColor = Color.clear,
+                    borderBottomColor = Color.clear, borderTopColor = Color.clear,
+                    borderLeftColor = Color.clear, borderRightColor = Color.clear,
+                    fontSize = 14,
+                    unityTextAlign = TextAnchor.LowerCenter,
+                    borderRightWidth = 0, borderBottomWidth = 0, borderLeftWidth = 0, borderTopWidth = 0,
+                    borderTopRightRadius = 6,
+                    marginBottom = 0, marginLeft = 0, marginRight = 0, marginTop = 0,
+                    paddingBottom = 0, paddingLeft = 0, paddingRight = 0, paddingTop = 0
+                },
+            };
+            headerBar.Add(addButton);
+
+            addButton.RegisterCallback<MouseOverEvent>(HoverEvent);
+            addButton.RegisterCallback<MouseLeaveEvent>(HoverEvent);
+
+            void HoverEvent(UnityEngine.UIElements.EventBase e) =>
+                addButton.style.color = e is MouseOverEvent ? Color.softYellow : Color.white;
+
+            // Collection container
+            collection = new()
+            {
+                name = "listof-collection",
+                style =
+                {
+                    backgroundColor = .254902f.Gray(),
+                    borderBottomColor = .1411765f.Gray(), borderRightColor = .1411765f.Gray(),
+                    borderLeftColor = .1411765f.Gray(),borderTopColor = .1411765f.Gray(),
+                    borderLeftWidth = 1, borderRightWidth = 1, borderBottomWidth = 1, borderTopWidth = 0,
+                    borderBottomLeftRadius = 4, borderBottomRightRadius = 4,
+                    flexDirection = FlexDirection.Column
+                }
+            };
+        }
+
+
+        void TypeChosen(Type chosen)
+        {
+#if UNITY_EDITOR
+            try
+            {
+                if (listProperty == null) return;
+                listProperty.serializedObject.Update();
+
+                // Increase array size
+                int newIndex = listProperty.arraySize;
+                listProperty.arraySize++;
+                listProperty.serializedObject.ApplyModifiedProperties();
+
+                // Resolve the newly created element property
+                listProperty.serializedObject.Update();
+                if (newIndex < listProperty.arraySize)
+                {
+                    var newElem = listProperty.GetArrayElementAtIndex(newIndex);
+                    if (newElem != null)
+                    {
+                        try
+                        {
+                            if (chosen != null)
+                            {
+                                if (newElem.propertyType == SerializedPropertyType.ManagedReference) newElem.managedReferenceValue = Activator.CreateInstance(chosen);
+                                else try { newElem.managedReferenceValue = Activator.CreateInstance(chosen); } catch { }
+                            }
+                            else
+                            {
+                                if (newElem.propertyType == SerializedPropertyType.ManagedReference)
+                                    newElem.managedReferenceValue = null;
+                            }
+                        }
+                        catch { /* swallow instantiation errors */ }
+                    }
+                }
+
+                listProperty.serializedObject.ApplyModifiedProperties();
+                BuildItems();
+            }
+            catch { /* swallow editor-time exceptions */ }
 #endif
+
+        }
+
+
+        void BuildItems()
+        {
+            itemElements.Clear();
+            collection.Clear();
+            counterLabel.text = (listProperty != null) ? listProperty.arraySize.ToString() : "0";
+
+            if (listProperty == null) return;
+            listProperty.serializedObject.Update();
+            int size = listProperty.arraySize;
+
+            for (int i = 0; i < size; i++)
+            {
+                Item item = new(listProperty.GetArrayElementAtIndex(i), i, RemoveItem);
+                itemElements.Add(item);
+                collection.Add(item);
+                item.body.Bind(rootProperty.serializedObject);
+            }
+
+        }
+
+        void RemoveItem(int i)
+        {
+            if (listProperty == null) return;
+            listProperty.serializedObject.Update();
+
+            // Delete once; for object references Unity may leave a null placeholder
+            listProperty.DeleteArrayElementAtIndex(i);
+
+            // If after deletion there is still an element at that index and it's an object reference & null, delete again.
+            if (i < listProperty.arraySize)
+            {
+                var maybeElem = listProperty.GetArrayElementAtIndex(i);
+                if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
+                {
+                    listProperty.DeleteArrayElementAtIndex(i);
+                }
+            }
+
+            // Update counter and apply changes
+            if (counterLabel != null) counterLabel.text = listProperty.arraySize.ToString();
+            listProperty.serializedObject.ApplyModifiedProperties();
+
+            itemElements[i].parent.Remove(itemElements[i]);
+            itemElements.RemoveAt(i);
+        }
+
+
+
+
+
+
+
+
+        public class Item : VisualElement
+        {
+            public Item(SerializedProperty itemProperty, int id, Action<int> RemoveCall)
+            {
+                this.itemProperty = itemProperty;
+                this.id = id;
+
+                name = "PolyListRow";
+                style.flexDirection = FlexDirection.Row;
+                style.alignItems = Align.Center;
+                style.marginTop = 2;
+
+                glyph = new("≡")
+                {
+                    name = "listof-grab", style =
+                    {
+                        width = 18,
+                        marginRight = 16,
+                        marginLeft = 4,
+                        unityTextAlign = TextAnchor.MiddleCenter
+                    }
+                };
+                Add(glyph);
+
+                body = new(itemProperty);
+                body.style.flexGrow = 1;
+                Add(body);
+
+                // Defensive bind
+                //try { body.Bind(rootProperty.serializedObject); } catch { }
+
+                var removeBtn = new Button(() => RemoveCall(this.id))
+                {
+                    text = "-",
+                    name = "listof-remove",
+                    style =
+                    {
+                        width = 20,
+                        marginLeft = 6,
+                        backgroundColor = Color.clear,
+                        borderBottomColor = Color.clear,
+                        borderLeftColor = Color.clear,
+                        borderRightColor = Color.clear,
+                        borderTopColor = Color.clear
+                    }
+                };
+                removeBtn.RegisterCallback<ClickEvent>((evt) => evt.StopPropagation());
+                Add(removeBtn);
+            }
+
+            public SerializedProperty itemProperty { get; private set; }
+            public Label glyph { get; private set; }
+            public Button removebutton { get; private set; }
+            public Polymorph.HeaderDrawer body { get; private set; }
+            public int id { get; private set; }
+        }
+
     }
+#endif
 }
 
+/*
 namespace _Polymorph_Helpers
 {
     static class XtensionsPolymorph
@@ -720,3 +763,4 @@ namespace _Polymorph_Helpers
         }
     }
 }
+*/
