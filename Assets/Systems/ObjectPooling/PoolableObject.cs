@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RageRooster.Systems.ObjectPooling
+namespace ObjectPooling
 {
     /// <summary>
     /// A component that marks a GameObject as being poolable.

@@ -9,8 +9,6 @@ namespace SaveSystem
     public partial class SaveData
     {
         public const string targetFileVersion = "1.0.0";
-        private int FUNValue;
-
 
         public static SaveData Clone(SaveData source, SaveData target)
         {

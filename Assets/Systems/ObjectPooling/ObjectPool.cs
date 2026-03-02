@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
-namespace RageRooster.Systems.ObjectPooling
+namespace ObjectPooling
 {
     /// <summary>
     /// An active <see cref="ObjectPool"/> in the game's memory, can be attached directly to a behavior or the <see cref="GlobalPool"/>.
