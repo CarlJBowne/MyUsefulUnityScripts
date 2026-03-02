@@ -46,6 +46,147 @@ public abstract class Polymorph
         #endregion
     }
 
+    [System.Serializable]
+    public class UniqueList<T> : IList<T> where T : Polymorph
+    {
+        [SerializeField, SerializeReference]
+        public List<T> items = new();
+        // IList<T> implementation with uniqueness enforcement.
+        #region IList implementation
+        public T this[int index]
+        {
+            get => items[index];
+            set
+            {
+                if (value != null)
+                {
+                    // Ensure no other slot contains the same runtime type.
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        if (i == index) continue;
+                        var existing = items[i];
+                        if (existing != null && existing.GetType() == value.GetType() && !ReferenceEquals(existing, value))
+                            throw new InvalidOperationException($"Cannot add duplicate item of type '{value.GetType().Name}' to UniqueList.");
+                    }
+                }
+                items[index] = value;
+            }
+        }
+        public int Count => items.Count;
+        public bool IsReadOnly => ((ICollection<T>)items).IsReadOnly;
+        public void Add(T item)
+        {
+            if (item != null)
+            {
+                if (items.Any(e => e != null && e.GetType() == item.GetType() && !ReferenceEquals(e, item)))
+                    throw new InvalidOperationException($"Cannot add duplicate item of type '{item.GetType().Name}' to UniqueList.");
+            }
+            items.Add(item);
+        }
+        public void Clear() => items.Clear();
+        public bool Contains(T item) => items.Contains(item);
+        public void CopyTo(T[] array, int arrayIndex) => items.CopyTo(array, arrayIndex);
+        public IEnumerator<T> GetEnumerator() => items.GetEnumerator();
+        public int IndexOf(T item) => items.IndexOf(item);
+
+        public void Insert(int index, T item)
+        {
+            if (item != null)
+            {
+                if (items.Any(e => e != null && e.GetType() == item.GetType() && !ReferenceEquals(e, item)))
+                    throw new InvalidOperationException($"Cannot insert duplicate item of type '{item.GetType().Name}' to UniqueList.");
+            }
+            items.Insert(index, item);
+        }
+
+        public bool Remove(T item) => items.Remove(item);
+        public void RemoveAt(int index) => items.RemoveAt(index);
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => ((System.Collections.IEnumerable)items).GetEnumerator();
+        #endregion
+
+        // Additional dictionary-like and utility methods:
+
+        /// <summary>
+        /// Gets the value associated with the specified type.
+        /// </summary>
+        /// <param name="I">The type whose associated value to get.</param>
+        /// <returns>The value associated with the specified type.</returns>
+        public T this[Type I] => GetByType(I);
+
+        /// <summary>
+        /// Returns the first stored element whose runtime Type equals the provided Type, or null if none.
+        /// </summary>
+        public T GetByType(Type type)
+        {
+            if (type == null) return null;
+            return items.FirstOrDefault(e => e != null && e.GetType() == type);
+        }
+
+        /// <summary>
+        /// Tries to get an element by runtime Type.
+        /// </summary>
+        public bool TryGetByType(Type type, out T value)
+        {
+            value = GetByType(type);
+            return value != null;
+        }
+
+        /// <summary>
+        /// Typed convenience getter. Returns the stored instance of U (or null).
+        /// </summary>
+        public U Get<U>() where U : T
+        {
+            var found = items.FirstOrDefault(e => e is U);
+            return (U)found;
+        }
+
+        /// <summary>
+        /// Typed try-get convenience.
+        /// </summary>
+        public bool TryGet<U>(out U value) where U : T
+        {
+            var found = items.FirstOrDefault(e => e is U);
+            value = (U)found;
+            return found != null;
+        }
+
+        /// <summary>
+        /// Returns whether any element of the given runtime Type exists in the list.
+        /// </summary>
+        public bool ContainsType(Type type)
+        {
+            if (type == null) return false;
+            return items.Any(e => e != null && e.GetType() == type);
+        }
+
+        /// <summary>
+        /// Returns index of the element whose runtime Type equals the provided Type, or -1.
+        /// </summary>
+        public int IndexOfType(Type type)
+        {
+            if (type == null) return -1;
+            for (int i = 0; i < items.Count; i++)
+            {
+                var e = items[i];
+                if (e != null && e.GetType() == type) return i;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Replace the existing element of the given runtime Type with 'item' or add it if missing.
+        /// If 'item' is non-null its runtime type must match 'type'.
+        /// </summary>
+        public void SetByType(Type type, T item)
+        {
+            if (type == null) throw new ArgumentNullException(nameof(type));
+            if (item != null && item.GetType() != type) throw new ArgumentException("Item type does not match provided type.", nameof(item));
+
+            int idx = IndexOfType(type);
+            if (idx >= 0) items[idx] = item;
+            else Add(item);
+        }
+    }
 
 #if UNITY_EDITOR
 
@@ -443,16 +584,16 @@ public abstract class Polymorph
     public class ListOfDrawer : PropertyDrawer
     {
         // Stored visual pieces to resemble VisualElementsHelpers.SuperList structure
-        private SerializedProperty rootProperty;
-        private SerializedProperty listProperty;
-        private Type baseType;
-        private VisualElement root;
-        private VisualElement headerBar;
-        private Label titleLabel;
-        private Label counterLabel;
-        private Button addButton;
-        private VisualElement collection;
-        private List<Item> itemElements = new();
+        protected SerializedProperty rootProperty;
+        protected SerializedProperty listProperty;
+        protected Type baseType;
+        protected VisualElement root;
+        protected VisualElement headerBar;
+        protected Label titleLabel;
+        protected Label counterLabel;
+        protected Button addButton;
+        protected VisualElement collection;
+        protected List<Item> itemElements = new();
 
         // Foldout pieces
         private Label foldoutArrow;
@@ -589,7 +730,7 @@ public abstract class Polymorph
             headerBar.Add(counterLabel);
 
             // Add button
-            addButton = new(() => Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen))
+            addButton = new(ShowTypeChooser)
             {
                 text = "+",
                 name = "listof-add",
@@ -639,7 +780,9 @@ public abstract class Polymorph
             if (foldoutArrow != null) foldoutArrow.text = expanded ? "▾" : "▸";
         }
 
-        void TypeChosen(Type chosen)
+        protected virtual void ShowTypeChooser() => Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen);
+
+        protected virtual void TypeChosen(Type chosen)
         {
             rootProperty.isExpanded = true;
 #if UNITY_EDITOR
@@ -698,7 +841,7 @@ public abstract class Polymorph
 
             for (int i = 0; i < size; i++)
             {
-                Item item = new(listProperty.GetArrayElementAtIndex(i), i, RemoveItem);
+                Item item = new(listProperty.GetArrayElementAtIndex(i), RemoveItem);
                 itemElements.Add(item);
                 collection.Add(item);
                 item.body.Bind(rootProperty.serializedObject);
@@ -708,10 +851,12 @@ public abstract class Polymorph
             UpdateFoldoutVisuals();
         }
 
-        void RemoveItem(int i)
+        void RemoveItem(Item item)
         {
             if (listProperty == null) return;
             listProperty.serializedObject.Update();
+
+            int i = itemElements.IndexOf(item);
 
             // Delete once; for object references Unity may leave a null placeholder
             listProperty.DeleteArrayElementAtIndex(i);
@@ -744,10 +889,9 @@ public abstract class Polymorph
 
         public class Item : VisualElement
         {
-            public Item(SerializedProperty itemProperty, int id, Action<int> RemoveCall)
+            public Item(SerializedProperty itemProperty, Action<Item> RemoveCall)
             {
                 this.itemProperty = itemProperty;
-                this.id = id;
 
                 name = "PolyListRow";
                 style.flexDirection = FlexDirection.Row;
@@ -771,7 +915,7 @@ public abstract class Polymorph
                 Add(body);
                 body.ChangeButton.style.visibility = Visibility.Hidden;
 
-                var removeBtn = new Button(() => RemoveCall(this.id))
+                var removeBtn = new Button(() => RemoveCall(this))
                 {
                     text = "-",
                     name = "listof-remove",
@@ -788,18 +932,66 @@ public abstract class Polymorph
                 };
                 removeBtn.RegisterCallback<ClickEvent>((evt) => evt.StopPropagation());
                 Add(removeBtn);
-                removeBtn.HoverEvents(value => removeBtn.style.color = value ? new(1,.2f,.2f) : Color.white);
+                removeBtn.HoverEvents(value => removeBtn.style.color = value ? new(1, .2f, .2f) : Color.white);
             }
 
             public SerializedProperty itemProperty { get; private set; }
             public Label glyph { get; private set; }
             public Button removebutton { get; private set; }
             public Polymorph.HeaderDrawer body { get; private set; }
-            public int id { get; private set; }
         }
 
     }
+
+    [CustomPropertyDrawer(typeof(UniqueList<>), true)]
+    public class UniqueListDrawer : ListOfDrawer
+    {
+        public UniqueListDrawer() : base() { }
+
+        protected override void ShowTypeChooser()
+        {
+            GenericMenu menu = new();
+
+            List<Type> types = GetSubtypes(baseType).ToList();
+
+            for (int i = 0; i < listProperty.arraySize; i++)
+            {
+                var elem = listProperty.GetArrayElementAtIndex(i);
+                if (elem != null && elem.managedReferenceValue != null) types.Remove(elem.managedReferenceValue.GetType());
+            }
+
+            if (types.Count != 0)
+            {
+                foreach (Type t in types)
+                {
+                    if (t == baseType) continue;
+                    menu.AddItem(new GUIContent(t.Name), false, () => { TypeChosen(t); });
+                }
+
+                menu.ShowAsContext();
+            }
+        }
+
+        protected override void TypeChosen(Type chosen)
+        {
+            // Prevent adding duplicate types to the list.
+            if (chosen != null)
+            {
+                for (int i = 0; i < listProperty.arraySize; i++)
+                {
+                    var elem = listProperty.GetArrayElementAtIndex(i);
+                    if (elem != null && elem.managedReferenceValue != null && elem.managedReferenceValue.GetType() == chosen)
+                    {
+                        EditorUtility.DisplayDialog("Duplicate Type", $"An instance of type '{chosen.Name}' already exists in the list. UniqueList cannot contain duplicates.", "OK");
+                        return;
+                    }
+                }
+            }
+            // If no duplicates, proceed with normal addition.
+            base.TypeChosen(chosen);
+        }
 #endif
+    }
 }
 
 

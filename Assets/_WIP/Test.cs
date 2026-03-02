@@ -9,7 +9,7 @@ using System;
 
 public class Test : MonoBehaviour
 {
-    public Polymorph.ListOf<PolymorphTest> testList = new();
+    public Polymorph.UniqueList<PolymorphTest> testList = new();
 }
 
 [System.Serializable]
