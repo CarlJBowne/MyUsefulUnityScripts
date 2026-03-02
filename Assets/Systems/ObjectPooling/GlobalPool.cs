@@ -11,7 +11,7 @@ namespace RageRooster.Systems.ObjectPooling
     /// <summary>
     /// A global pool for pooled objects shared between multiple entities. Use a <see cref="GlobalPool.Client"/> to interface with this.
     /// </summary>
-    public class GlobalPool : Singleton.Asset<GlobalPool>
+    public class GlobalPool : GlobalAsset<GlobalPool>
     {
         public static GlobalPool Instance { private set; get; }
         public static bool initialized { private set; get; }

@@ -10,7 +10,7 @@ namespace SaveSystem
     /// A Globally acessible registry for all saved values in the game. <br/>
     /// An Asset where defaults are defined and cloned from. DO NOT DELETE.
     /// </summary>
-    public class SavedValueRegistry : Singleton.Asset<SavedValueRegistry>
+    public class SavedValueRegistry : GlobalAsset<SavedValueRegistry>
     {
         public override void OnEnable()
         {
