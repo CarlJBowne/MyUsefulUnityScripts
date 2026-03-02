@@ -116,11 +116,6 @@ public abstract class Polymorph
             CurrentType = property?.managedReferenceValue?.GetType();
             name = $"HeaderDrawer-{BaseType.Name}-{property.name}";
 
-            propertyField ??= new PropertyField(p)
-            {
-                name = $"HeaderDrawer-PropertyField__{p.name}"
-            };
-            if (!this.Contains(propertyField)) this.Add(propertyField);
             changeButton ??= new Button(TypeButtonClick)
             {
                 name = "Type Chooser",
@@ -143,6 +138,13 @@ public abstract class Polymorph
                         }
             };
             if (!this.Contains(changeButton)) this.Add(changeButton);
+
+            propertyField ??= new PropertyField(p)
+            {
+                name = $"HeaderDrawer-PropertyField__{p.name}"
+            };
+            if (!this.Contains(propertyField)) this.Add(propertyField);
+
             if (TryCacheFoldout()) foldout.value = true;
 
             // Schedule Delayed building of the Layout.
@@ -151,7 +153,6 @@ public abstract class Polymorph
 
         void Update()
         {
-
             // Update label and toggle UI. Create the TypeButton once and only add it to the labelElement if not already present.
             if (this.QCache(out label, className: "unity-label"))
             {
@@ -179,12 +180,23 @@ public abstract class Polymorph
 
             if (property.managedReferenceValue is not null and Polymorph O && bodyInvalid)
             {
-                //if (contentContainer == null) return;
+                if (contentContainer == null) return;
                 if (O.OverrideBody(contentContainer.hierarchy, property))
                     contentContainer.Bind(property.serializedObject);
 
+                HeaderDrawer dupe;
+                if (propertyField.QCache(out dupe) && dupe.parent == propertyField)
+                {
+                    PropertyField oldPropField = propertyField;
+                    propertyField = dupe.propertyField;
+                    this.Remove(oldPropField);
+                    this.Add(propertyField);
+                    Update();
+                }
+
                 bodyInvalid = false;
             }
+
         }
 
         void UpdateType(Type t) => UpdateType(t, false);
@@ -713,6 +725,7 @@ public abstract class Polymorph
                 body = new(itemProperty);
                 body.style.flexGrow = 1;
                 Add(body);
+                body.ChangeButton.style.visibility = Visibility.Hidden;
 
                 // Defensive bind
                 //try { body.Bind(rootProperty.serializedObject); } catch { }
