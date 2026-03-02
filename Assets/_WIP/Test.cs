@@ -10,6 +10,9 @@ using System;
 public class Test : MonoBehaviour
 {
     public Polymorph.UniqueList<PolymorphTest> testList = new();
+
+    [SerializeReference]
+    public PolymorphTest testeA;
 }
 
 [System.Serializable]

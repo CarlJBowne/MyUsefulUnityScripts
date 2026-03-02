@@ -236,12 +236,7 @@ public abstract class Polymorph
     [CustomPropertyDrawer(typeof(Polymorph), true)]
     public class Drawer : PropertyDrawer
     {
-        public override VisualElement CreatePropertyGUI(SerializedProperty property)
-        {
-            var res = new HeaderDrawer(property);
-            res.name = "FUCK";
-            return res;
-        }
+        public override VisualElement CreatePropertyGUI(SerializedProperty property) => new HeaderDrawer(property);
     }
 
     //Note: Consider making a "No Choosing Header" option, but that's more or less useless so maybe ignore this.
@@ -255,6 +250,12 @@ public abstract class Polymorph
             BaseType = GetDeclaredFieldType() ?? typeof(Polymorph);
             CurrentType = property?.managedReferenceValue?.GetType();
             name = $"HeaderDrawer-{BaseType.Name}-{property.name}";
+
+            propertyField ??= new PropertyField(p)
+            {
+                name = $"HeaderDrawer-PropertyField__{p.name}"
+            };
+            if (!this.Contains(propertyField)) this.Add(propertyField);
 
             changeButton ??= new Button(TypeButtonClick)
             {
@@ -279,11 +280,6 @@ public abstract class Polymorph
             };
             if (!this.Contains(changeButton)) this.Add(changeButton);
 
-            propertyField ??= new PropertyField(p)
-            {
-                name = $"HeaderDrawer-PropertyField__{p.name}"
-            };
-            if (!this.Contains(propertyField)) this.Add(propertyField);
 
             if (TryCacheFoldout()) foldout.value = true;
 
@@ -331,6 +327,8 @@ public abstract class Polymorph
                     propertyField = dupe.propertyField;
                     this.Remove(oldPropField);
                     this.Add(propertyField);
+                    Remove(changeButton);
+                    Add(changeButton);
                     Update();
                 }
 
@@ -533,13 +531,6 @@ public abstract class Polymorph
             this.Add(tabView);
             tabView.Q<VisualElement>("unity-tab-view__header-container").style.flexGrow = 1;
             tabs = new();
-            //this.DelayedBuild(() =>
-            //{
-            //    for (int i = 0; i < tabs.Count; i++)
-            //    {
-            //        tabView.Add(tabs[i]);
-            //    }
-            //});
         }
 
         TabView tabView;
@@ -828,6 +819,36 @@ public abstract class Polymorph
 
         }
 
+        // New: move item by delta (-1 up, +1 down) when wheel used on glyph
+        void MoveItem(Item item, int delta)
+        {
+            if (listProperty == null) return;
+            listProperty.serializedObject.Update();
+
+            int i = itemElements.IndexOf(item);
+            if (i < 0) return;
+
+            int arraySize = listProperty.arraySize;
+            if (arraySize <= 1) return;
+
+            int newIndex = Mathf.Clamp(i + delta, 0, arraySize - 1);
+            if (newIndex == i) return;
+
+            try
+            {
+                listProperty.MoveArrayElement(i, newIndex);
+                listProperty.serializedObject.ApplyModifiedProperties();
+            }
+            catch
+            {
+                // Swallow any editor-time exceptions and continue defensively.
+                try { listProperty.serializedObject.ApplyModifiedProperties(); } catch { }
+            }
+
+            // Rebuild visuals to reflect new ordering.
+            BuildItems();
+        }
+
 
         void BuildItems()
         {
@@ -841,7 +862,7 @@ public abstract class Polymorph
 
             for (int i = 0; i < size; i++)
             {
-                Item item = new(listProperty.GetArrayElementAtIndex(i), RemoveItem);
+                Item item = new(listProperty.GetArrayElementAtIndex(i), RemoveItem, MoveItem);
                 itemElements.Add(item);
                 collection.Add(item);
                 item.body.Bind(rootProperty.serializedObject);
@@ -879,19 +900,14 @@ public abstract class Polymorph
             itemElements.RemoveAt(i);
         }
 
-
-
-
-
-
-
-
-
         public class Item : VisualElement
         {
-            public Item(SerializedProperty itemProperty, Action<Item> RemoveCall)
+            private readonly Action<Item, int> moveCallback;
+
+            public Item(SerializedProperty itemProperty, Action<Item> RemoveCall, Action<Item, int> MoveCall)
             {
                 this.itemProperty = itemProperty;
+                moveCallback = MoveCall;
 
                 name = "PolyListRow";
                 style.flexDirection = FlexDirection.Row;
@@ -909,6 +925,27 @@ public abstract class Polymorph
                     }
                 };
                 Add(glyph);
+
+                // Register wheel event on the glyph to trigger reorder.
+                glyph.RegisterCallback<WheelEvent>((evt) =>
+                {
+                    // evt.delta.y > 0 => scroll up; move up one slot
+                    // evt.delta.y < 0 => scroll down; move down one slot
+                    float dy = evt.delta.y;
+                    int delta = 0;
+                    if (dy > 0f) delta = 1;
+                    else if (dy < 0f) delta = -1;
+
+                    if (delta != 0)
+                    {
+                        try
+                        {
+                            moveCallback?.Invoke(this, delta);
+                        }
+                        catch { /* defensive: swallow */ }
+                        evt.StopPropagation();
+                    }
+                });
 
                 body = new(itemProperty);
                 body.style.flexGrow = 1;
@@ -933,6 +970,9 @@ public abstract class Polymorph
                 removeBtn.RegisterCallback<ClickEvent>((evt) => evt.StopPropagation());
                 Add(removeBtn);
                 removeBtn.HoverEvents(value => removeBtn.style.color = value ? new(1, .2f, .2f) : Color.white);
+
+                // expose removebutton property for parity with existing class API
+                removebutton = removeBtn;
             }
 
             public SerializedProperty itemProperty { get; private set; }
