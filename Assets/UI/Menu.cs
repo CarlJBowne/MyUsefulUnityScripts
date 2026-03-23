@@ -1,122 +1,146 @@
 using EditorAttributes;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
-/// <summary>
-/// A Base Menu class intended to form an easy-to-use extensible Menu system. (Admittedly not up to snuff.)
-/// </summary>
+
 public class Menu : MonoBehaviour
 {
-    //Config
+    #region Config
+
+    [SerializeField] string ID;
     [DisableInPlayMode] public bool isActive;
     [DisableInPlayMode] public Menu parent;
-    [SerializeField] private string dictionaryName;
-    [SerializeField] private bool closeOverride;
-    [SerializeField, ShowField(nameof(closeOverride))] private UnityEvent closeEvent;
+    [SerializeField] Button defaultSelection;
+    [SerializeField] CanvasGroup canvasGroup;
+    [SerializeField] Selectable[] allButtons;
+    [SerializeField] private UnityEvent closeOverride;
 
-    //Data
-    public bool isCurrent => Manager.currentMenu == this;
+    #endregion
+
+    #region Instance Data
+
+    public bool isCurrent => Menu.CurrentMenu == this;
+    public bool isAvailable => Menu.AvailableMenus.ContainsValue(this);
     public bool isSubMenu => parent != null;
+    public bool isLabeled => !string.IsNullOrWhiteSpace(ID);
+
+    #endregion
+
+    #region Instance Behavior
 
     protected virtual void Awake()
     {
-        if (isActive) Manager.Open(this);
-        else
+        if (isLabeled)
         {
-            gameObject.SetActive(false);
+            if (AvailableMenus.TryGetValue(ID, out Menu existing) && existing != this)
+                Debug.LogWarning($"Menu with ID {ID} already exists in AvailableMenus. Overwriting with new instance.");
+            AvailableMenus[ID] = this;
         }
 
-        if (!string.IsNullOrEmpty(dictionaryName)) Manager.menuDictionary.Add(dictionaryName, this);
+        if (isActive) Menu.Open(this, true);
+        else gameObject.SetActive(false);
     }
 
     protected virtual void OnDestroy()
     {
-        if (!string.IsNullOrEmpty(dictionaryName)) Manager.menuDictionary.Remove(dictionaryName);
+        Menu.Close(this);
+
+        if (isLabeled && AvailableMenus.ContainsKey(ID) && AvailableMenus[ID] == this)
+            AvailableMenus.Remove(ID);
+
         isActive = false;
-        Manager.Close(this);
     }
 
-    /// <summary>
-    /// Opens the menu
-    /// </summary>
-    public void Open() => Manager.Open(this);
+    public void Open() => Menu.Open(this);
 
-    /// <summary>
-    /// Closes the menu (Invokes Override if present.)
-    /// </summary>
-    public void Close()
+    public void Close(bool allowOverride = true)
     {
-        if (!closeOverride) Manager.Close(this);
-        else closeEvent?.Invoke();
+        if (allowOverride || closeOverride == null) Menu.Close(this);
+        else closeOverride.Invoke();
     }
 
-    /// <summary>
-    /// Closes the menu (Closes even if Override is present.)
-    /// </summary>
-    public void TrueClose() => Manager.Close(this);
+
+    private void SetInteractable(bool value)
+    {
+        if (allButtons == null) return;
+        for (int i = 0; i < allButtons.Length; i++)
+            if (allButtons[i] != null) allButtons[i].interactable = value;
+
+        canvasGroup.blocksRaycasts = value;
+    }
 
     protected virtual void OnOpen()
     {
-
+        //if (!openSound.IsNull)
+        //    AudioManager.Get().PlayOneShot(openSound, transform.position);
     }
 
     protected virtual void OnClose()
     {
-
+        //if (!closeSound.IsNull)
+        //    AudioManager.Get().PlayOneShot(closeSound, transform.position);
     }
 
-    /// <summary>
-    /// The Global Manager in charge of Menus.
-    /// </summary>
-    public static class Manager
+    #endregion
+
+    #region Static Data
+
+    public static Dictionary<string, Menu> AvailableMenus { get; } = new();
+    public static List<Menu> ActiveMenus { get; } = new();
+    public static Menu CurrentMenu => ActiveMenus.Count > 0 ? ActiveMenus[^1] : null;
+
+    #endregion
+
+    #region Static Behavior
+
+    public static void Open(Menu menu, bool overrideRedundancyCheck = false)
     {
-        public static Menu currentMenu => currentMenus[^1];
-        public static List<Menu> currentMenus = new();
-        public static Dictionary<string, Menu> menuDictionary = new();
-        public static bool disableEscape;
+        if (menu == null) return;
+        if (menu.isActive && !overrideRedundancyCheck) return;
 
-        /// <summary>
-        /// Opens the specified menu
-        /// </summary>
-        /// <param name="menu">The Menu to be opened.</param>
-        public static void Open(Menu menu)
-        {
-            if (menu.isActive) return;
+        // avoid duplicates; if already present move to top
+        if (ActiveMenus.Contains(menu)) ActiveMenus.Remove(menu);
 
-            currentMenus.Add(menu);
+        ActiveMenus.Add(menu);
 
-            menu.isActive = true;
-            menu.gameObject.SetActive(true);
-            menu.OnOpen();
-        }
+        menu.isActive = true;
+        menu.gameObject.SetActive(true);
+        menu.SetInteractable(true);
 
-        /// <summary>
-        /// Closes the specified menu
-        /// </summary>
-        /// <param name="menu">The Menu to be closed.</param>
-        public static void Close(Menu menu)
-        {
-            if (!menu.isActive) return;
+        if (menu.defaultSelection != null) menu.defaultSelection.Select();
 
-            currentMenus.Remove(menu);
+        ActiveMenus[^2]?.SetInteractable(false);
 
-            menu.gameObject.SetActive(false);
-            menu.isActive = false;
-            menu.OnClose();
-        }
-
-        /// <summary>
-        /// Handles the escape action (Bound to Escape / Start Button by Default.)
-        /// </summary>
-        public static void Escape()
-        {
-            //if (PauseMenu.Loaded && !PauseMenu.Active)
-            //    PauseMenu.Get().Open();
-            //else if (currentMenus.Count > 0)
-            //    currentMenus[^1].Close();
-        }
+        menu.OnOpen();
     }
+
+    public static void Close(Menu menu)
+    {
+        if (menu == null) return;
+        if (!menu.isActive)
+        {
+            // still try to remove if somehow present
+            if (ActiveMenus.Contains(menu)) ActiveMenus.Remove(menu);
+            return;
+        }
+
+        ActiveMenus.Remove(menu);
+
+        menu.isActive = false;
+        menu.gameObject.SetActive(false);
+
+        ActiveMenus[^1]?.SetInteractable(true);
+        menu.OnClose();
+    }
+
+    public static void CloseAllMenus()
+    {
+        for (int i = ActiveMenus.Count - 1; i >= 0; i--) Close(ActiveMenus[i]);
+    }
+
+    #endregion
 }
