@@ -218,7 +218,7 @@ public class Prefab
 [Serializable]
 public class Prefab<T> where T : Component
 {
-    [SerializeField] private Prefab inner = new Prefab();
+    [SerializeField] private Prefab inner = new();
 
     public Prefab() { }
     public Prefab(GameObject go) => inner = new Prefab(go);

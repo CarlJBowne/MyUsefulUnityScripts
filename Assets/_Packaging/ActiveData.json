@@ -1,0 +1,153 @@
+{
+  "isFolder": true,
+  "name": "Assets",
+  "children": [
+    {
+      "isFolder": true,
+      "name": "Audio",
+      "children": [
+        {
+          "isFolder": true,
+          "name": "Ambient",
+          "children": []
+        },
+        {
+          "isFolder": true,
+          "name": "Music",
+          "children": []
+        },
+        {
+          "isFolder": true,
+          "name": "SFX",
+          "children": []
+        }
+      ]
+    },
+    {
+      "isFolder": true,
+      "name": "Content",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Core",
+      "children": [
+        {
+          "isFolder": false,
+          "name": "GameSession.cs"
+        },
+        {
+          "isFolder": true,
+          "name": "SaveSystem",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "Input",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "Global",
+          "children": []
+        }
+      ]
+    },
+    {
+      "isFolder": true,
+      "name": "Editor",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Actors",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Environment",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Other",
+      "children": [
+        {
+          "isFolder": true,
+          "name": "Prefabs",
+          "children": []
+        },
+        {
+          "isFolder": true,
+          "name": "Scripts",
+          "children": []
+        },
+        {
+          "isFolder": true,
+          "name": "Graphic",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "isFolder": true,
+      "name": "Physics",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Plugins",
+      "children": [
+        {
+          "isFolder": false,
+          "name": "ALL"
+        }
+      ]
+    },
+    {
+      "isFolder": true,
+      "name": "Scenes",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Settings",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Systems",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "UI",
+      "children": []
+    },
+    {
+      "isFolder": true,
+      "name": "Utilities",
+      "children": [
+        {
+          "isFolder": false,
+          "name": "ALL"
+        }
+      ]
+    }
+  ]
+}

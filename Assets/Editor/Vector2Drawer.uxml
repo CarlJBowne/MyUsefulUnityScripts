@@ -1,4 +1,0 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <Style src="project://database/Assets/Editor/Vector2Drawer.uss?fileID=7433441132597879392&amp;guid=a203d717665f397459359273edb203bb&amp;type=3#Vector2Drawer" />
-    <ui:Vector2Field label="Vector" name="Vector" binding-path="Vector" />
-</ui:UXML>

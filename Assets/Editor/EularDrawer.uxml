@@ -1,4 +1,0 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/Editor/Vector3Drawer.uss?fileID=7433441132597879392&amp;guid=dca7eeb45c9b5d34fbaf7bf980b1eaed&amp;type=3#Vector3Drawer" />
-    <ui:Vector3Field binding-path="Vector" name="Vector" />
-</ui:UXML>

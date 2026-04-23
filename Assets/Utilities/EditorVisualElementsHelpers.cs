@@ -199,15 +199,35 @@ namespace VisualElementsHelpers
                 }
             }
         }
+
         public static void Highlighter(this VisualElement V, float factor)
         {
             Color initialColor = V.style.color.value;
+            Color initialColorBack = V.style.backgroundColor.value;
+            Color initialColorBorder = V.style.borderTopColor.value;
 
             V.RegisterCallback<MouseOverEvent>(Hover);
             V.RegisterCallback<MouseLeaveEvent>(UnHover);
 
-            void Hover(MouseOverEvent E) => V.style.color = new Color(initialColor.r + factor, initialColor.g + factor, initialColor.b + factor);
-            void UnHover(MouseLeaveEvent E) => V.style.color = initialColor;
+            Color H(Color IN) => new(IN.r + factor, IN.g + factor, IN.b + factor);
+            void Hover(MouseOverEvent E)
+            {
+                V.style.color = H(initialColor);
+                V.style.backgroundColor = H(initialColorBack);
+                V.style.borderBottomColor = H(initialColorBorder);
+                V.style.borderLeftColor = H(initialColorBorder);
+                V.style.borderRightColor = H(initialColorBorder);
+                V.style.borderTopColor = H(initialColorBorder);
+            }
+            void UnHover(MouseLeaveEvent E)
+            {
+                V.style.color = initialColor;
+                V.style.backgroundColor = initialColorBack;
+                V.style.borderBottomColor = initialColorBorder;
+                V.style.borderLeftColor = initialColorBorder;
+                V.style.borderRightColor = initialColorBorder;
+                V.style.borderTopColor = initialColorBorder;
+            }
         }
 
         public static void RegisterHoverEvents(this VisualElement V, Action<bool> hovered)
