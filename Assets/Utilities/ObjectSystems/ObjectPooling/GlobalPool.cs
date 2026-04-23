@@ -5,8 +5,9 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using Utilities.Singletons;
 
-namespace ObjectPooling
+namespace Utilities.ObjectPooling
 {
     /// <summary>
     /// A global pool for pooled objects shared between multiple entities. Use a <see cref="GlobalPool.Client"/> to interface with this.

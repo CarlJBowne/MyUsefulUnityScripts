@@ -378,8 +378,6 @@ public class PackagingManager : EditorWindow
 
 public static class Helpers
 {
-    public static Color Up(this Color color, float f) => new(color.r + f, color.g + f, color.b + f, 1);
-
     public static void CreateAddAndStore<T>(this VisualElement target, out T result, Func<T> process) where T : VisualElement
     {
         result = process();

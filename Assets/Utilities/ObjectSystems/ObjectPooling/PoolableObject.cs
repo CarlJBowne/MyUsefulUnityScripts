@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ObjectPooling
+namespace Utilities.ObjectPooling
 {
     /// <summary>
     /// A component that marks a GameObject as being poolable.
@@ -85,4 +85,3 @@ namespace ObjectPooling
         }
     }
 }
-

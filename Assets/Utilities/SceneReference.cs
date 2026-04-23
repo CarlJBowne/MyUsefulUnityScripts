@@ -5,9 +5,6 @@ using System;
 
 using System.Reflection;
 
-
-
-
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -105,7 +102,7 @@ public class SceneReferenceDrawer : PropertyDrawer
             );
 
 
-        SerializedProperty assetProp = property.FindPropertyRelative(nameof(SceneReference.asset).BackingField());
+        SerializedProperty assetProp = property.FindPropertyRelative($"<{nameof(SceneReference.asset)}>k__BackingField");
         EditorGUI.BeginChangeCheck();
         var asset = EditorGUI.ObjectField(
             position,
@@ -198,7 +195,8 @@ public class SceneReferenceDrawer : PropertyDrawer
 
             EditorGUI.BeginDisabledGroup(true);
             // Show SceneReference data
-            EditorGUI.TextField(detailRect, "Scene Name:", property.FindPropertyRelative(nameof(SceneReference.sceneName).BackingField()).stringValue);
+            EditorGUI.TextField(detailRect, "Scene Name:", property.FindPropertyRelative(
+                $"<{nameof(SceneReference.sceneName)}>k__BackingField").stringValue);
             detailRect.y += EditorGUIUtility.singleLineHeight;
             EditorGUI.EndDisabledGroup();
             EditorGUI.LabelField(detailRect, tooltip);

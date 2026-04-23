@@ -262,6 +262,7 @@ public class Prefab<T> where T : Component
 #endif
 }
 
+/*
 /// <summary>
 /// Extensions to help integrate Prefab<> with your ObjectPool system without needing to modify the pool class.
 /// Uses reflection to set auto-property backing fields on ObjectPool to avoid changing existing pool type.
@@ -327,6 +328,7 @@ public static class PrefabExtensions
         return pool;
     }
 }
+*/
 
 #if UNITY_EDITOR
 [CustomPropertyDrawer(typeof(Prefab))

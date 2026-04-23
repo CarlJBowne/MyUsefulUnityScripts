@@ -1,5 +1,6 @@
 ﻿using AYellowpaper.SerializedCollections;
 using UnityEngine;
+using Utilities.Singletons;
 
 public class GlobalAudioCaller : MonoBehaviour
 {

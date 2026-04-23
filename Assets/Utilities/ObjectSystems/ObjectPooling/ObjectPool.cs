@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
-namespace ObjectPooling
+namespace Utilities.ObjectPooling
 {
     /// <summary>
     /// An active <see cref="ObjectPool"/> in the game's memory, can be attached directly to a behavior or the <see cref="GlobalPool"/>.
@@ -41,7 +41,7 @@ namespace ObjectPooling
         {
             if (initialized || initializing) return;
             initializing = true;
-            InitializeEnum().Begin();
+            InitializeEnum().Begin(); 
         }
 
         protected virtual IEnumerator InitializeEnum()

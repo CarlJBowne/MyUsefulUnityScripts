@@ -174,20 +174,13 @@ public class Coroutine : IEnumerator
     {
         if (!replace && slot && slot.running) return null;
         slot?.StopAuto(true);
-        slot = new(Enum, omniCoroutineRunner);
+        slot = new(Enum, Coroutine.Runner);
         return slot;
     }
     public static void Stop(ref Coroutine slot) => slot?.StopAuto();
 
-    internal static GameObject omniCoroutineRunner {  get; private set; }
+    public static CoroutineRunnerUtility Runner => CoroutineRunnerUtility.Self;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    private static void OnLoad()
-    {
-        omniCoroutineRunner = new GameObject("Omni-Coroutine-Runner");
-        GameObject.DontDestroyOnLoad(omniCoroutineRunner);
-        omniCoroutineRunner.hideFlags = HideFlags.HideAndDontSave;
-    }
 }
 
 public static class SceneOperationRoutine
@@ -208,12 +201,12 @@ public static class SceneOperationRoutine
     }
 }
 
-public static class XtensionsCoroutine
+public static class Xtensions_Coroutine
 {
     /// <summary>
     /// Begins a Coroutine using this Enumerator and returns it as a Coroutine+. (Automatically attaches to Omni-Coroutine-Runner)
     /// </summary>
-    public static Coroutine Begin(this IEnumerator Enum) => new(Enum, Coroutine.omniCoroutineRunner);
+    public static Coroutine Begin(this IEnumerator Enum) => new(Enum, Coroutine.Runner);
 
     /// <summary>
     /// Begins a Coroutine using this Enumerator and returns it as a Coroutine+.
@@ -228,6 +221,23 @@ public static class XtensionsCoroutine
     /// <param name="owner">The MonoBehavior that owns and runs the coroutine. Necessary for automatic running. Input Null to require activation via MoveNext().</param>
     public static Coroutine Begin(this IEnumerator Enum, bool automatic, MonoBehaviour owner = null) => new(Enum, automatic, owner);
 
+}
+
+public class CoroutineRunnerUtility : MonoBehaviour
+{
+    private static CoroutineRunnerUtility _self;
+    public static CoroutineRunnerUtility Self
+    {
+        get
+        {
+            if (_self == null)
+            {
+                GameObject GO = new("--Coroutine-Runner-Utility--");
+                _self = GO.AddComponent<CoroutineRunnerUtility>();
+            }
+            return _self;
+        }
+    }
 }
 
 //Bonus!

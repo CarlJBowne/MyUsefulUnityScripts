@@ -20,6 +20,10 @@
           "isFolder": true,
           "name": "SFX",
           "children": []
+        },
+        {
+          "isFolder": false,
+          "name": "Audio.asmdef"
         }
       ]
     },
@@ -71,7 +75,12 @@
     {
       "isFolder": true,
       "name": "Actors",
-      "children": []
+      "children": [
+        {
+          "isFolder": false,
+          "name": "Actors.asmdef"
+        }
+      ]
     },
     {
       "isFolder": true,
@@ -101,6 +110,11 @@
               "name": "ALL"
             }
           ]
+        },
+        {
+          "isFolder": true,
+          "name": "Testing",
+          "children": []
         }
       ]
     },
@@ -132,12 +146,36 @@
     {
       "isFolder": true,
       "name": "Systems",
-      "children": []
+      "children": [
+        {
+          "isFolder": false,
+          "name": "Polymorph.cs"
+        },
+        {
+          "isFolder": true,
+          "name": "RelatedComponents",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        }
+      ]
     },
     {
       "isFolder": true,
       "name": "UI",
-      "children": []
+      "children": [
+        {
+          "isFolder": false,
+          "name": "UI.asmdef"
+        },
+        {
+          "isFolder": false,
+          "name": "Menu.cs"
+        }
+      ]
     },
     {
       "isFolder": true,
