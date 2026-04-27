@@ -19,7 +19,7 @@ namespace Utilities.Singletons
     /// </remarks>
     public class GlobalAssetRegistry : GlobalAsset<GlobalAssetRegistry>
     {
-        public List<Singleton.Z_Asset> assets;
+        public List<GlobalAssetBase> assets;
         [SerializeField] private List<GameObject> typedPrefabs;
 
         [Serializable]
@@ -31,9 +31,8 @@ namespace Utilities.Singletons
 
         [SerializeField] private List<NamedPrefab> namedPrefabs;
 
-        public override void OnEnable()
-        {
-            base.OnEnable();
+        public override void OnInit()
+        { 
             for (int i = 0; i < assets.Count && assets[i] != null; i++) assets[i].OnEnable();
             for (int i = 0; i < typedPrefabs.Count && typedPrefabs[i] != null; i++) IGlobalPrefab.RegisterPrefab(typedPrefabs[i]);
             for (int i = 0; i < namedPrefabs.Count; i++) IGlobalPrefab.RegisterPrefab(namedPrefabs[i].prefab, namedPrefabs[i].name);
@@ -42,15 +41,19 @@ namespace Utilities.Singletons
 #if UNITY_EDITOR
 
         public class PostProcessor : AssetPostprocessor
-        {
+        { 
             private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
-            {
+            { 
                 if (!GlobalAssetRegistry.TryGet(out GlobalAssetRegistry registry))
                     registry = GetOrCreate(typeof(GlobalAssetRegistry)) as GlobalAssetRegistry;
 
-                registry.OnEnable();
+                registry.OnEnable();   
 
-                Type[] globalAssetTypes = GetAllChildTypes(typeof(GlobalAsset<>));
+                Type GlobalAssetType = typeof(GlobalAsset<>);
+                var globalAssetTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(assembly => assembly.GetTypes())
+                                        .Where(i => ImplementsOrDerives(i, GlobalAssetType) && !i.IsAbstract && i != GlobalAssetType)
+                                        .ToArray();
+
                 foreach (Type type in globalAssetTypes)
                 {
                     if (type == typeof(GlobalAssetRegistry)) continue;
@@ -62,10 +65,10 @@ namespace Utilities.Singletons
                     // If no existing in-memory instance is found, ensure an asset exists on disk
                     if (currentInstance == null)
                     {
-                        Singleton.Z_Asset created = GetOrCreate(type);
+                        GlobalAssetBase created = GetOrCreate(type);
                         if (created != null)
                         {
-                            registry.assets ??= new List<Singleton.Z_Asset>();
+                            registry.assets ??= new List<GlobalAssetBase>();
                             if (!registry.assets.Contains(created)) registry.assets.Add(created);
                             // Initialize the created asset if needed
                             created.OnEnable();
@@ -95,7 +98,7 @@ namespace Utilities.Singletons
             }
 
             // Non-generic variant to create/load assets by runtime Type
-            static Singleton.Z_Asset GetOrCreate(Type t)
+            static GlobalAssetBase GetOrCreate(Type t)
             {
                 if (t == null) return null;
 
@@ -114,7 +117,7 @@ namespace Utilities.Singletons
                     }
 
                     UnityEngine.Object loaded = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guids[0]));
-                    if (loaded is Singleton.Z_Asset asset) return asset;
+                    if (loaded is GlobalAssetBase asset) return asset;
                 }
 
                 // Create new ScriptableObject instance of the requested Type
@@ -124,10 +127,8 @@ namespace Utilities.Singletons
                 AssetDatabase.CreateAsset(created, $"Assets/{t.Name}.asset");
                 AssetDatabase.SaveAssets();
 
-                return created as Singleton.Z_Asset;
+                return created as GlobalAssetBase;
             }
-
-            static Type[] GetAllChildTypes(Type T) => Assembly.GetAssembly(T).GetTypes().Where(i => ImplementsOrDerives(i, T) && !i.IsAbstract).ToArray();
 
             static bool ImplementsOrDerives(Type @this, Type from)
             {
