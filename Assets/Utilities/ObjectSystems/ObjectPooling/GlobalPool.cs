@@ -23,7 +23,10 @@ namespace Utilities.ObjectPooling
 
         public List<ObjectPool> serializedPools = new();
 
-        public override void OnEnable() => base.OnEnable();
+        public override void OnInit()
+        {
+            if (!initialized) Initialize();
+        }
 
         public void Initialize()
         {
@@ -184,7 +187,7 @@ namespace Utilities.ObjectPooling
                     // Prefab field
                     if (prefabProp != null)
                     {
-                        PropertyField prefabField = new (prefabProp)
+                        PropertyField prefabField = new(prefabProp)
                         {
                             label = "Prefab",
                             style =
@@ -274,7 +277,7 @@ namespace Utilities.ObjectPooling
                         {
                             prefabProp.objectReferenceValue = pool.prefab;
                             property?.serializedObject?.ApplyModifiedProperties();
-                        }); 
+                        });
                     }
                     menu.DropDown(button.worldBound, button, false);
                 }

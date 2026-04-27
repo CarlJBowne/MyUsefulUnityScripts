@@ -4,10 +4,11 @@ using Utilities.Singletons;
 
 public class GlobalAudioCaller : MonoBehaviour
 {
-    private static GlobalAudioCaller instance;
+    private static Singleton<GlobalAudioCaller> S;
 
-    public static GlobalAudioCaller Get => Singleton.Get(ref instance);
-    public static bool TryGet(out GlobalAudioCaller res) => Singleton.TryGet(Get, out res);
+    public static GlobalAudioCaller Get => S.Get;
+    public static bool TryGet(out GlobalAudioCaller res) => S.TryGet(out res);
+    public static bool Active => S.Active;
 
     private static AudioSource source;
     private static bool initialized;
@@ -16,10 +17,10 @@ public class GlobalAudioCaller : MonoBehaviour
 
     private void Awake()
     {
-        Singleton.Register(ref instance, this);
+        S.Register(this);
         Init();
     }
-    private void OnDestroy() => Singleton.Unregister(ref instance, this);
+    private void OnDestroy() => S.Deregister(this);
 
 
     static void Init()

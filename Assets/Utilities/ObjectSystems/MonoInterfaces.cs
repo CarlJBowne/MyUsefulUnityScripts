@@ -3,13 +3,22 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using Utilities.Xtensions.Unity;
+using System.Collections;
 
 public interface IMonoCore<Tthis, Tother>
     where Tthis : MonoBehaviour, IMonoCore<Tthis, Tother>
     where Tother : MonoBehaviour, IMonoComponent<Tother, Tthis>
 {
     public static List<MonoBehaviour> InitInterfaces(MonoBehaviour This) => This.GetComponents<Tother>().Cast<MonoBehaviour>().ToList();
-    public List<MonoBehaviour> Interfaces { get; }
+    public List<MonoBehaviour> InterfacesStorage { get; }
+
+    public Tother this[int index]
+    {
+        get => InterfacesStorage[index] as Tother;
+        set => InterfacesStorage[index] = value;
+    }
+    public int Count => InterfacesStorage.Count;
+    public bool IsReadOnly => false;
 }
 
 public interface IMonoComponent<Tthis, Tother>
@@ -21,13 +30,13 @@ public interface IMonoComponent<Tthis, Tother>
 
 public class ExampleInterfaceCore : MonoBehaviour, IMonoCore<ExampleInterfaceCore, ExampleInterfaceComponent>
 {
-    [field: SerializeField] public List<MonoBehaviour> Interfaces { get; set; }
+    [field: SerializeField] public List<MonoBehaviour> InterfacesStorage { get; private set; }
 
-    private void Reset() => Interfaces = IMonoCore<ExampleInterfaceCore, ExampleInterfaceComponent>.InitInterfaces(this);
+    private void Reset() => InterfacesStorage = IMonoCore<ExampleInterfaceCore, ExampleInterfaceComponent>.InitInterfaces(this);
 }
 public class ExampleInterfaceComponent : MonoBehaviour, IMonoComponent<ExampleInterfaceComponent, ExampleInterfaceCore>
 {
-    [field: SerializeField] public ExampleInterfaceCore Interface { get; set; }
+    [field: SerializeField] public ExampleInterfaceCore Interface { get; private set; }
 
     private void Reset() => Interface = this.GetOrAddComponent<ExampleInterfaceCore>();
 }

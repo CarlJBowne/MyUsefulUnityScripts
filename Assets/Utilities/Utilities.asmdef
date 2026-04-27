@@ -1,10 +1,10 @@
 {
     "name": "Utilities",
-    "rootNamespace": "",
+    "rootNamespace": "Utilities",
     "references": [
         "GUID:febaf25a60dafbd44941357b21678606",
         "GUID:21b0c8d1703a94250bfac916590cea4f",
-        "GUID:59fab1bec0966fa459c491c66639e017"
+        "GUID:7bac5da490214724b8c491289c29be21"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
