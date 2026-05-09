@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Utilities.Xtensions
@@ -36,16 +37,12 @@ namespace Utilities.Xtensions
                 return string.Empty;
 
             var result = new System.Text.StringBuilder();
-            result.Append(char.ToUpper(camelCase[0]));
 
-            for (int i = 1; i < camelCase.Length; i++)
-            {
-                char c = camelCase[i];
-                if ((char.IsUpper(c) || char.IsDigit(c)) && !char.IsWhiteSpace(camelCase[i - 1]) && !char.IsDigit(camelCase[i - 1]))
-                    result.Append(' ');
-                result.Append(c);
-            }
-
+            if(char.IsLetter(result[0])) result[0] = char.ToUpper(result[0]);
+            for (int i = 0; i < result.Length; i++)
+                if (char.IsUpper(result[i])) 
+                    result.Insert(i - 1, ' ');
+            
             return result.ToString();
         }
         public static string PascalCaseToDisplay(this string pascalCase)
@@ -54,15 +51,10 @@ namespace Utilities.Xtensions
                 return string.Empty;
 
             var result = new System.Text.StringBuilder();
-            result.Append(char.ToUpper(pascalCase[0]));
 
-            for (int i = 1; i < pascalCase.Length; i++)
-            {
-                char c = pascalCase[i];
-                if (char.IsUpper(c) && !char.IsWhiteSpace(pascalCase[i - 1]))
-                    result.Append(' ');
-                result.Append(c);
-            }
+            for (int i = 0; i < result.Length; i++)
+                if (char.IsUpper(result[i]))
+                    result.Insert(i - 1, ' ');
 
             return result.ToString();
         }
@@ -71,23 +63,17 @@ namespace Utilities.Xtensions
             if (string.IsNullOrEmpty(display))
                 return string.Empty;
 
-            var words = display.Split(new[] { ' ', '_' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 0)
-                return string.Empty;
+            var result = new System.Text.StringBuilder(display);
+            if (char.IsUpper(result[0])) result[0] = char.ToLower(result[0]);
 
-            var result = new System.Text.StringBuilder();
-            result.Append(char.ToLower(words[0][0]));
-            if (words[0].Length > 1)
-                result.Append(words[0].Substring(1));
-
-            for (int i = 1; i < words.Length; i++)
+            for (int i = 0; i < result.Length; i++)
             {
-                if (words[i].Length == 0) continue;
-                result.Append(char.ToUpper(words[i][0]));
-                if (words[i].Length > 1)
-                    result.Append(words[i].Substring(1));
+                if (result[0] == ' ')
+                {
+                    result.Remove(0, 1);
+                    i--;
+                }
             }
-
             return result.ToString();
         }
         /// <summary>
