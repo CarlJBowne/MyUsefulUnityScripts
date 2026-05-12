@@ -6,6 +6,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.merry-yellow.code-assist": {
+      "version": "file:com.merry-yellow.code-assist",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.starlightshadows.hierarchystatemachine": {
       "version": "https://github.com/StarLightShadowsX/HierarchyStateMachine.git",
       "depth": 0,
