@@ -36,7 +36,7 @@ public class DialogueEditor : GraphViewEditorWindow
 
         headerBar = new Toolbar();
 
-        var assetField = new ObjectField("Dialogue Asset")
+        var assetField = new ObjectField()
         {
             objectType = typeof(DialogueAsset),
             allowSceneObjects = false,
@@ -46,14 +46,19 @@ public class DialogueEditor : GraphViewEditorWindow
 
         saveDataButton = new Button(SaveSelectedAsset)
         {
-            text = "Save"
+            text = "Save",
+            style =
+            {
+                position = Position.Absolute,
+                right = -1
+            }
         };
 
         headerBar.Add(assetField);
         headerBar.Add(saveDataButton);
 
         rootVisualElement.Add(headerBar);
-
+         
         graphView = new DialogueGraphView()
         {
             name = "DialogueGraphView",
@@ -76,44 +81,32 @@ public class DialogueEditor : GraphViewEditorWindow
 
     void UpdateSelectedAsset(ChangeEvent<UnityEngine.Object> e)
     {
-        if (e.newValue is not DialogueAsset newAsset)
+        if (e.newValue is not null and not DialogueAsset)
         {
             ShowNotification(new GUIContent("Selected object is not a DialogueAsset."));
             return;
         }
-        if (selectedAsset == null)
-        {
-            selectedAsset = newAsset;
-            LoadSelectedAsset();
-            return;
-        }
+        var newAsset = e.newValue as DialogueAsset;
 
-        //Display dialogue to Save or discard changes before switching assets
-        int i = EditorUtility.DisplayDialogComplex("Switch Dialogue Asset", "Do you want to save changes to the current asset before switching?", "Save", "Cancel", "Discard Changes");
-        if (i == 0)
+        if (selectedAsset != null)
         {
-            SaveSelectedAsset();
-            selectedAsset = newAsset;
-            LoadSelectedAsset();
+            //Display dialogue to Save or discard changes before switching assets
+            int i = EditorUtility.DisplayDialogComplex("Switch Dialogue Asset", "Do you want to save changes to the current asset before switching?", "Save", "Cancel", "Discard Changes");
+            if (i == 0) SaveSelectedAsset();
+            else if (i == 1)
+            {
+                assetField.value = selectedAsset; // Revert selection
+                return;
+            }
         }
-        else if (i == 2)
-        {
-            selectedAsset = newAsset;
-            LoadSelectedAsset();
-        }
-        else if (i == 1)
-        {
-            assetField.value = selectedAsset; // Revert selection
-            return;
-        }
+        selectedAsset = newAsset;
+        ClearGraph();
+        if (selectedAsset != null) LoadSelectedAsset();
     }
 
     void LoadSelectedAsset()
     {
-        if (selectedAsset == null) return;
-        nodes.Clear();
-        pieces.Clear();
-        graphView.Clear();
+        ClearGraph();
         JArray Data = JArray.Parse(selectedAsset.rawData);
         for (int i = 0; i < Data.Count; i++)
         {
@@ -123,11 +116,24 @@ public class DialogueEditor : GraphViewEditorWindow
         }
     }
 
+    void ClearGraph()
+    {
+        nodes.Clear();
+        pieces.Clear();
+        graphView.Clear();
+    }
+
+
     void SaveSelectedAsset()
     {
         if (selectedAsset == null)
         {
-            ShowNotification(new GUIContent("No DialogueAsset selected."));
+            string path = EditorUtility.SaveFilePanelInProject("Create Dialogue Asset", "NewDialogueAsset", "asset", "Create a new DialogueAsset");
+            if (string.IsNullOrEmpty(path)) return;
+            var asset = ScriptableObject.CreateInstance<DialogueAsset>();
+            AssetDatabase.CreateAsset(asset, path);
+            AssetDatabase.SaveAssets();
+            assetField.value = asset;
             return;
         }
 
@@ -137,15 +143,6 @@ public class DialogueEditor : GraphViewEditorWindow
         ShowNotification(new GUIContent("Marked asset dirty and saved."));
     }
 
-    void CreateNewAsset()
-    {
-        string path = EditorUtility.SaveFilePanelInProject("Create Dialogue Asset", "NewDialogueAsset", "asset", "Create a new DialogueAsset");
-        if (string.IsNullOrEmpty(path)) return;
-        var asset = ScriptableObject.CreateInstance<DialogueAsset>();
-        AssetDatabase.CreateAsset(asset, path);
-        AssetDatabase.SaveAssets();
-        assetField.value = asset;
-    }
 
     // Simple GraphView specialized for dialogue pieces
     class DialogueGraphView : GraphView
