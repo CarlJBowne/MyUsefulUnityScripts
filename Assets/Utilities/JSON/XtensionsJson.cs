@@ -71,6 +71,12 @@ namespace Utilities.JSON
                 using (JsonReader sr = THIS.CreateReader())
                     JsonSerializer.CreateDefault().Populate(sr, target);
         }
+
+        public static void RemoveIfNull(this JObject THIS, string name)
+        {
+            if (THIS.ContainsKey(name) && THIS[name].Type is JTokenType.Null) 
+                THIS.Remove(name);
+        }
     }
 
     public interface ICustomSerialized
@@ -95,7 +101,7 @@ namespace Utilities.JSON
 
     public static class SerializableStructs
     {
-        
+
         public static object Serializable(object input)
         {
             object result = input;
@@ -155,7 +161,7 @@ namespace Utilities.JSON
             public static explicit operator Vector4(UnityEngine.Vector4 v) => new(v.x, v.y, v.z, v.w);
         }
         public static Vector4 Serializable(this UnityEngine.Vector4 v) => new(v.x, v.y, v.z, v.w);
-        
+
 
         public static JObject Serialize(this UnityEngine.Vector3 v) => new()
         {

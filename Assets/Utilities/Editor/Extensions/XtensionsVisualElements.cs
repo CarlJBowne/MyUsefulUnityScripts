@@ -14,6 +14,11 @@ namespace Utilities.Xtensions.VisualElements
             result = process();
             target.Add(result);
         }
+        public static void CreateAddAndStore<T>(this VisualElement target, out T result, T input) where T : VisualElement
+        {
+            result = input;
+            target.Add(result);
+        }
 
         public static void SetStyle(this VisualElement v, IStyle input)
         {

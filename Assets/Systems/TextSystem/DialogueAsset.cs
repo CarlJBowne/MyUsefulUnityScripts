@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -6,7 +7,7 @@ public class DialogueAsset : ScriptableObject
 {
     public string rawData;
     public Sprite[] icons;
-    public AudioClip[] sfx;
+    public Dictionary<string, AudioClip> sfx = new();
     public UltEvents.UltEvent[] events;
     public JArray Value;
 

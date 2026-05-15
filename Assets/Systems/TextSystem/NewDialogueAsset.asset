@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fdbd38d900a43be4f9ac7f2a335ea10b, type: 3}
   m_Name: NewDialogueAsset
   m_EditorClassIdentifier: Assembly-CSharp::DialogueAsset
-  rawData: '["Testing..."]'
+  rawData: "[\r\n  \"Testing...\"\r\n]"
   icons: []
-  sfx: []
   events: []
