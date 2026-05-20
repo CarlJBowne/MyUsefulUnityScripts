@@ -16,26 +16,16 @@ using Utilities.Xtensions.VisualElements;
 
 public class Test : MonoBehaviour
 {
-    //public Polymorph.UniqueList<PolymorphTest> testList = new();
-    public List<int> ints = new();
+    [SerializeField, SerializeReference] PolymorphTest test;
+    public Polymorph.ListOf<PolymorphTest> testList = new();
+    //public Testy tesy;
 
-#if UNITY_EDITOR
-    [CustomEditor(typeof(Test))]
-    public class Editor : UnityEditor.Editor
+    [System.Serializable]
+    public class Testy
     {
-        public override VisualElement CreateInspectorGUI()
-        {
-            VisualElement root = new();
-
-            SuperList<int> List = new(serializedObject.FindProperty("ints"));
-
-            //root.Add(new PropertyField(serializedObject.FindProperty("testList")));
-            root.Add(List);
-
-            return root;
-        }
+        public int yes = 1;
+        public char no = 'a';
     }
-#endif
 }
 
 [System.Serializable]

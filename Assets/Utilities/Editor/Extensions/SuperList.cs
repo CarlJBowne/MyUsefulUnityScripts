@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Codice.Client.BaseCommands.BranchExplorer;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -28,7 +29,7 @@ namespace Utilities.Xtensions.VisualElements
         {
             property = GetMainProperty(listProperty);
 
-            header = HeaderDefinition;
+            header = HeaderDefinition();
 
             collectionBackground = new VisualElement().AddTo(this, b =>
             {
@@ -39,28 +40,30 @@ namespace Utilities.Xtensions.VisualElements
                     .Radius(0, bottom: 4)
                     .Flex(FlexDirection.Column);
             });
-            collectionBackground.style.display = listProperty.isExpanded ? DisplayStyle.Flex : DisplayStyle.None;
+            collectionBackground.style.display = expandedSource ? DisplayStyle.Flex : DisplayStyle.None;
 
             BuildItems();
             Undo.undoRedoPerformed += BuildItems;
 
             this.Bind(listProperty.serializedObject);
 
-            // Register polling to detect external changes (Reset, script changes, etc.)
-            UpdateRegister = true;
-            // Ensure we unregister when the element is removed from the panel
-            this.RegisterCallback<DetachFromPanelEvent>((evt) => { UpdateRegister = false; });
+
+
+            //// Register polling to detect external changes (Reset, script changes, etc.)
+            //UpdateRegister = true;
+            //// Ensure we unregister when the element is removed from the panel
+            //this.RegisterCallback<DetachFromPanelEvent>((evt) => { UpdateRegister = false; });
         }
 
         /// <summary>
         /// The header VisualElement for this list (foldout, counter and add/remove actions).
         /// </summary>
-        public Header header { get; private set; }
+        public Header header { get; protected set; }
 
         /// <summary>
         /// Root container that holds the item elements for this list.
         /// </summary>
-        public VisualElement collectionBackground { get; private set; }
+        public VisualElement collectionBackground { get; protected set; }
 
         /// <summary>
         /// The overridable immediate method run to acquire the main property this list will use for everything.
@@ -71,22 +74,116 @@ namespace Utilities.Xtensions.VisualElements
         /// The overridable immediate method run to create the <see cref="Header"/>. <br/>
         /// Override to disable Add/Remove buttons or disable editing the counter.
         /// </summary>
-        public virtual Header HeaderDefinition => new Header(this as LIST).AddTo(this);
+        public virtual Header HeaderDefinition() => new Header(this as LIST).AddTo(this);
 
         #region Data
         /// <summary>
         /// The serialized property (array) that this list represents.
         /// </summary>
-        public SerializedProperty property { get; private set; }
+        public SerializedProperty property { get; protected set; }
         /// <summary>
         /// The visual item holders currently displayed by the list. The index/order matches the serialized array.
         /// </summary>
-        public List<ITEM> items { get; private set; } = new();
+        public List<ITEM> items { get; protected set; } = new();
         /// <summary>
         /// Currently selected item in the list, or null when nothing is selected.
         /// </summary>
-        public ITEM selectedItem { get; private set; }
+        public ITEM selectedItem { get; protected set; }
         #endregion
+
+        /// <summary>
+        /// Duplicate the serialized array element at the given index. Rebuilds visuals and refreshes prefab markers.
+        /// </summary>
+        /// <param name="index">Index to duplicate.</param>
+        public virtual void DuplicatePropertySlotAt(int index)
+        {
+            if (property == null) return;
+            property.serializedObject.Update();
+
+            try
+            {
+                // Insert a new element after the current index so the duplicated element appears after the original.
+                int insertAt = Mathf.Clamp(index + 1, 0, property.arraySize);
+                property.InsertArrayElementAtIndex(insertAt);
+
+                // Attempt to copy common field types from the original element into the newly inserted slot.
+                var src = property.GetArrayElementAtIndex(index);
+                var dst = property.GetArrayElementAtIndex(insertAt);
+                if (src != null && dst != null)
+                {
+                    try
+                    {
+                        switch (src.propertyType)
+                        {
+                            case SerializedPropertyType.Integer:
+                                dst.intValue = src.intValue;
+                                break;
+                            case SerializedPropertyType.Boolean:
+                                dst.boolValue = src.boolValue;
+                                break;
+                            case SerializedPropertyType.Float:
+                                dst.floatValue = src.floatValue;
+                                break;
+                            case SerializedPropertyType.String:
+                                dst.stringValue = src.stringValue;
+                                break;
+                            case SerializedPropertyType.Enum:
+                                dst.intValue = src.intValue;
+                                break;
+                            case SerializedPropertyType.ObjectReference:
+                                dst.objectReferenceValue = src.objectReferenceValue;
+                                break;
+                            case SerializedPropertyType.ManagedReference:
+                                try { dst.managedReferenceValue = src.managedReferenceValue; } catch { }
+                                break;
+                            default:
+                                // For other/complex types rely on Unity's insertion behavior.
+                                break;
+                        }
+                    }
+                    catch { }
+                }
+
+                property.serializedObject.ApplyModifiedProperties();
+            }
+            catch { }
+
+            // Rebuild UI and try to refresh prefab markers
+            BuildItems();
+            UpdateCounterAndFoldout();
+            TryForceRefreshPrefabMarkers();
+        }
+
+        public void TryForceRefreshPrefabMarkers()
+        {
+#if UNITY_EDITOR
+            try
+            {
+                var target = property?.serializedObject?.targetObject;
+                if (target != null) EditorUtility.SetDirty(target);
+
+                try
+                {
+#if UNITY_EDITOR
+                    // Ensure Unity records instance property modifications so prefab override markers update
+                    UnityEditor.PrefabUtility.RecordPrefabInstancePropertyModifications(target);
+#endif
+                }
+                catch { }
+
+                // Repaint inspector(s) and hierarchy to prompt Unity to refresh override markers
+                EditorApplication.RepaintHierarchyWindow();
+                var iwType = Type.GetType("UnityEditor.InspectorWindow, UnityEditor");
+                if (iwType != null)
+                {
+                    var wins = UnityEngine.Resources.FindObjectsOfTypeAll(iwType) as UnityEditor.EditorWindow[];
+                }
+                // Best-effort call to repaint all editor windows
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+            }
+            catch { }
+#endif
+        }
 
         #region Virtuals
 
@@ -357,7 +454,7 @@ namespace Utilities.Xtensions.VisualElements
             get => property.arraySize;
             set
             {
-                if (value > property.arraySize) header.FoldoutArrow.Expanded = true;
+                if (value > property.arraySize) header.Toggle.value = true;
                 //property.serializedObject.Update();
                 property.arraySize = value;
                 // Do not ApplyModifiedProperties here — callers should apply as needed, but keep UI in sync
@@ -370,8 +467,17 @@ namespace Utilities.Xtensions.VisualElements
         public virtual bool expandedSource
         {
             get => property.isExpanded;
-            set => property.isExpanded = value;
+            set
+            {
+                property.isExpanded = value;
+                property.serializedObject.ApplyModifiedProperties();
+            }
         }
+
+        /// <summary>
+        /// Overridable source from which to get the display name for this list.
+        /// </summary>
+        public virtual string nameSource => property.displayName;
 
         /// <summary>
         /// Called when the header counter value is changed manually by the user. Resizes the list to the requested value and rebuilds visuals.
@@ -390,8 +496,10 @@ namespace Utilities.Xtensions.VisualElements
         {
             if (header != null && property != null)
             {
-                try { header.Counter.SetValueWithoutNotify(property.arraySize); } catch { }
-                try { header.FoldoutArrow.Expandable = property.arraySize > 0; } catch { }
+                if (header != null && header.Counter != null)
+                    header.Counter.SetValueWithoutNotify(property.arraySize);
+                if (header != null && header.FoldoutArrow != null)
+                    header.FoldoutArrow.visible = property.arraySize > 0;
             }
         }
 
@@ -483,12 +591,24 @@ namespace Utilities.Xtensions.VisualElements
         /// Establishes context menu entries for the list header. Override to add custom context items.
         /// </summary>
         /// <param name="menu">The GenericMenu instance to populate.</param>
-        protected virtual void EstablishContextMenu(GenericMenu menu) => menu.AddItem(new("Clear"), false, ClearCalled);
+        protected virtual void EstablishContextMenu(ContextualMenuPopulateEvent evt)
+        {
+            evt.menu.InsertAction(0, "Clear", ClearContextMenu);
+            var list = evt.menu.MenuItems();
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] is not DropdownMenuAction iAction) continue;
+
+                if (iAction.name.StartsWith("Apply to Prefab")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+                if (iAction.name.StartsWith("Revert")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+
+            }
+        }
 
         /// <summary>
         /// Clears the underlying serialized array and removes all visuals from the UI.
         /// </summary>
-        protected virtual void ClearCalled()
+        protected virtual void ClearContextMenu(DropdownMenuAction C)
         {
             if (property != null)
             {
@@ -507,6 +627,13 @@ namespace Utilities.Xtensions.VisualElements
             }
             CurrentSize = 0;
             UpdateCounterAndFoldout();
+        }
+
+        protected virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)
+        {
+            Def.Execute();
+            BuildItems();
+            TryForceRefreshPrefabMarkers();
         }
 
         #endregion
@@ -562,30 +689,30 @@ namespace Utilities.Xtensions.VisualElements
                     style.justifyContent = Justify.SpaceBetween;
                 }
 
-                FoldoutArrow = new FoldoutArrow(Clicked, Parent.expandedSource).AddTo(this, f =>
+                Foldout = new Foldout().AddTo(this, F =>
                 {
-                    f.style.alignSelf = Align.FlexStart;
-                });
-                if (Parent.CurrentSize == 0) FoldoutArrow.Expandable = false;
-                else { FoldoutArrow.Expanded = Parent.expandedSource; }
-
-                Label = new Label().AddTo(this, l =>
-                {
-                    l.text = Parent.property.displayName;
-                    l.style.alignSelf = Align.FlexStart;
-                    l.style.unityTextAlign = TextAnchor.MiddleLeft;
-                    l.style.flexGrow = 1f;
-                    l.style.height = 15;
-                    new Highlighter(l, Color.cadetBlue).ApplySelect();
-                    ContextMenu = new();
-                    Parent.EstablishContextMenu(ContextMenu);
-                    l.RegisterCallback<ContextClickEvent>(ContextClick);
-
-                    void ContextClick(ContextClickEvent ev)
+                    F.DelayedBuild(() =>
                     {
-                        ev.StopPropagation();
-                        ContextMenu.ShowAsContext();
-                    }
+                        F.text = Parent.nameSource;
+                        F.style.flexGrow = 1f;
+                        F.BindProperty(Parent.property);
+
+                        F.RegisterCallback<ContextualMenuPopulateEvent>(Parent.EstablishContextMenu);
+
+                        Toggle = F.Q<Toggle>(null, Foldout.toggleUssClassName);
+                        if (Toggle != null)
+                        {
+                            Toggle.style.marginLeft = 0;
+                            Toggle.RegisterValueChangedCallback(v => Clicked(v.newValue));
+                        }
+
+                        Label = F.Q<Label>(null, "unity-label");
+                        Label.text = Parent.nameSource;
+
+                        FoldoutArrow = F.Q<VisualElement>(null, "unity-foldout__checkmark");
+                        Toggle.SetValueWithoutNotify(Parent.expandedSource);
+                        FoldoutArrow.visible = Parent.CurrentSize > 0;
+                    });
                 });
 
                 Counter = new IntegerField().AddTo(this, c =>
@@ -627,9 +754,8 @@ namespace Utilities.Xtensions.VisualElements
                             .Radius(0, topLeft: 6)
                             .Margins(0)
                             .Padding(0);
-                        new Highlighter(a, Color.lightGreen, Color.gray3).ApplyHover();
-
-                        a.Highlighter(Color.lightGreen, Color.gray4);
+                        new Highlighter(a, Color.lightGreen, Color.gray3).Hover();
+                        new Highlighter(a, Color.white, Color.lightGreen).Click();
                     });
                 }
 
@@ -649,7 +775,8 @@ namespace Utilities.Xtensions.VisualElements
                             .Radius(0, topRight: 6)
                             .Margins(0)
                             .Padding(0);
-                        new Highlighter(d, Color.darkSalmon, Color.gray3).ApplyHover();
+                        new Highlighter(d, Color.darkSalmon, Color.gray3).Hover();
+                        new Highlighter(d, Color.white, Color.darkSalmon).Click();
                     });
                 }
             }
@@ -657,31 +784,35 @@ namespace Utilities.Xtensions.VisualElements
             /// <summary>
             /// The SuperList instance that owns this header.
             /// </summary>
-            new public LIST parent { get; private set; }
+            new public LIST parent { get; protected set; }
             /// <summary>
-            /// Visual foldout arrow control used to expand/collapse the list contents.
+            /// The Visual Foldout Parent used to hook into the Prefab System.
             /// </summary>
-            public FoldoutArrow FoldoutArrow { get; private set; }
+            public Foldout Foldout { get; protected set; }
             /// <summary>
-            /// Display label for the list (usually the serialized property's display name).
+            /// The Visual Toggle generated from the Foldout.
             /// </summary>
-            public Label Label { get; private set; }
+            public Toggle Toggle { get; protected set; }
+            /// <summary>
+            /// Visual foldout arrow control generated from the Foldout.
+            /// </summary>
+            public VisualElement FoldoutArrow { get; protected set; }
+            /// <summary>
+            /// Display label for the list generated from the Foldout.
+            /// </summary>
+            public Label Label { get; protected set; }
             /// <summary>
             /// Add (+) button instance. May be null when the header was constructed without an add control.
             /// </summary>
-            public Button AddButton { get; private set; }
+            public Button AddButton { get; protected set; }
             /// <summary>
             /// Delete (-) button instance. May be null when the header was constructed without a delete control.
             /// </summary>
-            public Button DeleteButton { get; private set; }
+            public Button DeleteButton { get; protected set; }
             /// <summary>
             /// Integer field used to view and change the list size directly.
             /// </summary>
-            public IntegerField Counter { get; private set; }
-            /// <summary>
-            /// Context menu instance used by the header label (right-click menu).
-            /// </summary>
-            public GenericMenu ContextMenu { get; private set; }
+            public IntegerField Counter { get; protected set; }
 
             /// <summary>
             /// Internal callback invoked when the foldout arrow is clicked.
@@ -691,9 +822,11 @@ namespace Utilities.Xtensions.VisualElements
             {
                 if (parent == null || parent.collectionBackground == null) return;
                 parent.collectionBackground.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+                parent.expandedSource = !parent.expandedSource;
             }
         }
 
+        public static DropdownMenuAction.Status DropDownMenuStatus(DropdownMenuAction A) => DropdownMenuAction.Status.Normal;
     }
     /// <summary>
     /// A <see cref="VisualElement"/> that displays the individual items in a <see cref="SuperList{LIST, ITEM, VALUE}"/>.<br/>
@@ -774,11 +907,7 @@ namespace Utilities.Xtensions.VisualElements
             });
 
             //Register PointerDownEvent that allows trickledown so that tapping anywhere on the Item will select it. :)
-            RegisterCallback<PointerDownEvent>((evt) =>
-            {
-                parentList.Select(this as ITEM);
-                evt.StopPropagation();
-            }, TrickleDown.TrickleDown);
+            RegisterCallback<PointerDownEvent>((evt) => parentList.Select(this as ITEM), TrickleDown.TrickleDown);
 
             Update(thisProperty);
         }
@@ -787,6 +916,7 @@ namespace Utilities.Xtensions.VisualElements
         public SerializedProperty property { get; protected set; }
         public VisualElement dragHandle { get; protected set; }
         public VisualElement content { get; protected set; }
+        public virtual Label Label { get; protected set; }
 
         public bool Selected
         {
@@ -808,7 +938,7 @@ namespace Utilities.Xtensions.VisualElements
             }
         }
         bool _invalid;
-        private void UpdateBackground() => style.backgroundColor =
+        protected void UpdateBackground() => style.backgroundColor =
                 _selected ? _invalid ? new Color(.9f, .6f, .6f) : Color.gray3
                 : _invalid ? new Color(.9f, .3f, .3f) : Color.clear;
 
@@ -820,15 +950,67 @@ namespace Utilities.Xtensions.VisualElements
             content = Content();
             this.Add(content);
         }
-
         public virtual VisualElement Content()
         {
             PropertyField result = new(property);
             result.style.flexGrow = 1f;
             result.style.marginRight = 4;
             result.Bind(property.serializedObject);
+
+            result.DelayedBuild(PostContent);
             return result;
         }
+
+        protected virtual void PostContent()
+        {
+            Label = content.Q<Label>(null, "unity-label");
+
+            Label.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+        }
+        protected virtual void ContextMenu(ContextualMenuPopulateEvent evt)
+        {
+            var list = evt.menu.MenuItems();
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] is not DropdownMenuAction iAction) continue;
+
+                if (iAction.name.StartsWith("Apply to Prefab")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+                if (iAction.name.StartsWith("Revert")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+
+                if (iAction.name == "Duplicate Array Element")
+                    list[i] = new DropdownMenuAction("Duplicate", DuplicateContextMenu, DropDownMenuStatus);
+                if (iAction.name == "Delete Array Element")
+                    list[i] = new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus);
+            }
+        }
+
+        protected int GetMyIndex()
+        {
+            if (parentList == null || parentList.items == null) return -1;
+            return parentList.items.IndexOf(this as ITEM);
+        }
+
+        public virtual void DuplicateContextMenu(DropdownMenuAction C)
+        {
+            int idx = GetMyIndex();
+            if (idx >= 0) parentList.DuplicatePropertySlotAt(idx);
+        }
+        public virtual void DeleteContextMenu(DropdownMenuAction C)
+        {
+            int idx = GetMyIndex();
+            if (parentList == null) return;
+            parentList.DeletePropertySlotAt(idx);
+            parentList.BuildItems();
+            parentList.TryForceRefreshPrefabMarkers();
+        }
+        public virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)
+        {
+            Def.Execute();
+            Update(null);
+        }
+
+        public static DropdownMenuAction.Status DropDownMenuStatus(DropdownMenuAction A) => DropdownMenuAction.Status.Normal;
+
     }
 
     /// <summary>

@@ -89,7 +89,10 @@ namespace Utilities.Xtensions.VisualElements
             style.backgroundColor = new StyleColor(Color.clear);
             style.Border(0, color: Color.clear).Radius(0).Padding(0).Margins(0);
 
-            Expanded = initialValue;
+            SetValueWithoutNotify(initialValue);
+
+            this.style.color = DefaultColor;
+            new Highlighter(this, SelectedColor).Select();
         }
 
         public bool Expanded
@@ -117,6 +120,16 @@ namespace Utilities.Xtensions.VisualElements
         private bool isExpandable = true;
         private Action<bool> clickEvent;
         new private VisualElement text = null;
+
+        public static Color DefaultColor { get; private set; } = .408f.Gray();
+        public static Color SelectedColor { get; private set; } = new(.282f, .439f, .835f);
+
+        public void SetValueWithoutNotify(bool value)
+        {
+            isExpanded = value;
+            base.text = value ? "▼" : "▶";
+        }
+
     }
 
 

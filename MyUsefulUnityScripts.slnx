@@ -17,8 +17,8 @@
   <Project Path="BetterHierarchyDemoScripts.csproj" />
   <Project Path="AYellowpaper.SerializeInterfaces.csproj" />
   <Project Path="Deprecated.csproj" />
+  <Project Path="Utilities.Editor.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="UI.csproj" />
-  <Project Path="Utilities.Editor.csproj" />
 </Solution>

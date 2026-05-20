@@ -6,8 +6,8 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Collections;
 using Utilities.Xtensions;
-using Utilities.Xtensions.VisualElements;
-using Unity.VisualScripting.YamlDotNet.Core.Tokens;
+using UnityEditor.Search;
+using ArteHacker.UITKEditorAid;
 
 
 
@@ -15,6 +15,8 @@ using Unity.VisualScripting.YamlDotNet.Core.Tokens;
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.UIElements;
+using Utilities.Xtensions.VisualElements;
+using Highlighter = Utilities.Xtensions.VisualElements.Highlighter;
 #endif
 
 [System.Serializable]
@@ -301,7 +303,11 @@ public abstract class Polymorph
 
 #if UNITY_EDITOR
 
-    public virtual bool OverrideBody(VisualElement container, SerializedProperty property) => false;
+    public virtual bool OverrideBody(VisualElement container, SerializedProperty property)
+    {
+        property.IterateAndDraw(container);
+        return true;
+    }
 
     #region Utilities
 
@@ -346,44 +352,102 @@ public abstract class Polymorph
         menu.ShowAsContext();
     }
 
-    // Helper: get the runtime object represented by a SerializedProperty (handles arrays)
-    public static object GetTargetObjectOfProperty(SerializedProperty prop)
+    private static Type GetDeclaredFieldType(SerializedProperty property)
     {
-        if (prop == null) return null;
+        if (property == null) return null;
 
-        string[] path = prop.propertyPath.Replace(".Array.data[", "[")
-            .Split('.');
-        object obj = prop.serializedObject.targetObject;
-        foreach (string element in path)
+        // If Unity gives a managedReferenceFieldTypename, try to parse it first.
+        if (!string.IsNullOrEmpty(property.managedReferenceFieldTypename))
         {
-            if (element.Contains("["))
+            // managedReferenceFieldTypename can contain tokens; try to resolve each token to a Type.
+            var parts = property.managedReferenceFieldTypename.Split(' ');
+            foreach (var part in parts)
             {
-                string elementName = element.Substring(0, element.IndexOf("["));
-                int index = Convert.ToInt32(element.Substring(element.IndexOf("[")).Replace("[", "").Replace("]", ""));
-                var field = obj.GetType().GetField(elementName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-                var list = field.GetValue(obj) as IList;
-                obj = list[index];
-            }
-            else
-            {
-                var field = obj.GetType().GetField(element, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-                obj = field.GetValue(obj);
+                var t = Type.GetType(part);
+                if (t != null) return t;
             }
         }
-        return obj;
+
+        // Fall back to reflection over the target object and the propertyPath.
+        object target = property.serializedObject.targetObject;
+        if (target == null) return null;
+
+        Type currentType = target.GetType();
+        string path = property.propertyPath;
+        string[] tokens = path.Split('.');
+
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            string token = tokens[i];
+
+            if (token == "Array")
+            {
+                // 'Array' is followed by 'data[x]' token; the element type will be handled when we hit data[...]
+                continue;
+            }
+
+            if (token.StartsWith("data["))
+            {
+                // The previous field was a collection; get its element type.
+                if (currentType.IsArray)
+                {
+                    currentType = currentType.GetElementType() ?? currentType;
+                }
+                else if (currentType.IsGenericType)
+                {
+                    var genDef = currentType.GetGenericTypeDefinition();
+                    if (genDef == typeof(List<>) || currentType.GetInterfaces().Any(iFace => iFace.IsGenericType && iFace.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
+                    {
+                        currentType = currentType.GetGenericArguments()[0];
+                    }
+                    else
+                    {
+                        // Unknown collection type; abort resolution.
+                        return null;
+                    }
+                }
+                else
+                {
+                    // Unknown collection shape; cannot resolve element type.
+                    return null;
+                }
+                continue;
+            }
+
+            FieldInfo field = GetFieldInfoRecursive(currentType, token);
+            if (field == null)
+            {
+                // Could not find the field; abort.
+                return null;
+            }
+
+            currentType = field.FieldType;
+        }
+
+        // If the final resolved type is a collection, return its element type.
+        if (currentType.IsArray) return currentType.GetElementType() ?? currentType;
+        if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(List<>))
+            return currentType.GetGenericArguments()[0];
+
+        return currentType;
     }
 
-    // Reflection utility: invoke a protected virtual method by name on an object
-    public static void InvokeProtectedVirtualMethod(object instance, string methodName, params object[] args)
+    private static FieldInfo GetFieldInfoRecursive(Type type, string fieldName)
     {
-        if (instance == null) return;
-        try
+        while (type != null)
         {
-            var mi = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (mi == null) return;
-            mi.Invoke(instance, args);
+            var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var fi = type.GetField(fieldName, flags);
+            if (fi != null) return fi;
+
+            // Unity sometimes stores auto-property fields as backing fields with this pattern.
+            string backing = $"<{fieldName}>k__BackingField";
+            fi = type.GetField(backing, flags);
+            if (fi != null) return fi;
+
+            type = type.BaseType;
         }
-        catch { }
+        return null;
     }
 
 
@@ -391,315 +455,177 @@ public abstract class Polymorph
 
     #region Core Drawers
 
-    public class HeaderDrawer : VisualElement
+    public class HeaderDrawer : Foldout
     {
-        public HeaderDrawer(SerializedProperty p, Action onSetCallback = null) : base()
+        public HeaderDrawer(SerializedProperty property, Action onSetCallback = null)
         {
-            property = p;
-            BaseType = GetDeclaredFieldType() ?? typeof(Polymorph);
-            CurrentType = property?.managedReferenceValue?.GetType();
-            name = $"HeaderDrawer-{BaseType.Name}-{property.name}";
+            this.property = property;
+            bindingPath = property.propertyPath;
+            BaseType = GetDeclaredFieldType(property) ?? typeof(Polymorph);
+            CurrentType = this.property?.managedReferenceValue?.GetType();
+            name = $"HeaderDrawer-{BaseType.Name}-{this.property.name}";
             OnSetCallback = onSetCallback;
 
-            propertyField ??= new PropertyField(p)
-            {
-                name = $"HeaderDrawer-PropertyField__{p.name}"
-            };
-            if (!this.Contains(propertyField)) this.Add(propertyField);
 
-            changeButton ??= new Button(TypeButtonClick)
+            ChangeButton ??= new Button(ChangeButtonClicked)
             {
                 name = "Type Chooser",
                 text = "*",
                 style =
-                        {
-                            alignSelf = Align.FlexEnd,
-                            flexDirection = FlexDirection.Row,
-                            position = Position.Absolute,
-                            width = 16,
-                            height = 16,
-                            fontSize = 18,
-                            flexGrow = 1,
-                            paddingTop = 3,
-                            paddingBottom = 0,
-                            paddingLeft = 0,
-                            paddingRight = 0,
-                            right = -1,
-                            top = 0
-                        }
+                {
+                    alignSelf = Align.FlexEnd,
+                    unityTextAlign = TextAnchor.MiddleCenter,
+                    position = Position.Relative,
+                    right = 0,
+                    top = 0,
+                    width = 20,
+                    height = 16,
+                    fontSize = 18,
+                    marginRight = 0,
+                    marginBottom = 0,
+                    paddingLeft = 6,
+                    paddingRight = 6,
+                    paddingTop = 5,
+                }
             };
-            if (!this.Contains(changeButton)) this.Add(changeButton);
+            void ChangeButtonClicked() => ShowChooseTypeMenu(BaseType, CurrentType != null, UpdateType);
+
+            Foldout.text = CorrectLabel;
+            Foldout.bindingPath = property.propertyPath;
+            Foldout.BindProperty(property);
+            Foldout.style.flexGrow = 1f;
 
 
-            if (TryCacheFoldout()) foldout.value = true;
-
-            // Schedule Delayed building of the Layout.
             this.DelayedBuild(Update);
         }
 
-        void Update()
+        #region Pieces
+
+        public Foldout Foldout => this;
+        public Toggle FoldoutToggle { get; protected set; }
+        public VisualElement Arrow { get; protected set; }
+        public Label Label
+        { get; protected set; }
+        public VisualElement ContentContainer { get; protected set; }
+        public Button ChangeButton { get; protected set; }
+
+        void BuildElements()
         {
-            // Update label and toggle UI. Create the TypeButton once and only add it to the labelElement if not already present.
-            if (this.QCache(out label, className: "unity-label"))
+            if (Foldout == null) return;
+            if (FoldoutToggle != null && Label != null && ChangeButton != null && ContentContainer != null) return;
+
+            FoldoutToggle ??= Foldout.Q<Toggle>(null, Foldout.toggleUssClassName);
+
+            Label ??= FoldoutToggle.Q<Label>(null, "unity-label").AddTo(null, l =>
             {
-                label.text = CorrectLabel;
-
-                label.style.right = 0;
-                label.style.flexGrow = 1;
-                label.style.height = EditorGUIUtility.singleLineHeight;
-                label.style.unityTextAlign = TextAnchor.MiddleLeft;
-            }
-
-            TryCacheFoldout();
-            this.QCache(out contentContainer, "unity-content");
-
-            //Handle other hasInstance specific pieces.
-            if (this.QCache(out toggle, className: "unity-foldout__checkmark"))
-            {
-                toggle.style.marginRight = 1;
-                toggle.style.marginBottom = 0;
-                toggle.style.marginTop = 0;
-                if (CurrentType == null) toggle.value = false;
-            }
-
-            if (this.QCache(out toggleArrow, "unity-checkmark")) toggleArrow.visible = CurrentType != null;
-
-            if (property.managedReferenceValue is not null and Polymorph O && bodyInvalid)
-            {
-                if (contentContainer == null) return;
-                if (O.OverrideBody(contentContainer, property))
-                    contentContainer.Bind(property.serializedObject);
-
-                HeaderDrawer dupe;
-                if (propertyField.QCache(out dupe) && dupe.parent == propertyField)
+                l.name = "HeaderDrawer--CustomLabel";
+                l.text = CorrectLabel;
+                l.style.flexGrow = 1;
+                l.style.unityTextAlign = TextAnchor.MiddleLeft;
+                l.RegisterCallback<PointerUpEvent>(evt =>
                 {
-                    PropertyField oldPropField = propertyField;
-                    propertyField = dupe.propertyField;
-                    this.Remove(oldPropField);
-                    this.Add(propertyField);
-                    Remove(changeButton);
-                    Add(changeButton);
-                    Update();
-                }
-
-                bodyInvalid = false;
-            }
-
-        }
-
-        void UpdateType(Type t) => UpdateType(t, false);
-        void UpdateType(Type t, bool forceRebuild = false)
-        {
-            if (property == null || (t == CurrentType && !forceRebuild)) return;
-
-            bool wasPreviouslyNull = CurrentType == null && t != null;
-            if (CurrentType != t)
-            {
-                // capture old value for list callbacks
-                object oldVal = property.managedReferenceValue;
-                if (t != null) property.managedReferenceValue = Activator.CreateInstance(t);
-                else property.managedReferenceValue = null;
-
-                // After applying, if this property is an element of a ListOf/UniqueList, invoke their virtual methods
-                try
-                {
-                    // Check for array element path tokens
-                    var pathTokens = property.propertyPath.Split('.');
-                    int arrayIdx = Array.FindIndex(pathTokens, tok => tok == "Array");
-                    if (arrayIdx >= 0 && arrayIdx - 2 >= 0)
+                    // is it a right click?
+                    if (evt.button == 1)
                     {
-                        // field name of the ListOf/UniqueList on the target object
-                        string listFieldName = pathTokens[arrayIdx - 2];
-                        var targetObj = property.serializedObject.targetObject;
-                        var listField = targetObj.GetType().GetField(listFieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                        if (listField != null)
-                        {
-                            var listInstance = listField.GetValue(targetObj);
-                            // index token should be at arrayIdx+1 like data[0]
-                            if (arrayIdx + 1 < pathTokens.Length)
-                            {
-                                string idxToken = pathTokens[arrayIdx + 1];
-                                int start = idxToken.IndexOf('[') + 1;
-                                int end = idxToken.IndexOf(']');
-                                if (start > 0 && end > start)
-                                {
-                                    string num = idxToken.Substring(start, end - start);
-                                    if (int.TryParse(num, out int idx))
-                                    {
-                                        // invoke OnRemoved and OnAdded on the list instance
-                                        if (oldVal != null) InvokeProtectedVirtualMethod(listInstance, "OnRemoved", oldVal, idx);
-                                        var newVal = property.managedReferenceValue;
-                                        if (newVal != null) InvokeProtectedVirtualMethod(listInstance, "OnAdded", newVal, idx);
-                                    }
-                                }
-                            }
-                        }
+                        // copy the event and send it to the hidden label
+                        using PointerUpEvent labelEvent = PointerUpEvent.GetPooled(evt);
+                        labelEvent.target = Foldout;
+                        Foldout.panel.visualTree.SendEvent(labelEvent);
                     }
-                }
-                catch { }
-            }
+                });
+                Arrow = FoldoutToggle.Q(null, "unity-foldout__checkmark");
+                l.Add(ChangeButton);
+            });
 
-            CurrentType = t;
-            //bodyInvalidated = true;
-
-            // Re-bind the hidden anchor (the only bound element) to ensure prefab behavior remains correct.
-            //try { overrideAnchor?.Bind(property.serializedObject); } catch { /* defensive */ }
-
-            if (foldout != null || TryCacheFoldout()) foldout.value = true;
-
-            // Apply the modification so the SerializedProperty reflects the new instance/type.
-            property.serializedObject.ApplyModifiedProperties();
-
-            bodyInvalid = true;
-
-            // Rebuild the visible parts of the HeaderDrawer.
-            if (!wasPreviouslyNull) Update();
-            else propertyField.DelayedBuild(Update);
-
-            if (foldout != null || TryCacheFoldout()) foldout.value = true;
-
-            // Notify listeners of the type change.
-            OnTypeChanged?.Invoke(property?.managedReferenceValue?.GetType());
-            OnSetCallback?.Invoke();
+            ContentContainer ??= Foldout.Q(null, Foldout.contentUssClassName);
+            ContentContainer.style.marginLeft = 10;
         }
 
-        //Pieces
-        PropertyField propertyField;
-        Button changeButton;
-        Toggle toggle;
-        Foldout foldout;
-        Label label;
-        new VisualElement contentContainer;
-        VisualElement toggleArrow;
 
+        #endregion
 
-        //Data
+        #region Data
+
         public SerializedProperty property { get; protected set; }
         public Type BaseType { get; protected set; }
         public Type CurrentType { get; protected set; }
         bool bodyInvalid = true;
         public Action<Type> OnTypeChanged;
         public bool drawnSuccessfully { get; private set; } = false;
-
         Action OnSetCallback;
+        string CorrectLabel => CurrentType != null ? $"{property.displayName} ({CurrentType.Name})" : property.displayName;
 
-        #region PartGetters
+        void Update()
+        {
+            BuildElements();
 
-        public Button ChangeButton => changeButton;
+            Arrow.style.visibility = property.managedReferenceValue != null ? Visibility.Visible : Visibility.Hidden;
+            Arrow.SetEnabled(property.managedReferenceValue != null);
+            if (property.managedReferenceValue == null) expanded = false;
+
+            if (ContentContainer == null) return;
+            if (property.managedReferenceValue is not null and Polymorph O && bodyInvalid)
+            {
+                ContentContainer.Clear();
+                O.OverrideBody(ContentContainer, property);
+            }
+            else
+            {
+                if (property.managedReferenceValue is null) ContentContainer.Clear();
+            }
+        }
 
         #endregion
 
-
-        //VisualElement bodyDrawer;
-        //bool bodyInvalidated = true;
-
-        // Hidden bound anchor used to preserve prefab Apply/Revert behavior even when value is null.
-        //private PropertyField overrideAnchor;
-        private string NAME => name;
-
-        Type GetDeclaredFieldType()
+        void UpdateType(Type t) => UpdateType(t, false);
+        void UpdateType(Type t, bool forceRebuild = false)
         {
-            if (property == null) return null;
+            if (property == null || (t == CurrentType && !forceRebuild)) return;
 
-            // If Unity gives a managedReferenceFieldTypename, try to parse it first.
-            if (!string.IsNullOrEmpty(property.managedReferenceFieldTypename))
-            {
-                // managedReferenceFieldTypename can contain tokens; try to resolve each token to a Type.
-                var parts = property.managedReferenceFieldTypename.Split(' ');
-                foreach (var part in parts)
-                {
-                    var t = Type.GetType(part);
-                    if (t != null) return t;
-                }
-            }
+            CurrentType = t;
+            SetValueWithoutNotify(t != null ? Activator.CreateInstance(t) as Polymorph : null);
 
-            // Fall back to reflection over the target object and the propertyPath.
-            object target = property.serializedObject.targetObject;
-            if (target == null) return null;
+            FoldoutToggle.value = t != null;
 
-            Type currentType = target.GetType();
-            string path = property.propertyPath;
-            string[] tokens = path.Split('.');
+            property.serializedObject.ApplyModifiedProperties();
 
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                string token = tokens[i];
+            bodyInvalid = true;
+            Update();
 
-                if (token == "Array")
-                {
-                    // 'Array' is followed by 'data[x]' token; the element type will be handled when we hit data[...]
-                    continue;
-                }
-
-                if (token.StartsWith("data["))
-                {
-                    // The previous field was a collection; get its element type.
-                    if (currentType.IsArray)
-                    {
-                        currentType = currentType.GetElementType() ?? currentType;
-                    }
-                    else if (currentType.IsGenericType)
-                    {
-                        var genDef = currentType.GetGenericTypeDefinition();
-                        if (genDef == typeof(List<>) || currentType.GetInterfaces().Any(iFace => iFace.IsGenericType && iFace.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
-                        {
-                            currentType = currentType.GetGenericArguments()[0];
-                        }
-                        else
-                        {
-                            // Unknown collection type; abort resolution.
-                            return null;
-                        }
-                    }
-                    else
-                    {
-                        // Unknown collection shape; cannot resolve element type.
-                        return null;
-                    }
-                    continue;
-                }
-
-                FieldInfo field = GetFieldInfoRecursive(currentType, token);
-                if (field == null)
-                {
-                    // Could not find the field; abort.
-                    return null;
-                }
-
-                currentType = field.FieldType;
-            }
-
-            // If the final resolved type is a collection, return its element type.
-            if (currentType.IsArray) return currentType.GetElementType() ?? currentType;
-            if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(List<>))
-                return currentType.GetGenericArguments()[0];
-
-            return currentType;
+            OnTypeChanged?.Invoke(property?.managedReferenceValue?.GetType());
+            OnSetCallback?.Invoke();
         }
 
-        static FieldInfo GetFieldInfoRecursive(Type type, string fieldName)
+        public bool expanded
         {
-            while (type != null)
-            {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-                var fi = type.GetField(fieldName, flags);
-                if (fi != null) return fi;
-
-                // Unity sometimes stores auto-property fields as backing fields with this pattern.
-                string backing = $"<{fieldName}>k__BackingField";
-                fi = type.GetField(backing, flags);
-                if (fi != null) return fi;
-
-                type = type.BaseType;
-            }
-            return null;
+            get => base.value;
+            set => base.value = value;
         }
-
-        string CorrectLabel => CurrentType != null ? $"{property.displayName} ({CurrentType.Name})" : property.displayName;
-
-        void TypeButtonClick() => ShowChooseTypeMenu(BaseType, CurrentType != null, UpdateType);
-
-        bool TryCacheFoldout() => this.QCache(out foldout, className: "unity-foldout");
+        new public Polymorph value
+        {
+            get => property.managedReferenceValue as Polymorph;
+            set
+            {
+                Polymorph oldVal = property.managedReferenceValue as Polymorph;
+                try { property.serializedObject.Update(); } catch { }
+                property.managedReferenceValue = value;
+                try { property.serializedObject.ApplyModifiedProperties(); } catch { }
+                Update();
+                using ChangeEvent<Polymorph> evt = ChangeEvent<Polymorph>.GetPooled(oldVal, value);
+                evt.target = this;
+                SendEvent(evt);
+            }
+        }
+        public void SetValueWithoutNotify(Polymorph newValue)
+        {
+            if (property != null)
+            {
+                try { property.serializedObject.Update(); } catch { }
+                property.managedReferenceValue = newValue;
+                try { property.serializedObject.ApplyModifiedProperties(); } catch { }
+            }
+            Update();
+        }
     }
     public class TabbedDrawer : VisualElement
     {
@@ -750,6 +676,80 @@ public abstract class Polymorph
         }
     }
 
+    public class ListDrawer : SuperList<ListDrawer, ListItemDrawer, Polymorph>
+    {
+        protected SerializedProperty rootProperty;
+        protected FieldInfo fieldInfo;
+        public Type baseType;
+
+        public ListDrawer(SerializedProperty rootProperty, FieldInfo fieldInfo) : base(rootProperty)
+        {
+            this.fieldInfo = fieldInfo;
+            try
+            {
+                if (fieldInfo != null && fieldInfo.FieldType.IsGenericType)
+                {
+                    Type[] args = fieldInfo.FieldType.GetGenericArguments();
+                    if (args != null && args.Length > 0) baseType = args[0];
+                }
+            }
+            catch { baseType = null; }
+            ShowTypeChooser = () => { Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen); };
+        }
+
+        public override SerializedProperty GetMainProperty(SerializedProperty input)
+        {
+            rootProperty = input;
+            property = input.FindPropertyRelative("items");
+            return property;
+        }
+        public override Header HeaderDefinition()
+        {
+            header = new(this, disableCounter: true);
+            header.AddTo(this);
+            return header;
+        }
+
+        protected override void AddButtonPressed() => ShowTypeChooser();
+
+
+        public Action ShowTypeChooser;
+
+        public virtual void TypeChosen(Type chosen)
+        {
+            CreatePropertySlot(out int newID);
+            SetOrCreateItemValue(newID, Activator.CreateInstance(chosen));
+            CreateItemElement(newID);
+            Select(items[newID]);
+        }
+
+    }
+    public class ListItemDrawer : SuperListItem<ListDrawer, ListItemDrawer, Polymorph>
+    {
+        public ListItemDrawer(ListDrawer parentList, SerializedProperty thisProperty) : base(parentList, thisProperty)
+        {
+        }
+
+        public override VisualElement Content()
+        {
+            HeaderDrawer result = new(property);
+            result.ChangeButton.SetEnabled(false);
+            result.ChangeButton.style.display = DisplayStyle.None;
+            result.style.marginLeft = 14;
+            result.style.marginRight = 3;
+
+            result.DelayedBuild(PostContent);
+            return result;
+        }
+        protected override void PostContent()
+        {
+            Label = (content as HeaderDrawer).Label;
+            (content as HeaderDrawer).FoldoutToggle
+                .RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+        }
+    }
+
+
     #endregion
 
     #region Property Drawers
@@ -773,357 +773,19 @@ public abstract class Polymorph
 
         void OnSet()
         {
-            var target = GetTargetObjectOfProperty(property);
-            if(target != null) InvokeProtectedVirtualMethod(target, "OnSet");
         }
     }
 
     [CustomPropertyDrawer(typeof(ListOf<>), true)]
     public class ListOfDrawer : PropertyDrawer
     {
-        // Stored visual pieces to resemble VisualElementsHelpers.SuperList structure
-        protected SerializedProperty rootProperty;
-        protected SerializedProperty listProperty;
-        protected Type baseType;
-        protected VisualElement root;
-        protected VisualElement headerBar;
-        protected Label titleLabel;
-        protected Label counterLabel;
-        protected Button addButton;
-        protected VisualElement collection;
-        protected List<Item> itemElements = new();
-
-        // Foldout pieces
-        private Label foldoutArrow;
-        private bool foldoutState = true;
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            rootProperty = property;
-
-            // Root
-            root = new VisualElement();
-            root.name = $"ListOfDrawer-{property.propertyPath}";
-
-            // Backing array property (robust resolution)
-            listProperty = property.FindPropertyRelative("items")
-                ?? throw new Exception($"Polymorph.ListOfDrawer: Could not resolve 'items' SerializedProperty for '{property.propertyPath}'.");
-
-            // Resolve element (generic) type from FieldInfo where possible
-            try
-            {
-                var fi = fieldInfo;
-                if (fi != null)
-                {
-                    var ft = fi.FieldType;
-                    if (ft.IsGenericType)
-                    {
-                        var args = ft.GetGenericArguments();
-                        if (args != null && args.Length > 0) baseType = args[0];
-                    }
-                }
-            }
-            catch { baseType = null; }
-
-            // Establish visual elements and styling
-            EstablishVisualElements();
-
-            // Add to root
-            root.Add(headerBar);
-            root.Add(collection);
-
-            // Initial build
-            BuildItems();
-
-            // Bind root for prefab/apply support (defensive)
-            try { root.Bind(property.serializedObject); } catch { }
-
-            return root;
+            ListDrawer list = new(property, fieldInfo);
+            return list;
         }
 
-        // Helper: creates and styles headerBar, titleLabel, counterLabel, addButton, collection
-        private void EstablishVisualElements()
-        {
-            // Header bar
-            headerBar = new()
-            {
-                name = "listof-headerbar",
-                style =
-                {
-                    flexDirection = FlexDirection.Row,
-                    alignItems = Align.Center,
-                    height = 20,
-                    backgroundColor = .2078432f.Gray(),
-                    borderRightColor = .1411765f.Gray(),
-                    borderLeftColor = .1411765f.Gray(),
-                    borderTopColor = .1411765f.Gray(),
-                    borderBottomColor = .1411765f.Gray(),
-                    borderRightWidth = 1,
-                    borderLeftWidth = 1,
-                    borderTopWidth = 1,
-                    borderBottomWidth = 1,
-                    paddingLeft = 4,
-                    borderTopLeftRadius = 6,
-                    borderTopRightRadius = 6
-                }
-            };
-
-            // Foldout arrow - left side
-            foldoutArrow = new("▾")
-            {
-                name = "listof-foldout",
-                style =
-                {
-                    width = 18,
-                    fontSize = 25,
-                    unityTextAlign = TextAnchor.MiddleCenter,
-                    marginRight = 6,
-                    color = .75f.Gray()
-                }
-            };
-            foldoutArrow.RegisterCallback<ClickEvent>((evt) =>
-            {
-                // Toggle persistent expanded state if possible, otherwise toggle internal state
-                if (rootProperty != null)
-                {
-                    rootProperty.isExpanded = !rootProperty.isExpanded;
-                    try { rootProperty.serializedObject.ApplyModifiedProperties(); } catch { }
-                }
-                else
-                {
-                    foldoutState = !foldoutState;
-                }
-                UpdateFoldoutVisuals();
-                evt.StopPropagation();
-            });
-            foldoutArrow.RegisterHoverEvents(v => foldoutArrow.style.color = v ? Color.white : .75f.Gray());
-            headerBar.Add(foldoutArrow);
-
-            // Title label
-            titleLabel = new(rootProperty.displayName)
-            {
-                name = "listof-title",
-                style =
-                {
-                    flexGrow = 1,
-                    fontSize = 12,
-                    unityTextAlign = TextAnchor.MiddleLeft,
-                    color = .82f.Gray(),
-                }
-            };
-            headerBar.Add(titleLabel);
-
-            // Counter label
-            counterLabel = new((listProperty != null) ? listProperty.arraySize.ToString() : "0")
-            {
-                name = "listof-counter",
-                style =
-                {
-                    width = 36,
-                    unityTextAlign = TextAnchor.MiddleRight,
-                    color = .85f.Gray(),
-                    marginRight = 6
-                }
-            };
-            headerBar.Add(counterLabel);
-
-            // Add button
-            addButton = new(ShowTypeChooser)
-            {
-                text = "+",
-                name = "listof-add",
-                style =
-                {
-                    width = 24,
-                    height = 18,
-                    backgroundColor = Color.clear,
-                    borderBottomColor = Color.clear, borderTopColor = Color.clear,
-                    borderLeftColor = Color.clear, borderRightColor = Color.clear,
-                    fontSize = 14,
-                    unityTextAlign = TextAnchor.LowerCenter,
-                    borderRightWidth = 0, borderBottomWidth = 0, borderLeftWidth = 0, borderTopWidth = 0,
-                    borderTopRightRadius = 6,
-                    marginBottom = 0, marginLeft = 0, marginRight = 0, marginTop = 0,
-                    paddingBottom = 0, paddingLeft = 0, paddingRight = 0, paddingTop = 0
-                },
-            };
-            headerBar.Add(addButton);
-            addButton.RegisterHoverEvents(value => addButton.style.color = value ? Color.cyan : Color.white);
-
-            // Collection container
-            collection = new()
-            {
-                name = "listof-collection",
-                style =
-                {
-                    backgroundColor = .254902f.Gray(),
-                    borderBottomColor = .1411765f.Gray(), borderRightColor = .1411765f.Gray(),
-                    borderLeftColor = .1411765f.Gray(),borderTopColor = .1411765f.Gray(),
-                    borderLeftWidth = 1, borderRightWidth = 1, borderBottomWidth = 1, borderTopWidth = 0,
-                    borderBottomLeftRadius = 4, borderBottomRightRadius = 4,
-                    flexDirection = FlexDirection.Column
-                }
-            };
-
-            // Initialize foldout visual state
-            UpdateFoldoutVisuals();
-        }
-
-        private void UpdateFoldoutVisuals()
-        {
-            bool expanded = foldoutState;
-            if (rootProperty != null) expanded = rootProperty.isExpanded;
-
-            collection.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
-            if (foldoutArrow != null) foldoutArrow.text = expanded ? "▾" : "▸";
-        }
-
-        protected virtual void ShowTypeChooser() => Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen);
-
-        protected virtual void TypeChosen(Type chosen)
-        {
-            rootProperty.isExpanded = true;
-            if (listProperty == null) return;
-            listProperty.serializedObject.Update();
-
-            // Increase array size
-            int newIndex = listProperty.arraySize;
-            listProperty.arraySize++;
-            listProperty.serializedObject.ApplyModifiedProperties();
-
-            // Resolve the newly created element property
-            listProperty.serializedObject.Update();
-            if (newIndex < listProperty.arraySize)
-            {
-                var newElem = listProperty.GetArrayElementAtIndex(newIndex);
-                if (newElem != null)
-                {
-                    try
-                    {
-                        if (chosen != null)
-                        {
-                            if (newElem.propertyType == SerializedPropertyType.ManagedReference) newElem.managedReferenceValue = Activator.CreateInstance(chosen);
-                            else try { newElem.managedReferenceValue = Activator.CreateInstance(chosen); } catch { }
-                        }
-                        else
-                        {
-                            if (newElem.propertyType == SerializedPropertyType.ManagedReference)
-                                newElem.managedReferenceValue = null;
-                        }
-                    }
-                    catch { /* swallow instantiation errors */ }
-                }
-            }
-
-            listProperty.serializedObject.ApplyModifiedProperties();
-            BuildItems();
-
-            // Invoke protected virtual OnAdded on the runtime ListOf instance if present
-            try
-            {
-                var listInstance = GetTargetObjectOfProperty(rootProperty);
-                if (listInstance != null)
-                {
-                    var newVal = listProperty.GetArrayElementAtIndex(newIndex)?.managedReferenceValue;
-                    InvokeProtectedVirtualMethod(listInstance, "OnAdded", newVal, newIndex);
-                }
-            }
-            catch { }
-        }
-
-        // New: move item by delta (-1 up, +1 down) when wheel used on glyph
-        void MoveItem(Item item, int delta)
-        {
-            if (listProperty == null) return;
-            listProperty.serializedObject.Update();
-
-            int i = itemElements.IndexOf(item);
-            if (i < 0) return;
-
-            int arraySize = listProperty.arraySize;
-            if (arraySize <= 1) return;
-
-            int newIndex = Mathf.Clamp(i + delta, 0, arraySize - 1);
-            if (newIndex == i) return;
-
-            try
-            {
-                listProperty.MoveArrayElement(i, newIndex);
-                listProperty.serializedObject.ApplyModifiedProperties();
-            }
-            catch
-            {
-                // Swallow any editor-time exceptions and continue defensively.
-                try { listProperty.serializedObject.ApplyModifiedProperties(); } catch { }
-            }
-
-            // Rebuild visuals to reflect new ordering.
-            BuildItems();
-        }
-
-
-        void BuildItems()
-        {
-            itemElements.Clear();
-            collection.Clear();
-            counterLabel.text = (listProperty != null) ? listProperty.arraySize.ToString() : "0";
-
-            if (listProperty == null) return;
-            listProperty.serializedObject.Update();
-            int size = listProperty.arraySize;
-
-            for (int i = 0; i < size; i++)
-            {
-                Item item = new(listProperty.GetArrayElementAtIndex(i), RemoveItem, MoveItem);
-                itemElements.Add(item);
-                collection.Add(item);
-                item.body.Bind(rootProperty.serializedObject);
-            }
-
-            // Ensure foldout visuals reflect current state after building items.
-            UpdateFoldoutVisuals();
-        }
-
-        void RemoveItem(Item item)
-        {
-            if (listProperty == null) return;
-            listProperty.serializedObject.Update();
-
-            int i = itemElements.IndexOf(item);
-
-            // Capture removed managed reference for callback
-            object removedRef = null;
-            try { removedRef = listProperty.GetArrayElementAtIndex(i)?.managedReferenceValue; } catch { }
-
-            // Delete once; for object references Unity may leave a null placeholder
-            listProperty.DeleteArrayElementAtIndex(i);
-
-            // If after deletion there is still an element at that index and it's an object reference & null, delete again.
-            if (i < listProperty.arraySize)
-            {
-                var maybeElem = listProperty.GetArrayElementAtIndex(i);
-                if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
-                {
-                    listProperty.DeleteArrayElementAtIndex(i);
-                }
-            }
-
-            // Update counter and apply changes
-            if (counterLabel != null) counterLabel.text = listProperty.arraySize.ToString();
-            listProperty.serializedObject.ApplyModifiedProperties();
-
-            // Invoke protected virtual OnRemoved on runtime instance
-            try
-            {
-                var listInstance = GetTargetObjectOfProperty(rootProperty);
-                if (listInstance != null && removedRef != null) 
-                    InvokeProtectedVirtualMethod(listInstance, "OnRemoved", removedRef, i);
-            }
-            catch { }
-
-            itemElements[i].parent.Remove(itemElements[i]);
-            itemElements.RemoveAt(i);
-        }
 
         public class Item : VisualElement
         {
@@ -1212,16 +874,24 @@ public abstract class Polymorph
     public class UniqueListDrawer : ListOfDrawer
     {
         public UniqueListDrawer() : base() { }
+        ListDrawer list;
 
-        protected override void ShowTypeChooser()
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            list = new(property, fieldInfo);
+            list.ShowTypeChooser = ShowTypeChooser;
+            return list;
+        }
+
+        void ShowTypeChooser()
         {
             GenericMenu menu = new();
 
-            List<Type> types = GetSubtypes(baseType).ToList();
+            List<Type> types = GetSubtypes(list.baseType).ToList();
 
-            for (int i = 0; i < listProperty.arraySize; i++)
+            for (int i = 0; i < list.CurrentSize; i++)
             {
-                var elem = listProperty.GetArrayElementAtIndex(i);
+                SerializedProperty elem = list.property.GetArrayElementAtIndex(i);
                 if (elem != null && elem.managedReferenceValue != null) types.Remove(elem.managedReferenceValue.GetType());
             }
 
@@ -1229,31 +899,12 @@ public abstract class Polymorph
             {
                 foreach (Type t in types)
                 {
-                    if (t == baseType) continue;
-                    menu.AddItem(new GUIContent(t.Name), false, () => { TypeChosen(t); });
+                    if (t == list.baseType) continue;
+                    menu.AddItem(new GUIContent(t.Name), false, () => { list.TypeChosen(t); });
                 }
 
                 menu.ShowAsContext();
             }
-        }
-
-        protected override void TypeChosen(Type chosen)
-        {
-            // Prevent adding duplicate types to the list.
-            if (chosen != null)
-            {
-                for (int i = 0; i < listProperty.arraySize; i++)
-                {
-                    var elem = listProperty.GetArrayElementAtIndex(i);
-                    if (elem != null && elem.managedReferenceValue != null && elem.managedReferenceValue.GetType() == chosen)
-                    {
-                        EditorUtility.DisplayDialog("Duplicate Type", $"An instance of type '{chosen.Name}' already exists in the list. UniqueList cannot contain duplicates.", "OK");
-                        return;
-                    }
-                }
-            }
-            // If no duplicates, proceed with normal addition.
-            base.TypeChosen(chosen);
         }
 
     }
