@@ -7,6 +7,8 @@ using UnityEngine.UIElements;
 using System.Collections;
 using Utilities.Xtensions;
 using Utilities.Xtensions.VisualElements;
+using Unity.VisualScripting.YamlDotNet.Core.Tokens;
+
 
 
 
@@ -24,35 +26,78 @@ public abstract class Polymorph
         [SerializeField, SerializeReference]
         public List<T> items = new();
 
+
         // IList<T> implementation - delegate to the inner list.
         #region IList implementation
         public T this[int index]
         {
             get => items[index];
-            set => items[index] = value;
+            set
+            {
+                var old = items[index];
+                items[index] = value;
+                OnRemoved(old, index);
+                OnAdded(value, index);
+            }
         }
 
         public int Count => items.Count;
         public bool IsReadOnly => ((ICollection<T>)items).IsReadOnly;
 
-        public void Add(T item) => items.Add(item);
-        public void Clear() => items.Clear();
+        public void Add(T item)
+        {
+            items.Add(item);
+            OnAdded(item, items.Count - 1);
+        }
+        public void Clear()
+        {
+            for (int i = 0; i < items.Count; i++) OnRemoved(items[i], i);
+
+            items.Clear();
+            OnCleared();
+        }
         public bool Contains(T item) => items.Contains(item);
         public void CopyTo(T[] array, int arrayIndex) => items.CopyTo(array, arrayIndex);
         public IEnumerator<T> GetEnumerator() => items.GetEnumerator();
         public int IndexOf(T item) => items.IndexOf(item);
-        public void Insert(int index, T item) => items.Insert(index, item);
-        public bool Remove(T item) => items.Remove(item);
-        public void RemoveAt(int index) => items.RemoveAt(index);
+        public void Insert(int index, T item)
+        {
+            items.Insert(index, item);
+            OnAdded(item, index);
+        }
+
+        public bool Remove(T item)
+        {
+            if (!items.Contains(item)) return false;
+            int existingIndex = items.IndexOf(item);
+
+            items.Remove(item);
+            OnRemoved(item, existingIndex);
+            return true;
+        }
+
+        public void RemoveAt(int index)
+        {
+            if (index < 0 || index > items.Count - 1) throw new ArgumentOutOfRangeException(nameof(index));
+            T old = items[index];
+            items.RemoveAt(index);
+            OnRemoved(old, index);
+        }
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => ((System.Collections.IEnumerable)items).GetEnumerator();
         #endregion
+
+        protected virtual void OnAdded(T item, int id) { }
+        protected virtual void OnRemoved(T item, int id) { }
+        protected virtual void OnCleared() { }
+
     }
 
     [System.Serializable]
-    public class UniqueList<T> : IList<T>, ISerializationCallbackReceiver where T : Polymorph
+    public class UniqueList<T> : IList<T> where T : Polymorph
     {
         [SerializeField, SerializeReference]
         public List<T> items = new();
+
         // IList<T> implementation with uniqueness enforcement.
         #region IList implementation
         public T this[int index]
@@ -71,7 +116,10 @@ public abstract class Polymorph
                             throw new InvalidOperationException($"Cannot add duplicate item of type '{value.GetType().Name}' to UniqueList.");
                     }
                 }
+                var old = items[index];
                 items[index] = value;
+                OnRemoved(old, index);
+                OnAdded(value, index);
             }
         }
         public int Count => items.Count;
@@ -84,8 +132,16 @@ public abstract class Polymorph
                     throw new InvalidOperationException($"Cannot add duplicate item of type '{item.GetType().Name}' to UniqueList.");
             }
             items.Add(item);
+            OnAdded(item, items.Count - 1);
         }
-        public void Clear() => items.Clear();
+        public void Clear()
+        {
+            for (int i = 0; i < items.Count; i++)
+                OnRemoved(items[i], i);
+
+            items.Clear();
+            OnCleared();
+        }
         public bool Contains(T item) => items.Contains(item);
         public void CopyTo(T[] array, int arrayIndex) => items.CopyTo(array, arrayIndex);
         public IEnumerator<T> GetEnumerator() => items.GetEnumerator();
@@ -99,14 +155,27 @@ public abstract class Polymorph
                     throw new InvalidOperationException($"Cannot insert duplicate item of type '{item.GetType().Name}' to UniqueList.");
             }
             items.Insert(index, item);
+            OnAdded(item, index);
+        }
+        public bool Remove(T item)
+        {
+            if (!items.Contains(item)) return false;
+            int existingIndex = items.IndexOf(item);
+
+            items.Remove(item);
+            OnRemoved(item, existingIndex);
+            return true;
         }
 
-        public bool Remove(T item) => items.Remove(item);
-        public void RemoveAt(int index) => items.RemoveAt(index);
+        public void RemoveAt(int index)
+        {
+            if (index < 0 || index > items.Count - 1) throw new ArgumentOutOfRangeException(nameof(index));
+            T old = items[index];
+            items.RemoveAt(index);
+            OnRemoved(old, index);
+        }
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => ((System.Collections.IEnumerable)items).GetEnumerator();
         #endregion
-
-        [SerializeField] private List<Type> typeKey = new();
 
         // Additional dictionary-like and utility methods:
 
@@ -115,7 +184,14 @@ public abstract class Polymorph
         /// </summary>
         /// <param name="I">The type whose associated value to get.</param>
         /// <returns>The value associated with the specified type.</returns>
-        public T this[Type I] => typeKey.Contains(I) ? items[typeKey.IndexOf(I)] : null;
+        public T this[Type I]
+        {
+            get
+            {
+                T found = items.FirstOrDefault(e => e.GetType() == I);
+                return found;
+            }
+        }
 
         /// <summary>
         /// Returns the first stored element whose runtime Type equals the provided Type, or null if none.
@@ -187,23 +263,47 @@ public abstract class Polymorph
             if (item != null && item.GetType() != type) throw new ArgumentException("Item type does not match provided type.", nameof(item));
 
             int idx = IndexOfType(type);
-            if (idx >= 0) items[idx] = item;
+            if (idx >= 0)
+            {
+                OnRemoved(item, idx);
+                items[idx] = item;
+                OnAdded(item, idx);
+            }
             else Add(item);
         }
 
-        public void OnBeforeSerialize()
+        protected virtual void OnAdded(T item, int id) { }
+        protected virtual void OnRemoved(T item, int id) { }
+        protected virtual void OnCleared() { }
+    }
+
+    public class Single<T> where T : Polymorph
+    {
+        [SerializeField, SerializeReference]
+        private T value;
+
+        public T Value
         {
-            typeKey.Clear();
-            for (int i = 0; i < items.Count; i++) 
-                if (items[i] != null) 
-                    typeKey.Add(items[i].GetType());
+            get => value;
+            set
+            {
+                this.value = value;
+                OnSet();
+            }
         }
-        public void OnAfterDeserialize() { }
+
+        public void Clear() => value = default;
+
+        protected virtual void OnSet() { }
+
+        public static implicit operator T(Single<T> slot) => slot != null ? slot.Value : default;
     }
 
 #if UNITY_EDITOR
 
     public virtual bool OverrideBody(VisualElement container, SerializedProperty property) => false;
+
+    #region Utilities
 
     public static Type[] GetSubtypes(Type baseType)
     {
@@ -246,23 +346,60 @@ public abstract class Polymorph
         menu.ShowAsContext();
     }
 
-    [CustomPropertyDrawer(typeof(Polymorph), true)]
-    public class Drawer : PropertyDrawer
+    // Helper: get the runtime object represented by a SerializedProperty (handles arrays)
+    public static object GetTargetObjectOfProperty(SerializedProperty prop)
     {
-        public override VisualElement CreatePropertyGUI(SerializedProperty property) => new HeaderDrawer(property);
+        if (prop == null) return null;
+
+        string[] path = prop.propertyPath.Replace(".Array.data[", "[")
+            .Split('.');
+        object obj = prop.serializedObject.targetObject;
+        foreach (string element in path)
+        {
+            if (element.Contains("["))
+            {
+                string elementName = element.Substring(0, element.IndexOf("["));
+                int index = Convert.ToInt32(element.Substring(element.IndexOf("[")).Replace("[", "").Replace("]", ""));
+                var field = obj.GetType().GetField(elementName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                var list = field.GetValue(obj) as IList;
+                obj = list[index];
+            }
+            else
+            {
+                var field = obj.GetType().GetField(element, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                obj = field.GetValue(obj);
+            }
+        }
+        return obj;
     }
 
-    //Note: Consider making a "No Choosing Header" option, but that's more or less useless so maybe ignore this.
+    // Reflection utility: invoke a protected virtual method by name on an object
+    public static void InvokeProtectedVirtualMethod(object instance, string methodName, params object[] args)
+    {
+        if (instance == null) return;
+        try
+        {
+            var mi = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (mi == null) return;
+            mi.Invoke(instance, args);
+        }
+        catch { }
+    }
 
+
+    #endregion
+
+    #region Core Drawers
 
     public class HeaderDrawer : VisualElement
     {
-        public HeaderDrawer(SerializedProperty p) : base()
+        public HeaderDrawer(SerializedProperty p, Action onSetCallback = null) : base()
         {
             property = p;
             BaseType = GetDeclaredFieldType() ?? typeof(Polymorph);
             CurrentType = property?.managedReferenceValue?.GetType();
             name = $"HeaderDrawer-{BaseType.Name}-{property.name}";
+            OnSetCallback = onSetCallback;
 
             propertyField ??= new PropertyField(p)
             {
@@ -358,8 +495,48 @@ public abstract class Polymorph
             bool wasPreviouslyNull = CurrentType == null && t != null;
             if (CurrentType != t)
             {
+                // capture old value for list callbacks
+                object oldVal = property.managedReferenceValue;
                 if (t != null) property.managedReferenceValue = Activator.CreateInstance(t);
                 else property.managedReferenceValue = null;
+
+                // After applying, if this property is an element of a ListOf/UniqueList, invoke their virtual methods
+                try
+                {
+                    // Check for array element path tokens
+                    var pathTokens = property.propertyPath.Split('.');
+                    int arrayIdx = Array.FindIndex(pathTokens, tok => tok == "Array");
+                    if (arrayIdx >= 0 && arrayIdx - 2 >= 0)
+                    {
+                        // field name of the ListOf/UniqueList on the target object
+                        string listFieldName = pathTokens[arrayIdx - 2];
+                        var targetObj = property.serializedObject.targetObject;
+                        var listField = targetObj.GetType().GetField(listFieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        if (listField != null)
+                        {
+                            var listInstance = listField.GetValue(targetObj);
+                            // index token should be at arrayIdx+1 like data[0]
+                            if (arrayIdx + 1 < pathTokens.Length)
+                            {
+                                string idxToken = pathTokens[arrayIdx + 1];
+                                int start = idxToken.IndexOf('[') + 1;
+                                int end = idxToken.IndexOf(']');
+                                if (start > 0 && end > start)
+                                {
+                                    string num = idxToken.Substring(start, end - start);
+                                    if (int.TryParse(num, out int idx))
+                                    {
+                                        // invoke OnRemoved and OnAdded on the list instance
+                                        if (oldVal != null) InvokeProtectedVirtualMethod(listInstance, "OnRemoved", oldVal, idx);
+                                        var newVal = property.managedReferenceValue;
+                                        if (newVal != null) InvokeProtectedVirtualMethod(listInstance, "OnAdded", newVal, idx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
             }
 
             CurrentType = t;
@@ -383,6 +560,7 @@ public abstract class Polymorph
 
             // Notify listeners of the type change.
             OnTypeChanged?.Invoke(property?.managedReferenceValue?.GetType());
+            OnSetCallback?.Invoke();
         }
 
         //Pieces
@@ -402,6 +580,8 @@ public abstract class Polymorph
         bool bodyInvalid = true;
         public Action<Type> OnTypeChanged;
         public bool drawnSuccessfully { get; private set; } = false;
+
+        Action OnSetCallback;
 
         #region PartGetters
 
@@ -520,20 +700,6 @@ public abstract class Polymorph
         void TypeButtonClick() => ShowChooseTypeMenu(BaseType, CurrentType != null, UpdateType);
 
         bool TryCacheFoldout() => this.QCache(out foldout, className: "unity-foldout");
-
-        //PropertyField OverrideAnchor()
-        //{
-        //    // Ensure anchor still exists and is bound (insulates against inspector re-creation).
-        //    if (overrideAnchor == null && property != null)
-        //    {
-        //        overrideAnchor = new PropertyField(property);
-        //        overrideAnchor.name = "headerDrawer_overrideAnchor";
-        //        overrideAnchor.style.display = DisplayStyle.None;
-        //        this.hierarchy.Add(overrideAnchor);
-        //        try { overrideAnchor.Bind(property.serializedObject); } catch { /* ignore */ }
-        //    }
-        //    return overrideAnchor;
-        //}
     }
     public class TabbedDrawer : VisualElement
     {
@@ -581,6 +747,34 @@ public abstract class Polymorph
 
 
             private void UpdateLiteralObject(Type T) => tabHeader.style.color = T != null ? Color.white : Color.gray;
+        }
+    }
+
+    #endregion
+
+    #region Property Drawers
+
+    [CustomPropertyDrawer(typeof(Polymorph), true)]
+    public class DirectDrawer : PropertyDrawer
+    {
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+            => new HeaderDrawer(property);
+    }
+
+    [CustomPropertyDrawer(typeof(Single<>), true)]
+    public class SingleDrawer : PropertyDrawer
+    {
+        SerializedProperty property;
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            this.property = property;
+            return new HeaderDrawer(property.FindPropertyRelative("value"), OnSet);
+        }
+
+        void OnSet()
+        {
+            var target = GetTargetObjectOfProperty(property);
+            if(target != null) InvokeProtectedVirtualMethod(target, "OnSet");
         }
     }
 
@@ -789,47 +983,52 @@ public abstract class Polymorph
         protected virtual void TypeChosen(Type chosen)
         {
             rootProperty.isExpanded = true;
-#if UNITY_EDITOR
+            if (listProperty == null) return;
+            listProperty.serializedObject.Update();
+
+            // Increase array size
+            int newIndex = listProperty.arraySize;
+            listProperty.arraySize++;
+            listProperty.serializedObject.ApplyModifiedProperties();
+
+            // Resolve the newly created element property
+            listProperty.serializedObject.Update();
+            if (newIndex < listProperty.arraySize)
+            {
+                var newElem = listProperty.GetArrayElementAtIndex(newIndex);
+                if (newElem != null)
+                {
+                    try
+                    {
+                        if (chosen != null)
+                        {
+                            if (newElem.propertyType == SerializedPropertyType.ManagedReference) newElem.managedReferenceValue = Activator.CreateInstance(chosen);
+                            else try { newElem.managedReferenceValue = Activator.CreateInstance(chosen); } catch { }
+                        }
+                        else
+                        {
+                            if (newElem.propertyType == SerializedPropertyType.ManagedReference)
+                                newElem.managedReferenceValue = null;
+                        }
+                    }
+                    catch { /* swallow instantiation errors */ }
+                }
+            }
+
+            listProperty.serializedObject.ApplyModifiedProperties();
+            BuildItems();
+
+            // Invoke protected virtual OnAdded on the runtime ListOf instance if present
             try
             {
-                if (listProperty == null) return;
-                listProperty.serializedObject.Update();
-
-                // Increase array size
-                int newIndex = listProperty.arraySize;
-                listProperty.arraySize++;
-                listProperty.serializedObject.ApplyModifiedProperties();
-
-                // Resolve the newly created element property
-                listProperty.serializedObject.Update();
-                if (newIndex < listProperty.arraySize)
+                var listInstance = GetTargetObjectOfProperty(rootProperty);
+                if (listInstance != null)
                 {
-                    var newElem = listProperty.GetArrayElementAtIndex(newIndex);
-                    if (newElem != null)
-                    {
-                        try
-                        {
-                            if (chosen != null)
-                            {
-                                if (newElem.propertyType == SerializedPropertyType.ManagedReference) newElem.managedReferenceValue = Activator.CreateInstance(chosen);
-                                else try { newElem.managedReferenceValue = Activator.CreateInstance(chosen); } catch { }
-                            }
-                            else
-                            {
-                                if (newElem.propertyType == SerializedPropertyType.ManagedReference)
-                                    newElem.managedReferenceValue = null;
-                            }
-                        }
-                        catch { /* swallow instantiation errors */ }
-                    }
+                    var newVal = listProperty.GetArrayElementAtIndex(newIndex)?.managedReferenceValue;
+                    InvokeProtectedVirtualMethod(listInstance, "OnAdded", newVal, newIndex);
                 }
-
-                listProperty.serializedObject.ApplyModifiedProperties();
-                BuildItems();
             }
-            catch { /* swallow editor-time exceptions */ }
-#endif
-
+            catch { }
         }
 
         // New: move item by delta (-1 up, +1 down) when wheel used on glyph
@@ -892,6 +1091,10 @@ public abstract class Polymorph
 
             int i = itemElements.IndexOf(item);
 
+            // Capture removed managed reference for callback
+            object removedRef = null;
+            try { removedRef = listProperty.GetArrayElementAtIndex(i)?.managedReferenceValue; } catch { }
+
             // Delete once; for object references Unity may leave a null placeholder
             listProperty.DeleteArrayElementAtIndex(i);
 
@@ -908,6 +1111,15 @@ public abstract class Polymorph
             // Update counter and apply changes
             if (counterLabel != null) counterLabel.text = listProperty.arraySize.ToString();
             listProperty.serializedObject.ApplyModifiedProperties();
+
+            // Invoke protected virtual OnRemoved on runtime instance
+            try
+            {
+                var listInstance = GetTargetObjectOfProperty(rootProperty);
+                if (listInstance != null && removedRef != null) 
+                    InvokeProtectedVirtualMethod(listInstance, "OnRemoved", removedRef, i);
+            }
+            catch { }
 
             itemElements[i].parent.Remove(itemElements[i]);
             itemElements.RemoveAt(i);
@@ -1043,6 +1255,9 @@ public abstract class Polymorph
             // If no duplicates, proceed with normal addition.
             base.TypeChosen(chosen);
         }
-#endif
+
     }
+    #endregion
+
+#endif
 }

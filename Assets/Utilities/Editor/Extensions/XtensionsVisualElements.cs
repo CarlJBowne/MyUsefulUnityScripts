@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using static UnityEngine.GraphicsBuffer;
 
 namespace Utilities.Xtensions.VisualElements
 {
@@ -18,6 +19,12 @@ namespace Utilities.Xtensions.VisualElements
         {
             result = input;
             target.Add(result);
+        }
+        public static T AddTo<T>(this T input, VisualElement target, Action<T> PostMake = null) where T : VisualElement
+        {
+            target.Add(input);
+            PostMake?.Invoke(input);
+            return input;
         }
 
         public static void SetStyle(this VisualElement v, IStyle input)
@@ -135,8 +142,7 @@ namespace Utilities.Xtensions.VisualElements
             return arrayProperty.GetArrayElementAtIndex(arrayProperty.arraySize - 1);
         }
 
-        public static void DelayedBuild(this VisualElement V, Action result)
-            => V.RegisterCallbackOnce<AttachToPanelEvent>(_ => { V.schedule.Execute(result); });
+        public static void DelayedBuild(this VisualElement V, Action result) => V.schedule.Execute(result);
 
 
         public static bool QCache<T>(this VisualElement V, out T result, string name = null, string className = null) where T : VisualElement
@@ -157,7 +163,7 @@ namespace Utilities.Xtensions.VisualElements
         }
         public static void Highlighter(this VisualElement V, Color highlightColor, Color? backgroundHighlightColor = null, Color? borderHighlightColor = null)
         {
-            Color initialColor = V.style.color.value;
+            Color initialColor = V.style.color.keyword != StyleKeyword.Null ? V.style.color.value : Color.white;
             Color initialColorBack = V.style.backgroundColor.value;
             Color initialColorBorder = V.style.borderTopColor.value;
 
@@ -266,6 +272,122 @@ namespace Utilities.Xtensions.VisualElements
             V.RegisterCallback<MouseLeaveEvent>(Do);
             void Do(EventBase E) => hovered?.Invoke(E is MouseOverEvent);
         }
+    }
+
+    public class Highlighter
+    {
+        public Highlighter(VisualElement source, Color setMain, Color? setBack = null, Color? setBorder = null,
+            float? raiseMain = null, float? raiseBack = null, float? raiseBorder = null)
+        {
+            target = source;
+            sMain = setMain;
+            sBack = setBack;
+            sBorder = setBorder;
+            rMain = raiseMain;
+            rBack = raiseBack;
+            rBorder = raiseBorder;
+        }
+        public Highlighter(VisualElement source, float raiseMain, float? raiseBack = null, float? raiseBorder = null)
+        {
+            target = source;
+            rMain = raiseMain;
+            rBack = raiseBack;
+            rBorder = raiseBorder;
+        }
+
+        void Init()
+        {
+            iMain = target.resolvedStyle.color;
+            iBack = target.resolvedStyle.backgroundColor;
+            iBorderTop = target.resolvedStyle.borderTopColor;
+            iBorderBottom = target.resolvedStyle.borderBottomColor;
+            iBorderLeft = target.resolvedStyle.borderLeftColor;
+            iBorderRight = target.resolvedStyle.borderRightColor;
+        }
+
+        VisualElement target;
+
+        Color iMain;
+        Color iBack;
+        Color iBorderTop;
+        Color iBorderBottom;
+        Color iBorderLeft;
+        Color iBorderRight;
+
+        Color? sMain;
+        float? rMain;
+
+        Color? sBack;
+        float? rBack;
+
+        Color? sBorder;
+        float? rBorder;
+
+        private bool active = false;
+
+        public void ApplyHover()
+        {
+            target.schedule.Execute(() =>
+            {
+                Init();
+                target.RegisterCallback<MouseOverEvent>(Hover);
+                target.RegisterCallback<MouseLeaveEvent>(UnHover);
+
+                void Hover(MouseOverEvent E) => ApplyHighlight();
+                void UnHover(MouseLeaveEvent E) => ResetHighlight();
+            });
+        }
+        public void ApplySelect()
+        {
+            target.schedule.Execute(() =>
+            {
+                Init();
+                target.RegisterCallback<ClickEvent>(Toggle);
+
+                void Toggle(ClickEvent E)
+                {
+                    active = !active;
+
+                    if (active) ApplyHighlight();
+                    else ResetHighlight();
+                }
+            });
+        }
+
+        void ApplyHighlight()
+        {
+            if (sMain.HasValue) target.style.color = sMain.Value;
+            else if (rMain.HasValue) target.style.color = RaiseColor(iMain, rMain.Value);
+
+            if (sBack.HasValue) target.style.backgroundColor = sBack.Value;
+            else if (rBack.HasValue) target.style.backgroundColor = RaiseColor(iBack, rBack.Value);
+
+            if (sBorder.HasValue)
+            {
+                target.style.borderTopColor = sBorder.Value;
+                target.style.borderBottomColor = sBorder.Value;
+                target.style.borderLeftColor = sBorder.Value;
+                target.style.borderRightColor = sBorder.Value;
+            }
+            else if (rBorder.HasValue)
+            {
+                target.style.borderTopColor = RaiseColor(iBorderTop, rBorder.Value);
+                target.style.borderBottomColor = RaiseColor(iBorderBottom, rBorder.Value);
+                target.style.borderLeftColor = RaiseColor(iBorderLeft, rBorder.Value);
+                target.style.borderRightColor = RaiseColor(iBorderRight, rBorder.Value);
+            }
+        }
+        void ResetHighlight()
+        {
+            target.style.color = iMain;
+            target.style.backgroundColor = iBack;
+            target.style.borderTopColor = iBorderTop;
+            target.style.borderBottomColor = iBorderBottom;
+            target.style.borderLeftColor = iBorderLeft;
+            target.style.borderRightColor = iBorderRight;
+        }
+
+        Color RaiseColor(Color input, float r) => new(input.r + r, input.g + r, input.b + r);
     }
 
     public static class Xtensions_VisualElements_StyleBuilders

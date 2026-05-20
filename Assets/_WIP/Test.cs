@@ -1,18 +1,41 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using EditorAttributes;
+using UnityEngine.UIElements;
 
-using Stopwatch = System.Diagnostics.Stopwatch;
-using System;
+
+
+#if UNITY_EDITOR
+using UnityEditor.UIElements;
+using UnityEditor;
+using Utilities.Xtensions.VisualElements;
+#endif
 
 public class Test : MonoBehaviour
 {
-    public Polymorph.UniqueList<PolymorphTest> testList = new();
+    //public Polymorph.UniqueList<PolymorphTest> testList = new();
+    public List<int> ints = new();
 
-    [SerializeReference]
-    public PolymorphTest testeA;
+#if UNITY_EDITOR
+    [CustomEditor(typeof(Test))]
+    public class Editor : UnityEditor.Editor
+    {
+        public override VisualElement CreateInspectorGUI()
+        {
+            VisualElement root = new();
+
+            SuperList<int> List = new(serializedObject.FindProperty("ints"));
+
+            //root.Add(new PropertyField(serializedObject.FindProperty("testList")));
+            root.Add(List);
+
+            return root;
+        }
+    }
+#endif
 }
 
 [System.Serializable]
