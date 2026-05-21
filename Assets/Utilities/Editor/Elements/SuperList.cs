@@ -29,7 +29,7 @@ namespace Utilities.Xtensions.VisualElements
         /// <param name="HeaderOverride">Optional factory to provide a custom header instance.</param>
         public SuperList(SerializedProperty listProperty)
         {
-            property = GetMainProperty(listProperty);
+            InitializeProperty(listProperty);
 
             header = HeaderDefinition();
 
@@ -70,7 +70,7 @@ namespace Utilities.Xtensions.VisualElements
         /// <summary>
         /// The overridable immediate method run to acquire the main property this list will use for everything.
         /// </summary>
-        public virtual SerializedProperty GetMainProperty(SerializedProperty input) => input;
+        public virtual void InitializeProperty(SerializedProperty input) => property = input;
 
         /// <summary>
         /// The overridable immediate method run to create the <see cref="Header"/>. <br/>
@@ -91,6 +91,8 @@ namespace Utilities.Xtensions.VisualElements
         /// Currently selected item in the list, or null when nothing is selected.
         /// </summary>
         public ITEM selectedItem { get; protected set; }
+        new public ITEM this[int i] => items[i];
+
         #endregion
 
 
@@ -145,18 +147,6 @@ namespace Utilities.Xtensions.VisualElements
             for (int i = 0; i < CurrentSize; i++)
                 CreateItemElement(i);
             UpdateCounterAndFoldout();
-
-            // Ensure item visuals reflect the current serialized data
-            UpdateItems();
-        }
-
-        /// <summary>
-        /// Updates each visible item to match the current serialized data. This calls ITEM.Update for each item.
-        /// </summary>
-        public virtual void UpdateItems()
-        {
-            for (int i = 0; i < items.Count; i++)
-                items[i].Update(property.GetArrayElementAtIndex(i));
         }
 
         #region Add Systems
@@ -182,8 +172,6 @@ namespace Utilities.Xtensions.VisualElements
         {
             if (property == null) throw new InvalidOperationException("Property is null");
 
-            //property.serializedObject.Update();
-
             CurrentSize++;
 
             property.serializedObject.ApplyModifiedProperties();
@@ -202,7 +190,6 @@ namespace Utilities.Xtensions.VisualElements
         public virtual void SetOrCreateItemValue(int ID, object input = null)
         {
             if (property == null) throw new InvalidOperationException("Property is null");
-            //property.serializedObject.Update();
             SerializedProperty targetProperty = property.GetArrayElementAtIndex(ID) ?? throw new ArgumentOutOfRangeException(nameof(ID));
 
             // If input is null, provide a sensible default depending on the property type.
@@ -327,7 +314,6 @@ namespace Utilities.Xtensions.VisualElements
         public virtual void DuplicatePropertySlotAt(int index)
         {
             if (property == null) return;
-            //property.serializedObject.Update();
 
             try
             {
@@ -389,11 +375,10 @@ namespace Utilities.Xtensions.VisualElements
             }
             catch { }
 
-            
+
 
             // Rebuild UI and try to refresh prefab markers
-            //property.serializedObject.Update();
-            UpdateItems();
+            BuildItems();
             UpdateCounterAndFoldout();
             TryForceRefreshPrefabMarkers();
         }
@@ -417,7 +402,7 @@ namespace Utilities.Xtensions.VisualElements
             Select(null);
             DeletePropertySlotAt(id);
             RemoveItemElement(selected);
-            UpdateItems();
+            BuildItems();
         }
 
         /// <summary>
@@ -461,6 +446,7 @@ namespace Utilities.Xtensions.VisualElements
 
             items.Remove(I);
             collectionBackground?.Remove(I);
+            BuildItems();
         }
 
         #endregion
@@ -474,7 +460,6 @@ namespace Utilities.Xtensions.VisualElements
             set
             {
                 if (value > property.arraySize) header.Toggle.value = true;
-                //property.serializedObject.Update();
                 property.arraySize = value;
                 // Do not ApplyModifiedProperties here — callers should apply as needed, but keep UI in sync
             }
@@ -497,6 +482,11 @@ namespace Utilities.Xtensions.VisualElements
         /// Overridable source from which to get the display name for this list.
         /// </summary>
         public virtual string nameSource => property.displayName;
+
+        /// <summary>
+        /// Overridable definition of whether this allows reordering.
+        /// </summary>
+        public virtual bool allowReorder => true;
 
         /// <summary>
         /// Called when the header counter value is changed manually by the user. Resizes the list to the requested value and rebuilds visuals.
@@ -529,8 +519,10 @@ namespace Utilities.Xtensions.VisualElements
         /// <param name="delta">Relative movement (-1, +1 etc.).</param>
         public void MoveItem(ITEM item, int delta)
         {
+            if (!allowReorder) return;
             if (property == null) return;
-            //property.serializedObject.Update();
+
+            bool wasSelected = item == selectedItem;
 
             int i = items.IndexOf(item);
             if (i < 0) return;
@@ -553,6 +545,8 @@ namespace Utilities.Xtensions.VisualElements
 
             // Rebuild visuals to reflect new ordering.
             BuildItems();
+
+            Select(items[newIndex]);
         }
 
         #region Editor Registration (Not sure why I felt the need to add this.)
@@ -593,7 +587,7 @@ namespace Utilities.Xtensions.VisualElements
             //    {
             //        // Keep UI synced: counter/foldout and update each item in-place
             //        UpdateCounterAndFoldout();
-            //        UpdateItems();
+            //        BuildItems();
             //    }
             //}
             //catch
@@ -933,7 +927,24 @@ namespace Utilities.Xtensions.VisualElements
             //Register PointerDownEvent that allows trickledown so that tapping anywhere on the Item will select it. :)
             RegisterCallback<PointerDownEvent>((evt) => parentList.Select(this as ITEM), TrickleDown.TrickleDown);
 
-            Update(thisProperty);
+            selected = new(UpdateBackground);
+            invalid = new(UpdateBackground);
+
+            InitializeProperty(thisProperty);
+
+            if (content != null) this.Remove(content);
+            content = Content();
+            //Make absolutely sure the content at least takes up a minimum amount of space.
+            content.style.flexGrow = 1f;
+            content.style.minHeight = 14;
+            this.Add(content);
+
+            content.DelayedBuild(() =>
+            {
+                PostContent();
+                (ContextMenuTarget ?? dragHandle)
+                .RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+            });
         }
 
         public LIST parentList { get; protected set; }
@@ -941,56 +952,33 @@ namespace Utilities.Xtensions.VisualElements
         public VisualElement dragHandle { get; protected set; }
         public VisualElement content { get; protected set; }
         public virtual Label Label { get; protected set; }
+        public virtual VisualElement ContextMenuTarget { get; protected set; }
+        protected int Index => parentList.items.IndexOf(this as ITEM);
 
-        public bool Selected
-        {
-            get => _selected;
-            set
-            {
-                _selected = value;
-                UpdateBackground();
-            }
-        }
-        bool _selected;
-        public bool Invalid
-        {
-            get => _invalid;
-            set
-            {
-                _invalid = value;
-                UpdateBackground();
-            }
-        }
-        bool _invalid;
-        protected void UpdateBackground() => style.backgroundColor =
-                _selected ? _invalid ? new Color(.9f, .6f, .6f) : Color.gray3
-                : _invalid ? new Color(.9f, .3f, .3f) : Color.clear;
 
-        public void Update(SerializedProperty newprop)
-        {
-            if (newprop == null) return;
-            property = newprop;
-            if (content != null) this.Remove(content);
-            content = Content();
-            this.Add(content);
-        }
+        #region Virtuals
+        protected virtual void InitializeProperty(SerializedProperty newprop) =>
+            property = newprop ?? parentList.property.GetArrayElementAtIndex(Index);
+
         public virtual VisualElement Content()
         {
             PropertyField result = new(property);
             result.style.flexGrow = 1f;
             result.style.marginRight = 4;
             result.Bind(property.serializedObject);
-
-            result.DelayedBuild(PostContent);
             return result;
         }
 
         protected virtual void PostContent()
         {
             Label = content.Q<Label>(null, "unity-label");
-
-            Label.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+            ContextMenuTarget = Label;
         }
+
+        #endregion
+
+        #region Context Menus 
+
         protected virtual void ContextMenu(ContextualMenuPopulateEvent evt)
         {
             var list = evt.menu.MenuItems();
@@ -1007,32 +995,52 @@ namespace Utilities.Xtensions.VisualElements
                     list[i] = new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus);
             }
         }
-
-        protected int GetMyIndex()
-        {
-            if (parentList == null || parentList.items == null) return -1;
-            return parentList.items.IndexOf(this as ITEM);
-        }
-
-        public virtual void DuplicateContextMenu(DropdownMenuAction C)
-        {
-            int idx = GetMyIndex();
-            if (idx >= 0) parentList.DuplicatePropertySlotAt(idx);
-        }
+        public virtual void DuplicateContextMenu(DropdownMenuAction C) => parentList.DuplicatePropertySlotAt(Index);
         public virtual void DeleteContextMenu(DropdownMenuAction C)
         {
-            int idx = GetMyIndex();
             if (parentList == null) return;
-            parentList.DeletePropertySlotAt(idx);
+            parentList.DeletePropertySlotAt(Index);
             parentList.RemoveItemElement(this as ITEM);
-            parentList.UpdateItems();
+            parentList.BuildItems();
             parentList.TryForceRefreshPrefabMarkers();
         }
         public virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)
         {
             Def.Execute();
-            Update(null);
+            //Update(null);
         }
+
+        #endregion
+
+        #region Colors
+
+        /// <summary>
+        /// Sets the visual state for if this object is selected, highlighting it blue.
+        /// </summary>
+        public bool Selected
+        {
+            get => selected;
+            set => selected.Value = value;
+        }
+        readonly ListItemFlag selected;
+        /// <summary>
+        /// Sets the visual state for if this object is invalid, highlighting it red.
+        /// </summary>
+        public bool Invalid
+        {
+            get => invalid;
+            set => invalid.Value = value;
+        }
+        readonly ListItemFlag invalid;
+        protected virtual void UpdateBackground() => style.backgroundColor =
+                selected ? invalid ? SelectionInvalidColor : SelectionColor
+                : invalid ? InvalidColor : Color.clear;
+
+        public static Color SelectionColor => Highlighter.ButtonClickedBack;
+        public static Color InvalidColor = new(.44f, .24f, .24f);
+        public static Color SelectionInvalidColor = new(.486f, .274f, .428f);
+
+        #endregion
 
         public static DropdownMenuAction.Status DropDownMenuStatus(DropdownMenuAction A) => DropdownMenuAction.Status.Normal;
 

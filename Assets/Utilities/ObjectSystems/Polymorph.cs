@@ -689,11 +689,10 @@ public abstract class Polymorph
             ShowTypeChooser = () => { Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen); };
         }
 
-        public override SerializedProperty GetMainProperty(SerializedProperty input)
+        public override void InitializeProperty(SerializedProperty input)
         {
             rootProperty = input;
             property = input.FindPropertyRelative("items");
-            return property;
         }
         public override Header HeaderDefinition()
         {
@@ -729,15 +728,12 @@ public abstract class Polymorph
             result.ChangeButton.style.display = DisplayStyle.None;
             result.style.marginLeft = 14;
             result.style.marginRight = 3;
-
-            result.DelayedBuild(PostContent);
             return result;
         }
         protected override void PostContent()
         {
             Label = (content as HeaderDrawer).Label;
-            (content as HeaderDrawer).FoldoutToggle
-                .RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+            ContextMenuTarget = (content as HeaderDrawer).FoldoutToggle;
         }
     }
 

@@ -5,6 +5,8 @@ using System.Linq;
 using UnityEngine;
 using EditorAttributes;
 using UnityEngine.UIElements;
+using Utilities;
+
 
 
 
@@ -16,6 +18,7 @@ using Utilities.Xtensions.VisualElements;
 
 public class Test : MonoBehaviour
 {
+    public SerializedDictionary<string, float> TEST;
     [SerializeField, SerializeReference] PolymorphTest test;
     public Polymorph.ListOf<PolymorphTest> testList = new();
     //public Testy tesy;

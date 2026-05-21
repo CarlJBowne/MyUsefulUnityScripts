@@ -44,27 +44,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 249b7e0ce359da9458721074d0d3420e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Test
+  TEST:
+    serializedList:
+    - Key: Tet
+      Value: 0
+    - Key: Tet
+      Value: 0
+    - Key: Tet
+      Value: 0
+    - Key: Tet
+      Value: 0
+    - Key: 2
+      Value: 0
   test:
-    rid: 2688726418227462146
+    rid: 945612357795315801
   testList:
     items:
-    - rid: 2688726418227462243
-    - rid: 2688726418227462259
+    - rid: 945612357795315799
   references:
     version: 2
     RefIds:
-    - rid: 2688726418227462146
+    - rid: 945612357795315799
       type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
       data:
         str: 
         I: 1
-    - rid: 2688726418227462243
-      type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
+    - rid: 945612357795315801
+      type: {class: PolymorphTest/Char, ns: , asm: Assembly-CSharp}
       data:
         str: 
-        I: 1
-    - rid: 2688726418227462259
-      type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
-      data:
-        str: 
-        I: 1
+        C: 97
