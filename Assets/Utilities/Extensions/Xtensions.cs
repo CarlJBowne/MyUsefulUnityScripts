@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 
 namespace Utilities.Xtensions
@@ -25,6 +27,22 @@ namespace Utilities.Xtensions
             return store != null;
         }
         public static bool NotNull<T>(this T obj) where T : class => obj != null;
+
+        /// <summary>
+        /// Clones an object aat the deepest Binary. <br/>
+        /// Requires the type to be <see cref="System.SerializableAttribute"/>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static T DeepClone<T>(this T input)
+        {
+            using var ms = new MemoryStream();
+            var formatter = new BinaryFormatter();
+            formatter.Serialize(ms, input);
+            ms.Position = 0;
+            return (T)formatter.Deserialize(ms);
+        }
     }
 
     public static class Xtensions_String

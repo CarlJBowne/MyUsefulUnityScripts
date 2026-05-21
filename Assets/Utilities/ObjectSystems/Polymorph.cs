@@ -4,19 +4,11 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
-using System.Collections;
-using Utilities.Xtensions;
-using UnityEditor.Search;
-using ArteHacker.UITKEditorAid;
-
-
-
 
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.UIElements;
 using Utilities.Xtensions.VisualElements;
-using Highlighter = Utilities.Xtensions.VisualElements.Highlighter;
 #endif
 
 [System.Serializable]

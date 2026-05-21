@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Codice.Client.BaseCommands.BranchExplorer;
+using System;
 using System.Collections.Generic;
-using Codice.Client.BaseCommands.BranchExplorer;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -91,68 +93,7 @@ namespace Utilities.Xtensions.VisualElements
         public ITEM selectedItem { get; protected set; }
         #endregion
 
-        /// <summary>
-        /// Duplicate the serialized array element at the given index. Rebuilds visuals and refreshes prefab markers.
-        /// </summary>
-        /// <param name="index">Index to duplicate.</param>
-        public virtual void DuplicatePropertySlotAt(int index)
-        {
-            if (property == null) return;
-            property.serializedObject.Update();
 
-            try
-            {
-                // Insert a new element after the current index so the duplicated element appears after the original.
-                int insertAt = Mathf.Clamp(index + 1, 0, property.arraySize);
-                property.InsertArrayElementAtIndex(insertAt);
-
-                // Attempt to copy common field types from the original element into the newly inserted slot.
-                var src = property.GetArrayElementAtIndex(index);
-                var dst = property.GetArrayElementAtIndex(insertAt);
-                if (src != null && dst != null)
-                {
-                    try
-                    {
-                        switch (src.propertyType)
-                        {
-                            case SerializedPropertyType.Integer:
-                                dst.intValue = src.intValue;
-                                break;
-                            case SerializedPropertyType.Boolean:
-                                dst.boolValue = src.boolValue;
-                                break;
-                            case SerializedPropertyType.Float:
-                                dst.floatValue = src.floatValue;
-                                break;
-                            case SerializedPropertyType.String:
-                                dst.stringValue = src.stringValue;
-                                break;
-                            case SerializedPropertyType.Enum:
-                                dst.intValue = src.intValue;
-                                break;
-                            case SerializedPropertyType.ObjectReference:
-                                dst.objectReferenceValue = src.objectReferenceValue;
-                                break;
-                            case SerializedPropertyType.ManagedReference:
-                                try { dst.managedReferenceValue = src.managedReferenceValue; } catch { }
-                                break;
-                            default:
-                                // For other/complex types rely on Unity's insertion behavior.
-                                break;
-                        }
-                    }
-                    catch { }
-                }
-
-                property.serializedObject.ApplyModifiedProperties();
-            }
-            catch { }
-
-            // Rebuild UI and try to refresh prefab markers
-            BuildItems();
-            UpdateCounterAndFoldout();
-            TryForceRefreshPrefabMarkers();
-        }
 
         public void TryForceRefreshPrefabMarkers()
         {
@@ -379,6 +320,84 @@ namespace Utilities.Xtensions.VisualElements
             try { holder.Bind(property.serializedObject); } catch { }
         }
 
+        /// <summary>
+        /// Duplicate the serialized array element at the given index. Rebuilds visuals and refreshes prefab markers.
+        /// </summary>
+        /// <param name="index">Index to duplicate.</param>
+        public virtual void DuplicatePropertySlotAt(int index)
+        {
+            if (property == null) return;
+            //property.serializedObject.Update();
+
+            try
+            {
+                // Insert a new element after the current index so the duplicated element appears after the original.
+                int insertAt = Mathf.Clamp(index + 1, 0, property.arraySize);
+                property.InsertArrayElementAtIndex(insertAt);
+
+                // Attempt to copy common field types from the original element into the newly inserted slot.
+                var src = property.GetArrayElementAtIndex(index);
+                var dst = property.GetArrayElementAtIndex(insertAt);
+                if (src != null && dst != null)
+                {
+                    try
+                    {
+                        switch (src.propertyType)
+                        {
+                            case SerializedPropertyType.Integer:
+                                dst.intValue = src.intValue;
+                                break;
+                            case SerializedPropertyType.Boolean:
+                                dst.boolValue = src.boolValue;
+                                break;
+                            case SerializedPropertyType.Float:
+                                dst.floatValue = src.floatValue;
+                                break;
+                            case SerializedPropertyType.String:
+                                dst.stringValue = src.stringValue;
+                                break;
+                            case SerializedPropertyType.Enum:
+                                dst.intValue = src.intValue;
+                                break;
+                            case SerializedPropertyType.ObjectReference:
+                                dst.objectReferenceValue = src.objectReferenceValue;
+                                break;
+                            case SerializedPropertyType.ManagedReference:
+                                try { dst.managedReferenceValue = DeepClone(src.managedReferenceValue); } catch { }
+                                break;
+                            default:
+                                // For other/complex types rely on Unity's insertion behavior.
+                                break;
+                        }
+                    }
+                    catch { }
+                }
+
+                static object DeepClone(object obj)
+                {
+                    using var ms = new MemoryStream();
+                    var formatter = new BinaryFormatter();
+                    formatter.Serialize(ms, obj);
+                    ms.Position = 0;
+                    return formatter.Deserialize(ms);
+                }
+
+                property.serializedObject.ApplyModifiedProperties();
+                RemoveItemElement(items[index]);
+                CreateItemElement(index);
+                CreateItemElement(insertAt);
+            }
+            catch { }
+
+            
+
+            // Rebuild UI and try to refresh prefab markers
+            //property.serializedObject.Update();
+            UpdateItems();
+            UpdateCounterAndFoldout();
+            TryForceRefreshPrefabMarkers();
+        }
+
         #endregion
 
         #region Remove Systems
@@ -600,8 +619,11 @@ namespace Utilities.Xtensions.VisualElements
                 if (list[i] is not DropdownMenuAction iAction) continue;
 
                 if (iAction.name.StartsWith("Apply to Prefab")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
-                if (iAction.name.StartsWith("Revert")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
-
+                if (iAction.name.StartsWith("Revert"))
+                {
+                    list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+                    if (iAction.name.StartsWith("Revert (identical value to Prefab")) (list[i] as DropdownMenuAction).Execute();
+                }
             }
         }
 
@@ -632,8 +654,10 @@ namespace Utilities.Xtensions.VisualElements
         protected virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)
         {
             Def.Execute();
+            property.serializedObject.Update();
             BuildItems();
-            TryForceRefreshPrefabMarkers();
+            UpdateCounterAndFoldout();
+            //TryForceRefreshPrefabMarkers();
         }
 
         #endregion
@@ -1000,7 +1024,8 @@ namespace Utilities.Xtensions.VisualElements
             int idx = GetMyIndex();
             if (parentList == null) return;
             parentList.DeletePropertySlotAt(idx);
-            parentList.BuildItems();
+            parentList.RemoveItemElement(this as ITEM);
+            parentList.UpdateItems();
             parentList.TryForceRefreshPrefabMarkers();
         }
         public virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)

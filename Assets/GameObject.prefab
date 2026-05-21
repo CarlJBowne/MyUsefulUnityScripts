@@ -45,35 +45,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Test
   test:
-    rid: -2
+    rid: 2688726418227462146
   testList:
     items:
-    - rid: 945612357795315776
-    - rid: 945612357795315777
-    - rid: 945612357795315795
-    - rid: 945612357795315797
+    - rid: 2688726418227462243
+    - rid: 2688726418227462259
   references:
     version: 2
     RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
-    - rid: 945612357795315776
+    - rid: 2688726418227462146
       type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
       data:
         str: 
         I: 1
-    - rid: 945612357795315777
-      type: {class: PolymorphTest/Float, ns: , asm: Assembly-CSharp}
-      data:
-        str: 
-        F: 1
-    - rid: 945612357795315795
+    - rid: 2688726418227462243
       type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
       data:
         str: 
-        I: 51
-    - rid: 945612357795315797
-      type: {class: PolymorphTest/Float, ns: , asm: Assembly-CSharp}
+        I: 1
+    - rid: 2688726418227462259
+      type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
       data:
         str: 
-        F: 4.04
+        I: 1
