@@ -619,5 +619,30 @@ namespace Utilities.Xtensions.VisualElements
     {
 
     }
+
+    /// <summary>
+    /// A simpleish boolean flag class that can be added to SuperListItems to allow for highlight changing based on any number of flags. Default ones include Selected and Invalid. 
+    /// </summary>
+    public class ListItemFlag
+    {
+        public ListItemFlag(Action Callback, bool initValue = false)
+        {
+            this.Callback = Callback;
+            _value = false;
+        }
+        private bool _value;
+        public bool Value
+        {
+            get => _value;
+            set
+            {
+                _value = value;
+                Callback?.Invoke();
+            }
+        }
+        Action Callback;
+        public static implicit operator bool(ListItemFlag L) => L._value;
+        public void SetWithoutNotify(bool val) => _value = val;
+    }
 }
 
