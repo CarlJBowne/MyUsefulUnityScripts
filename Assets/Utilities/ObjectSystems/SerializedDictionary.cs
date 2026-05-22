@@ -856,6 +856,9 @@ namespace Utilities.Editor
                 D.RegisterValueChangedCallback(ev => parentList.CallUpdateColors());
         }
 
+        public override void DuplicateContextMenu(DropdownMenuAction C) 
+            => parentList.DuplicatePropertySlotAt(Index - 1); //I couldn't tell you why this needs to be done.
+
     }
 
 }

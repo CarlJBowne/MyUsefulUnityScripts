@@ -48,13 +48,6 @@ namespace Utilities.Xtensions.VisualElements
             Undo.undoRedoPerformed += BuildItems;
 
             this.Bind(listProperty.serializedObject);
-
-
-
-            //// Register polling to detect external changes (Reset, script changes, etc.)
-            //UpdateRegister = true;
-            //// Ensure we unregister when the element is removed from the panel
-            //this.RegisterCallback<DetachFromPanelEvent>((evt) => { UpdateRegister = false; });
         }
 
         /// <summary>
@@ -91,12 +84,13 @@ namespace Utilities.Xtensions.VisualElements
         /// Currently selected item in the list, or null when nothing is selected.
         /// </summary>
         public ITEM selectedItem { get; protected set; }
-        new public ITEM this[int i] => items[i];
 
         #endregion
 
 
-
+        /// <summary>
+        /// Attempt to refresh the prefab markers that may be on this list.
+        /// </summary>
         public void TryForceRefreshPrefabMarkers()
         {
 #if UNITY_EDITOR
@@ -549,55 +543,6 @@ namespace Utilities.Xtensions.VisualElements
             Select(items[newIndex]);
         }
 
-        #region Editor Registration (Not sure why I felt the need to add this.)
-        /// <summary>
-        /// When set to true the list registers to EditorApplication.update to poll for external changes (undo, reset).
-        /// </summary>
-        public bool UpdateRegister
-        {
-            get => _updateRegistered;
-            set
-            {
-                if (value == _updateRegistered) return;
-                _updateRegistered = value;
-                if (value) EditorApplication.update += EditorUpdate;
-                else EditorApplication.update -= EditorUpdate;
-            }
-        }
-        bool _updateRegistered = false;
-
-        /// <summary>
-        /// Editor polling callback used to detect external modifications to the serialized array and rebuild/refresh visuals.
-        /// Override to change polling behaviour.
-        /// </summary>
-        protected virtual void EditorUpdate()
-        {
-            //if (property == null) return;
-            //try
-            //{
-            //    property.serializedObject.Update();
-            //    int size = property.arraySize;
-            //    items ??= new List<ItemHolder>();
-            //    if (size != items.Count)
-            //    {
-            //        // External change detected (Reset, undo, etc.) -> rebuild UI to match serialized data
-            //        BuildItems();
-            //    }
-            //    else
-            //    {
-            //        // Keep UI synced: counter/foldout and update each item in-place
-            //        UpdateCounterAndFoldout();
-            //        BuildItems();
-            //    }
-            //}
-            //catch
-            //{
-            //    // swallow exceptions to avoid EditorApplication update throwing
-            //}
-
-        }
-        #endregion
-
         #region Context Menu
 
         /// <summary>
@@ -644,14 +589,17 @@ namespace Utilities.Xtensions.VisualElements
             CurrentSize = 0;
             UpdateCounterAndFoldout();
         }
-
+        /// <summary>
+        /// Applies or Reverts Prefab changes before forcing an update.
+        /// </summary>
+        /// <param name="Def"></param>
         protected virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)
         {
             Def.Execute();
             property.serializedObject.Update();
             BuildItems();
             UpdateCounterAndFoldout();
-            //TryForceRefreshPrefabMarkers();
+            TryForceRefreshPrefabMarkers();
         }
 
         #endregion
@@ -947,19 +895,52 @@ namespace Utilities.Xtensions.VisualElements
             });
         }
 
+        /// <summary>
+        /// The parent <see cref="SuperList{LIST, ITEM, VALUE}"/> that owns this Item.
+        /// </summary>
         public LIST parentList { get; protected set; }
+        /// <summary>
+        /// The serialized property tied to the item this element represents.
+        /// </summary>
         public SerializedProperty property { get; protected set; }
+        /// <summary>
+        /// The "hamburger" icon at the left-most part of the item.
+        /// </summary>
         public VisualElement dragHandle { get; protected set; }
+        /// <summary>
+        /// The <see cref="VisualElement"/> created to hold the visual information displayed by this item.
+        /// <br/> Created and assigned by <see cref="Content()"/>
+        /// </summary>
         public VisualElement content { get; protected set; }
-        public virtual Label Label { get; protected set; }
-        public virtual VisualElement ContextMenuTarget { get; protected set; }
+        /// <summary>
+        /// The <see cref="UnityEngine.UIElements.Label"/> that displays the name of the item, should one exist.
+        /// <br/> (Should also be assigned in <see cref="Content"/> or <see cref="PostContent"/> if a proper one exists.)
+        /// </summary>
+        public Label Label { get; protected set; }
+        /// <summary>
+        /// This is the <see cref="VisualElement"/> that the Context Menu for this item should appear when right-clicking.
+        /// <br/> Should be set in <see cref="Content"/> or <see cref="PostContent"/>
+        /// <br/> If nothing is designated as the target, the DragHandle will be used instead.
+        /// </summary>
+        public VisualElement ContextMenuTarget { get; protected set; }
+        /// <summary>
+        /// The Index of this Item within its owning List
+        /// </summary>
         protected int Index => parentList.items.IndexOf(this as ITEM);
 
 
         #region Virtuals
+        /// <summary>
+        /// An overridable function defining how <see cref="property"/> is sourced.
+        /// </summary>
+        /// <param name="newprop"></param>
         protected virtual void InitializeProperty(SerializedProperty newprop) =>
             property = newprop ?? parentList.property.GetArrayElementAtIndex(Index);
 
+        /// <summary>
+        /// An overridable function defining how <see cref="content"/> is created.
+        /// </summary>
+        /// <returns></returns>
         public virtual VisualElement Content()
         {
             PropertyField result = new(property);
@@ -969,6 +950,9 @@ namespace Utilities.Xtensions.VisualElements
             return result;
         }
 
+        /// <summary>
+        /// An overridable function happening a frame after <see cref="content"/> is attached to its Panel.
+        /// </summary>
         protected virtual void PostContent()
         {
             Label = content.Q<Label>(null, "unity-label");
@@ -979,9 +963,16 @@ namespace Utilities.Xtensions.VisualElements
 
         #region Context Menus 
 
+        /// <summary>
+        /// An overridable Re-definition function for the Context Menu tied to this item.
+        /// <br/> base implementation should be called in any overrides, as it is responsible for replacing Unity's default Duplicate and Delete Context Menu Items with ones that actually work in SuperLists.
+        /// </summary>
+        /// <param name="evt"></param>
         protected virtual void ContextMenu(ContextualMenuPopulateEvent evt)
         {
             var list = evt.menu.MenuItems();
+            bool duplicateFound = false;
+            bool deleteFound = false;
             for (int i = 0; i < list.Count; i++)
             {
                 if (list[i] is not DropdownMenuAction iAction) continue;
@@ -990,12 +981,32 @@ namespace Utilities.Xtensions.VisualElements
                 if (iAction.name.StartsWith("Revert")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
 
                 if (iAction.name == "Duplicate Array Element")
+                {
                     list[i] = new DropdownMenuAction("Duplicate", DuplicateContextMenu, DropDownMenuStatus);
+                    duplicateFound = true;
+                }
                 if (iAction.name == "Delete Array Element")
+                {
                     list[i] = new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus);
+                    deleteFound = true;
+                }
             }
+
+            if (!duplicateFound)
+                list.Add(new DropdownMenuAction("Duplicate", DuplicateContextMenu, DropDownMenuStatus));
+            if (!deleteFound)
+                list.Add(new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus));
         }
+
+        /// <summary>
+        /// The Action called when the "Duplicate" Context Menu Item is called.
+        /// </summary>
+        /// <param name="C"></param>
         public virtual void DuplicateContextMenu(DropdownMenuAction C) => parentList.DuplicatePropertySlotAt(Index);
+        /// <summary>
+        /// The Action called when the "Delete" Context Menu Item is called.
+        /// </summary>
+        /// <param name="C"></param>
         public virtual void DeleteContextMenu(DropdownMenuAction C)
         {
             if (parentList == null) return;
@@ -1004,6 +1015,11 @@ namespace Utilities.Xtensions.VisualElements
             parentList.BuildItems();
             parentList.TryForceRefreshPrefabMarkers();
         }
+        /// <summary>
+        /// The Action called when the "Apply to Prefab" or "Revert" Context Menu Items are called.
+        /// <br/> Takes in a copy of the original so it can be executed before running custom logic.
+        /// </summary>
+        /// <param name="Def"></param>
         public virtual void ApplyOrRevertContextMenu(DropdownMenuAction Def)
         {
             Def.Execute();
@@ -1032,6 +1048,9 @@ namespace Utilities.Xtensions.VisualElements
             set => invalid.Value = value;
         }
         readonly ListItemFlag invalid;
+        /// <summary>
+        /// An overridable function defining how the background of this item is colored based on different states.
+        /// </summary>
         protected virtual void UpdateBackground() => style.backgroundColor =
                 selected ? invalid ? SelectionInvalidColor : SelectionColor
                 : invalid ? InvalidColor : Color.clear;
