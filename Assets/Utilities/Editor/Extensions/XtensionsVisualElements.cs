@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -644,5 +645,22 @@ namespace Utilities.Xtensions.VisualElements
         public static implicit operator bool(ListItemFlag L) => L._value;
         public void SetWithoutNotify(bool val) => _value = val;
     }
+//#if UNITY_STANDALONE_WIN
+//    public static class User32
+//    {
+//        [DllImport("user32.dll")]
+//        public static extern long GetCursorPos(ref POINT point);
+//
+//        [DllImport("user32.dll")]
+//        public static extern long SetCursorPos(int x, int y);
+//
+//        [StructLayout(LayoutKind.Sequential)]
+//        public struct POINT
+//        {
+//            public int x;
+//            public int y;
+//        }
+//    }
+//#endif
 }
 

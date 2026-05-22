@@ -541,6 +541,11 @@ namespace Utilities.Xtensions.VisualElements
             BuildItems();
 
             Select(items[newIndex]);
+
+            //Tried to move the mouse to the new position but it wouldn't work.
+            //Vector2 pos = EditorWindow.focusedWindow.position.position + selectedItem.dragHandle.worldBound.position 
+            //    + new Vector2(7,7);
+            //User32.SetCursorPos((int)pos.x, (int)pos.y);
         }
 
         #region Context Menu
