@@ -45,32 +45,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Test
   TEST:
-    serializedList:
-    - Key: Tet
-      Value: 0
-    - Key: Tet
-      Value: 0
-    - Key: Tet
-      Value: 0
-    - Key: Tet
-      Value: 0
-    - Key: 2
-      Value: 0
+    serializedList: []
   test:
-    rid: 945612357795315801
+    rid: -2
   testList:
-    items:
-    - rid: 945612357795315799
+    items: []
   references:
     version: 2
     RefIds:
-    - rid: 945612357795315799
-      type: {class: PolymorphTest/Int, ns: , asm: Assembly-CSharp}
-      data:
-        str: 
-        I: 1
-    - rid: 945612357795315801
-      type: {class: PolymorphTest/Char, ns: , asm: Assembly-CSharp}
-      data:
-        str: 
-        C: 97
+    - rid: -2
+      type: {class: , ns: , asm: }

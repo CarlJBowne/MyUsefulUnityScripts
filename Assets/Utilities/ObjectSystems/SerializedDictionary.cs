@@ -740,6 +740,7 @@ namespace Utilities.Editor
 
         public SerializedProperty RootProperty { get; protected set; }
         public ISerializedDictionaryNonGeneric Literal { get; protected set; }
+        public override string nameSource => RootProperty.displayName;
 
         protected override void EstablishContextMenu(ContextualMenuPopulateEvent evt)
         {
@@ -800,6 +801,8 @@ namespace Utilities.Editor
                 typeof(TK) == typeof(string) ? new TextField().AddTo(content, k =>
                 {
                     k.label = "";
+                    k.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    k.style.top = 0;
                     k.SetValueWithoutNotify(KeyProp.stringValue);
                     k.BindProperty(KeyProp);
                     k.isDelayed = true;
@@ -807,6 +810,8 @@ namespace Utilities.Editor
                 : typeof(TK) == typeof(int) ? new IntegerField().AddTo(content, k =>
                 {
                     k.label = "";
+                    k.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    k.style.top = 0;
                     k.SetValueWithoutNotify(KeyProp.intValue);
                     k.BindProperty(KeyProp);
                     k.isDelayed = true;
@@ -814,6 +819,8 @@ namespace Utilities.Editor
                 : typeof(TK) == typeof(float) ? new FloatField().AddTo(content, k =>
                 {
                     k.label = "";
+                    k.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    k.style.top = 0;
                     k.SetValueWithoutNotify(KeyProp.floatValue);
                     k.BindProperty(KeyProp);
                     k.isDelayed = true;
@@ -821,6 +828,8 @@ namespace Utilities.Editor
                 : typeof(TK) == typeof(double) ? new DoubleField().AddTo(content, k =>
                 {
                     k.label = "";
+                    k.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    k.style.top = 0;
                     k.SetValueWithoutNotify(KeyProp.doubleValue);
                     k.BindProperty(KeyProp);
                     k.isDelayed = true;
