@@ -7,8 +7,10 @@
   <Project Path="BetterHierarchy.csproj" />
   <Project Path="AYellowpaper.SerializedCollections.csproj" />
   <Project Path="Kybernetik.UltEvents.Editor.csproj" />
+  <Project Path="SLS.StateMachineH.Runtime.csproj" />
   <Project Path="EditorAttributes.csproj" />
   <Project Path="SLS.Packaging.csproj" />
+  <Project Path="SLS.StateMachineH.Editor.csproj" />
   <Project Path="Utilities.csproj" />
   <Project Path="AYellowpaper.SerializeInterfaces.Editor.csproj" />
   <Project Path="Services.csproj" />

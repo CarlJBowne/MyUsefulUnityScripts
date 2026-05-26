@@ -9,7 +9,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
 
-namespace Utilities.Xtensions.VisualElements
+namespace SLS.StateMachineH.Editor
 {
     /// <summary>
     /// A <see cref="VisualElement"/> that displays and manages a completely-customizable List.<br/>
@@ -18,7 +18,7 @@ namespace Utilities.Xtensions.VisualElements
     /// <typeparam name="LIST">Concrete SuperList type.</typeparam>
     /// <typeparam name="ITEM">Concrete SuperListItem type.</typeparam>
     /// <typeparam name="VALUE">Underlying value type stored in the serialized array.</typeparam>
-    public class SuperList<LIST, ITEM, VALUE> : VisualElement
+    internal class SuperList<LIST, ITEM, VALUE> : VisualElement
         where LIST : SuperList<LIST, ITEM, VALUE>
         where ITEM : SuperListItem<LIST, ITEM, VALUE>
     {
@@ -806,7 +806,7 @@ namespace Utilities.Xtensions.VisualElements
     /// <typeparam name="LIST">Concrete SuperList type.</typeparam>
     /// <typeparam name="ITEM">Concrete SuperListItem type.</typeparam>
     /// <typeparam name="VALUE">Underlying value type stored in the serialized array.</typeparam>
-    public class SuperListItem<LIST, ITEM, VALUE> : VisualElement
+    internal class SuperListItem<LIST, ITEM, VALUE> : VisualElement
         where LIST : SuperList<LIST, ITEM, VALUE>
         where ITEM : SuperListItem<LIST, ITEM, VALUE>
     {
@@ -900,7 +900,7 @@ namespace Utilities.Xtensions.VisualElements
                     ContextMenuTarget.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
                     dragHandle.MoveCallback<ContextClickEvent>(ContextMenuTarget, TrickleDown.TrickleDown);
                 }
-                else 
+                else
                     dragHandle.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
 
                 (ContextMenuTarget ?? dragHandle)
@@ -1082,7 +1082,7 @@ namespace Utilities.Xtensions.VisualElements
     /// A basic example of the highly customizable <see cref="SuperList{LIST, ITEM, VALUE}"/> made for basic objects.
     /// </summary>
     /// <typeparam name="T">The type this list will hold.</typeparam>
-    public class SuperList<T> : SuperList<SuperList<T>, SuperListItem<T>, T>
+    internal class SuperList<T> : SuperList<SuperList<T>, SuperListItem<T>, T>
     {
         public SuperList(SerializedProperty listProperty, Func<Header> HeaderOverride = null) : base(listProperty) { }
     }
@@ -1090,7 +1090,7 @@ namespace Utilities.Xtensions.VisualElements
     /// A basic example of the highly customizable <see cref="SuperListItem{LIST, ITEM, VALUE}{LIST, ITEM, VALUE}"/> made for basic objects.
     /// </summary>
     /// <typeparam name="T">The type this list will hold.</typeparam>
-    public class SuperListItem<T> : SuperListItem<SuperList<T>, SuperListItem<T>, T>
+    internal class SuperListItem<T> : SuperListItem<SuperList<T>, SuperListItem<T>, T>
     {
         public SuperListItem(SuperList<T> parentList, SerializedProperty thisProperty) : base(parentList, thisProperty) { }
     }

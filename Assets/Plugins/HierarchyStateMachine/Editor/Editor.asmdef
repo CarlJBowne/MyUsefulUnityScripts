@@ -1,0 +1,16 @@
+{
+    "name": "SLS.StateMachineH.Editor",
+    "rootNamespace": "",
+    "references": [
+        "SLS.StateMachineH.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -12,13 +12,6 @@
       "source": "embedded",
       "dependencies": {}
     },
-    "com.starlightshadows.hierarchystatemachine": {
-      "version": "https://github.com/StarLightShadowsX/HierarchyStateMachine.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "5d328d526f98b707fe37b6b10a548739bd3328eb"
-    },
     "com.unity.addressables": {
       "version": "2.7.2",
       "depth": 0,

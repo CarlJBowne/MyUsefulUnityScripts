@@ -6,6 +6,8 @@ using UnityEngine;
 using EditorAttributes;
 using UnityEngine.UIElements;
 using Utilities;
+using SLS.StateMachineH;
+
 
 
 
@@ -18,17 +20,19 @@ using Utilities.Xtensions.VisualElements;
 
 public class Test : MonoBehaviour
 {
-    public SerializedDictionary<string, float> TEST;
-    [SerializeField, SerializeReference] PolymorphTest test;
-    public Polymorph.ListOf<PolymorphTest> testList = new();
-    //public Testy tesy;
+    public AnimatorAction action;
 
-    [System.Serializable]
-    public class Testy
-    {
-        public int yes = 1;
-        public char no = 'a';
-    }
+    //public SerializedDictionary<string, float> TEST;
+    //[SerializeField, SerializeReference] PolymorphTest test;
+    //public Polymorph.ListOf<PolymorphTest> testList = new();
+    ////public Testy tesy;
+    //
+    //[System.Serializable]
+    //public class Testy
+    //{
+    //    public int yes = 1;
+    //    public char no = 'a';
+    //}
 }
 
 [System.Serializable]
