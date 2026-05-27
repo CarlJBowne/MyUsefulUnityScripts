@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/*
 public abstract class AnimationAction : Polymorph
 {
     public string name;
@@ -53,3 +54,4 @@ public abstract class AnimationAction : Polymorph
         public override void Do(Animator animator) => animator.SetInteger(name, value);
     }
 }
+*/

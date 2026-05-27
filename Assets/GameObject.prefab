@@ -45,11 +45,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Test
   action:
-    type: 0
-    NameID: Test
-    cachedHash: 2018365746
-    layer: -1
-    floatValue1: 0
-    floatValue2: 0
-    intValue: 0
-    boolValue: 0
+    SerializedNames:
+    - A
+    - B
+    - C
+    SerializedKeys: ddb72c16e0b72c16dfb72c16
+    SerializedValues:
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}

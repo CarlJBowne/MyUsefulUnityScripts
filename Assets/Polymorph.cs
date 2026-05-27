@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
+using ListUtilities.Editor;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -674,7 +675,7 @@ public abstract class Polymorph
         protected FieldInfo fieldInfo;
         public Type baseType;
 
-        public ListDrawer(SerializedProperty rootProperty, FieldInfo fieldInfo) : base(rootProperty)
+        public ListDrawer(SerializedProperty rootProperty, FieldInfo fieldInfo, bool BindImmediately = true) : base(rootProperty)
         {
             this.fieldInfo = fieldInfo;
             try
@@ -687,18 +688,27 @@ public abstract class Polymorph
             }
             catch { baseType = null; }
             ShowTypeChooser = () => { Polymorph.ShowChooseTypeMenu(baseType, false, TypeChosen); };
+
+            BuildBasicElements();
+            if (BindImmediately) BindProperty(rootProperty);
         }
 
-        public override void InitializeProperty(SerializedProperty input)
+        new public void BindProperty(SerializedProperty input)
         {
             rootProperty = input;
             property = input.FindPropertyRelative("items");
+            header.Bind(input);
+            FinishBind();
         }
-        public override Header HeaderDefinition()
+        public override bool allowCounterEdit => false;
+        public override bool Expanded
         {
-            header = new(this, disableCounter: true);
-            header.AddTo(this);
-            return header;
+            get => rootProperty.isExpanded;
+            set
+            {
+                rootProperty.isExpanded = value;
+                header.UpdateExpanded(value);
+            }
         }
 
         protected override void AddButtonPressed() => ShowTypeChooser();
@@ -717,10 +727,7 @@ public abstract class Polymorph
     }
     public class ListItemDrawer : SuperListItem<ListDrawer, ListItemDrawer, Polymorph>
     {
-        public ListItemDrawer(ListDrawer parentList, SerializedProperty thisProperty) : base(parentList, thisProperty)
-        {
-        }
-
+        public ListItemDrawer(ListDrawer parentList, int Index) : base(parentList, Index) { }
         public override VisualElement Content()
         {
             HeaderDrawer result = new(property);

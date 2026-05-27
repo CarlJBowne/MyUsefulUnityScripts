@@ -92,7 +92,7 @@ namespace Utilities.Xtensions.VisualElements
             SetValueWithoutNotify(initialValue);
 
             this.style.color = DefaultColor;
-            new Highlighter(this, SelectedColor).Select();
+            new ElementHighlighter(this, SelectedColor).Select();
         }
 
         public bool Expanded

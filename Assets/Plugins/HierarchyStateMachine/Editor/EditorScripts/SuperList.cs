@@ -172,7 +172,7 @@ namespace SLS.StateMachineH.Editor
 
             UpdateCounterAndFoldout();
 
-            newID = property.arraySize - 1;
+            newID = CurrentSize - 1;
         }
 
         /// <summary>
@@ -500,9 +500,9 @@ namespace SLS.StateMachineH.Editor
             if (header != null && property != null)
             {
                 if (header != null && header.Counter != null)
-                    header.Counter.SetValueWithoutNotify(property.arraySize);
+                    header.Counter.SetValueWithoutNotify(CurrentSize);
                 if (header != null && header.FoldoutArrow != null)
-                    header.FoldoutArrow.visible = property.arraySize > 0;
+                    header.FoldoutArrow.visible = CurrentSize > 0;
             }
         }
 
@@ -818,10 +818,7 @@ namespace SLS.StateMachineH.Editor
             name = "superlist-item";
 
             style.Flex(FlexDirection.Row, 1).Align(Align.Center, Justify.FlexStart).Border(vertical: .5f)
-                .Colors(null, Color.clear, new(0, 0, 0, .1f)).Radius(4);
-
-            style.flexGrow = 1;
-            style.minHeight = 18;
+                .Colors(null, Color.clear, new(0, 0, 0, .1f)).Radius(4).MinMaxSize(minHeight: 18);
 
             dragHandle = new VisualElement().AddTo(this, h =>
             {

@@ -1,15 +1,16 @@
-﻿using Codice.Client.BaseCommands.BranchExplorer;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using ListUtilities.Editor.Internal;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
+using UnityEngine.Windows;
 
-namespace Utilities.Xtensions.VisualElements
+namespace ListUtilities.Editor
 {
     /// <summary>
     /// A <see cref="VisualElement"/> that displays and manages a completely-customizable List.<br/>
@@ -22,16 +23,28 @@ namespace Utilities.Xtensions.VisualElements
         where LIST : SuperList<LIST, ITEM, VALUE>
         where ITEM : SuperListItem<LIST, ITEM, VALUE>
     {
+        #region Initialization
         /// <summary>
-        /// Creates a new SuperList bound to a SerializedProperty representing an array/list.
+        /// Creates a new SuperList bound to a SerializedProperty representing an array/list. <br/>
+        /// Derived types may call the protected constructor with Override = true to replace initialization with their own. <br/>
+        /// In Derived constructors, call BuildBasicElements(), and any BindProperty() function that establishes the Data sources and ends with FinishBind().
         /// </summary>
-        /// <param name="listProperty">The serialized array property to represent.</param>
+        /// <param name="rootProperty">The serialized array property to represent.</param>
         /// <param name="HeaderOverride">Optional factory to provide a custom header instance.</param>
-        public SuperList(SerializedProperty listProperty)
+        protected SuperList(SerializedProperty rootProperty, bool Override = true)
         {
-            InitializeProperty(listProperty);
+            if (Override) return;
+            BuildBasicElements();
+            BindProperty(rootProperty);
+        }
 
-            header = HeaderDefinition();
+        /// <summary>
+        /// Builds the minimal visual structure for the list (header and collection container).
+        /// This does not bind any serialized properties; call <see cref="Header.Bind"/> during BindProperty() to attach data.
+        /// </summary>
+        protected void BuildBasicElements()
+        {
+            header = new Header(this as LIST).AddTo(this);
 
             collectionBackground = new VisualElement().AddTo(this, b =>
             {
@@ -40,36 +53,265 @@ namespace Utilities.Xtensions.VisualElements
                     .Colors(null, .254902f.Gray(), .1411765f.Gray())
                     .Border(1, top: 0)
                     .Radius(0, bottom: 4)
-                    .Flex(FlexDirection.Column);
+                    .Flex(FlexDirection.Column)
+                    .Display(false);
             });
-            collectionBackground.style.display = expandedSource ? DisplayStyle.Flex : DisplayStyle.None;
-
-            BuildItems();
-            Undo.undoRedoPerformed += BuildItems;
-
-            this.Bind(listProperty.serializedObject);
         }
-
         /// <summary>
         /// The header VisualElement for this list (foldout, counter and add/remove actions).
         /// </summary>
         public Header header { get; protected set; }
+        /// <summary>
+        /// Visual header for a SuperList instance. Contains foldout, counter and add/remove buttons.
+        /// </summary>
+        public class Header : VisualElement
+        {
+            /// <summary>
+            /// Creates a header bound to the provided SuperList instance.
+            /// </summary>
+            /// <param name="Parent">Parent SuperList instance for callbacks and state.</param>
+            /// <param name="showAddbutton">Whether to show the add (+) button.</param>
+            /// <param name="showDeleteButton">Whether to show the delete (-) button.</param>
+            /// <param name="disableCounter">Whether to disable the size counter field.</param>
+            public Header(LIST Parent)
+            {
+                parent = Parent;
+
+                //Self
+                {
+                    name = "listof-headerbar";
+                    style.flexDirection = FlexDirection.Row;
+                    style.alignItems = Align.Center;
+                    style.height = 20;
+                    style.backgroundColor = .2078432f.Gray();
+                    style.borderRightColor = .1411765f.Gray();
+                    style.borderLeftColor = .1411765f.Gray();
+                    style.borderTopColor = .1411765f.Gray();
+                    style.borderBottomColor = .1411765f.Gray();
+                    style.borderRightWidth = 1;
+                    style.borderLeftWidth = 1;
+                    style.borderTopWidth = 1;
+                    style.borderBottomWidth = 1;
+                    style.paddingLeft = 4;
+                    style.borderTopLeftRadius = 6;
+                    style.borderTopRightRadius = 6;
+                    style.justifyContent = Justify.SpaceBetween;
+                }
+
+                Foldout = new Foldout()
+                {
+                    text = "Placeholder",
+                    value = false,
+                    style =
+                    {
+                        flexGrow = 1f
+                    }
+                }.AddTo(this, F =>
+                {
+                    F.DelayedBuild((() =>
+                    {
+                        F.RegisterCallback<ContextualMenuPopulateEvent>(Parent.EstablishContextMenu);
+
+                        F.RegisterValueChangedCallback(ButtonClicked);
+
+                        Toggle = F.Q<Toggle>(null, Foldout.toggleUssClassName);
+                        if (Toggle != null) Toggle.style.marginLeft = 0;
+
+                        Label = F.Q<Label>(null, "unity-label");
+
+                        FoldoutArrow = F.Q<VisualElement>(null, "unity-foldout__checkmark");
+                        UpdateCounter();
+                    }));
+                });
+
+                Counter = new IntegerField().AddTo(this, c =>
+                {
+                    c.name = "superlist-counter";
+                    c.style
+                        .Align(alignSelf: Align.FlexEnd)
+                        .FixedSize(width: 36)
+                        .Text(null, TextAnchor.MiddleRight)
+                        .Colors(.85f.Gray(), Color.clear)
+                        .Margins(right: 6)
+                        .BorderNull();
+                    if (c.QCache(out VisualElement b, className: "unity-base-text-field__input"))
+                    {
+                        b.style.unityTextAlign = TextAnchor.MiddleRight;
+                        b.style.backgroundColor = Color.clear;
+                        b.style.borderTopColor = Color.clear;
+                        b.style.borderBottomColor = Color.clear;
+                        b.style.borderLeftColor = Color.clear;
+                        b.style.borderRightColor = Color.clear;
+                    }
+                    if (!Parent.allowCounterEdit) c.SetEnabled(false);
+                    c.RegisterValueChangedCallback(ev => parent.OnCounterTouched(ev.newValue));
+                });
+                Add(Counter);
+
+                if (Parent.allowAdd)
+                {
+                    AddButton = new Button(Parent.AddButtonPressed).AddTo(this, a =>
+                    {
+                        a.text = "+";
+                        a.name = "superlist-add";
+                        a.style
+                            .Align(alignSelf: Align.FlexEnd)
+                            .FixedSize(20, 18)
+                            .Colors(null, Color.clear, Color.clear)
+                            .Text(20, align: TextAnchor.MiddleCenter)
+                            .Border(0)
+                            .Radius(0, topLeft: 6)
+                            .Margins(0)
+                            .Padding(0);
+                        new ElementHighlighter(a, Color.lightGreen, Color.gray3).Hover();
+                        new ElementHighlighter(a, Color.white, Color.lightGreen).Click();
+                    });
+                }
+
+                if (Parent.allowDelete)
+                {
+                    DeleteButton = new Button(Parent.RemoveButtonPressed).AddTo(this, d =>
+                    {
+                        d.text = "-";
+                        d.name = "superlist-remove";
+                        d.style
+                            .Align(alignSelf: Align.FlexEnd)
+                            .FixedSize(20, 18)
+                            .Text(20, align: TextAnchor.MiddleCenter)
+                            .Colors(null, Color.clear, Color.clear)
+                            .Text(14, TextAnchor.LowerCenter)
+                            .Border(0)
+                            .Radius(0, topRight: 6)
+                            .Margins(0)
+                            .Padding(0);
+                        new ElementHighlighter(d, Color.darkSalmon, Color.gray3).Hover();
+                        new ElementHighlighter(d, Color.white, Color.darkSalmon).Click();
+                    });
+                }
+            }
+
+            /// <summary>
+            /// The SuperList instance that owns this header.
+            /// </summary>
+            new public LIST parent { get; protected set; }
+            /// <summary>
+            /// The Visual Foldout Parent used to hook into the Prefab System.
+            /// </summary>
+            public Foldout Foldout { get; protected set; }
+            /// <summary>
+            /// The Visual Toggle generated from the Foldout.
+            /// </summary>
+            public Toggle Toggle { get; protected set; }
+            /// <summary>
+            /// Visual foldout arrow control generated from the Foldout.
+            /// </summary>
+            public VisualElement FoldoutArrow { get; protected set; }
+            /// <summary>
+            /// Display label for the list generated from the Foldout.
+            /// </summary>
+            public Label Label { get; protected set; }
+            /// <summary>
+            /// Add (+) button instance. May be null when the header was constructed without an add control.
+            /// </summary>
+            public Button AddButton { get; protected set; }
+            /// <summary>
+            /// Delete (-) button instance. May be null when the header was constructed without a delete control.
+            /// </summary>
+            public Button DeleteButton { get; protected set; }
+            /// <summary>
+            /// Integer field used to view and change the list size directly.
+            /// </summary>
+            public IntegerField Counter { get; protected set; }
+
+            /// <summary>
+            /// Bind the header to a foldout serialized property and set its display title.
+            /// </summary>
+            /// <param name="title">Display title for the header.</param>
+            /// <param name="FoldoutBinder">SerializedProperty representing the foldout binding.</param>
+            public void Bind(string title, SerializedProperty FoldoutBinder)
+            {
+                Foldout.text = title;
+                Foldout.BindProperty(FoldoutBinder);
+                UpdateExpanded(parent.Expanded);
+            }
+
+            /// <summary>
+            /// Convenience overload that binds using the property's display name.
+            /// </summary>
+            /// <param name="bindinstantly">SerializedProperty to bind to.</param>
+            public void Bind(SerializedProperty bindinstantly) => Bind(bindinstantly.displayName, bindinstantly);
+
+            /// <summary>
+            /// Update the counter visual and visility of the Foldout Arrow.
+            /// </summary>
+            /// <param name="expand">When true and there are items, expand the list.</param>
+            public void UpdateCounter(bool expand = false)
+            {
+                Counter.SetValueWithoutNotify(parent.CurrentSize);
+                if (parent.CurrentSize > 0)
+                {
+                    if (FoldoutArrow != null && !FoldoutArrow.visible) FoldoutArrow.visible = true;
+                    if (expand) parent.Expanded = true;
+                }
+                else
+                {
+                    UpdateExpanded(false);
+                    if (FoldoutArrow != null) FoldoutArrow.visible = false;
+                }
+            }
+
+            /// <summary>
+            /// Callback for foldout value changes initiated by the user.
+            /// </summary>
+            /// <param name="ev">Change event for the foldout toggle.</param>
+            private void ButtonClicked(ChangeEvent<bool> ev)
+            {
+                if (ev.newValue == ev.previousValue ||
+                                parent == null ||
+                                parent.collectionBackground == null ||
+                                !FoldoutArrow.visible) return;
+                parent.Expanded = ev.newValue;
+            }
+
+            /// <summary>
+            /// Updates the visual expanded state of the header and collection container without firing change callbacks.
+            /// </summary>
+            /// <param name="value">Desired expanded state.</param>
+            public void UpdateExpanded(bool value)
+            {
+                Foldout.SetValueWithoutNotify(value);
+                parent.collectionBackground.Display(value);
+            }
+        }
+        /// <summary>
+        /// Basic Binding functionality. Should be overridden by a new signature if necessary to process any data sources passed in in the derived constructor. <br/>
+        /// Derivation Guide: Establish necessary Data sources, then call header.Bind, then FinishBind().
+        /// </summary>
+        /// <param name="listProperty">SerializedProperty representing the array this list will display.</param>
+        public void BindProperty(SerializedProperty listProperty)
+        {
+            property = listProperty;
+            this.Bind(property.serializedObject);
+            header.Bind(listProperty);
+            FinishBind();
+        }
+
+        /// <summary>
+        /// Finalize binding: build items and register undo/redo handlers.
+        /// </summary>
+        protected void FinishBind()
+        {
+            BuildItems();
+            Undo.undoRedoPerformed += BuildItems;
+        }
 
         /// <summary>
         /// Root container that holds the item elements for this list.
         /// </summary>
         public VisualElement collectionBackground { get; protected set; }
 
-        /// <summary>
-        /// The overridable immediate method run to acquire the main property this list will use for everything.
-        /// </summary>
-        public virtual void InitializeProperty(SerializedProperty input) => property = input;
+        #endregion
 
-        /// <summary>
-        /// The overridable immediate method run to create the <see cref="Header"/>. <br/>
-        /// Override to disable Add/Remove buttons or disable editing the counter.
-        /// </summary>
-        public virtual Header HeaderDefinition() => new Header(this as LIST).AddTo(this);
 
         #region Data
         /// <summary>
@@ -88,39 +330,6 @@ namespace Utilities.Xtensions.VisualElements
         #endregion
 
 
-        /// <summary>
-        /// Attempt to refresh the prefab markers that may be on this list.
-        /// </summary>
-        public void TryForceRefreshPrefabMarkers()
-        {
-#if UNITY_EDITOR
-            try
-            {
-                var target = property?.serializedObject?.targetObject;
-                if (target != null) EditorUtility.SetDirty(target);
-
-                try
-                {
-#if UNITY_EDITOR
-                    // Ensure Unity records instance property modifications so prefab override markers update
-                    UnityEditor.PrefabUtility.RecordPrefabInstancePropertyModifications(target);
-#endif
-                }
-                catch { }
-
-                // Repaint inspector(s) and hierarchy to prompt Unity to refresh override markers
-                EditorApplication.RepaintHierarchyWindow();
-                var iwType = Type.GetType("UnityEditor.InspectorWindow, UnityEditor");
-                if (iwType != null)
-                {
-                    var wins = UnityEngine.Resources.FindObjectsOfTypeAll(iwType) as UnityEditor.EditorWindow[];
-                }
-                // Best-effort call to repaint all editor windows
-                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
-            }
-            catch { }
-#endif
-        }
 
         #region Virtuals
 
@@ -140,7 +349,6 @@ namespace Utilities.Xtensions.VisualElements
 
             for (int i = 0; i < CurrentSize; i++)
                 CreateItemElement(i);
-            UpdateCounterAndFoldout();
         }
 
         #region Add Systems
@@ -170,9 +378,7 @@ namespace Utilities.Xtensions.VisualElements
 
             property.serializedObject.ApplyModifiedProperties();
 
-            UpdateCounterAndFoldout();
-
-            newID = property.arraySize - 1;
+            newID = CurrentSize - 1;
         }
 
         /// <summary>
@@ -282,26 +488,6 @@ namespace Utilities.Xtensions.VisualElements
         }
 
         /// <summary>
-        /// Creates and registers an ITEM visual for the element at the given index.
-        /// The ITEM type must provide a constructor accepting (LIST parent, SerializedProperty property).
-        /// </summary>
-        /// <param name="ID">Index of the array element to create a visual for.</param>
-        public virtual void CreateItemElement(int ID)
-        {
-            if (property == null) throw new InvalidOperationException("Property is null");
-            // Grab a fresh serialized property for this slot
-            SerializedProperty elemProp = property.GetArrayElementAtIndex(ID) ?? throw new ArgumentOutOfRangeException(nameof(ID));
-
-            ITEM holder = Activator.CreateInstance(typeof(ITEM), this as LIST, elemProp) as ITEM;
-
-            items.Add(holder);
-            collectionBackground.Add(holder);
-
-            // Bind the newly created element to the owner object so it displays immediately and reacts to changes.
-            try { holder.Bind(property.serializedObject); } catch { }
-        }
-
-        /// <summary>
         /// Duplicate the serialized array element at the given index. Rebuilds visuals and refreshes prefab markers.
         /// </summary>
         /// <param name="index">Index to duplicate.</param>
@@ -363,9 +549,10 @@ namespace Utilities.Xtensions.VisualElements
                 }
 
                 property.serializedObject.ApplyModifiedProperties();
-                RemoveItemElement(items[index]);
-                CreateItemElement(index);
-                CreateItemElement(insertAt);
+                BuildItems();
+                //RemoveItemElement(items[index]);
+                //CreateItemElement(index);
+                //CreateItemElement(insertAt);
             }
             catch { }
 
@@ -373,7 +560,7 @@ namespace Utilities.Xtensions.VisualElements
 
             // Rebuild UI and try to refresh prefab markers
             BuildItems();
-            UpdateCounterAndFoldout();
+            header.UpdateCounter();
             TryForceRefreshPrefabMarkers();
         }
 
@@ -395,7 +582,6 @@ namespace Utilities.Xtensions.VisualElements
 
             Select(null);
             DeletePropertySlotAt(id);
-            RemoveItemElement(selected);
             BuildItems();
         }
 
@@ -426,14 +612,15 @@ namespace Utilities.Xtensions.VisualElements
             // Keep UI counter accurate
             CurrentSize = property.arraySize;
             property.serializedObject.ApplyModifiedProperties();
-
-            UpdateCounterAndFoldout();
         }
 
         /// <summary>
-        /// Removes the ITEM visual from the list UI and internal collection.
+        /// Removes the ITEM visual from the list UI and internal collection. <br/>
+        /// Functionally pointless because it just Builds Items anyway. <br/>
+        /// Maybe make use of this later if I can be arsed to figure out how to properly update things without destroying them.
         /// </summary>
         /// <param name="I">The item instance to remove.</param>
+        [System.Obsolete]
         public virtual void RemoveItemElement(ITEM I)
         {
             if (items == null || I == null) return;
@@ -445,6 +632,16 @@ namespace Utilities.Xtensions.VisualElements
 
         #endregion
 
+        public virtual bool Expanded
+        {
+            get => property.isExpanded;
+            set
+            {
+                property.isExpanded = value;
+                header.UpdateExpanded(value);
+            }
+        }
+
         /// <summary>
         /// Gets or sets the array size (property.arraySize). Setting adjusts the underlying serialized array size.
         /// </summary>
@@ -453,34 +650,21 @@ namespace Utilities.Xtensions.VisualElements
             get => property.arraySize;
             set
             {
-                if (value > property.arraySize) header.Toggle.value = true;
+                bool nowBigger = value > property.arraySize;
                 property.arraySize = value;
+                header.UpdateCounter(nowBigger);
+
                 // Do not ApplyModifiedProperties here — callers should apply as needed, but keep UI in sync
             }
         }
 
         /// <summary>
-        /// Overridable source from which to get whether the list is expanded or not.
-        /// </summary>
-        public virtual bool expandedSource
-        {
-            get => property.isExpanded;
-            set
-            {
-                property.isExpanded = value;
-                property.serializedObject.ApplyModifiedProperties();
-            }
-        }
-
-        /// <summary>
-        /// Overridable source from which to get the display name for this list.
-        /// </summary>
-        public virtual string nameSource => property.displayName;
-
-        /// <summary>
         /// Overridable definition of whether this allows reordering.
         /// </summary>
         public virtual bool allowReorder => true;
+        public virtual bool allowAdd => true;
+        public virtual bool allowDelete => true;
+        public virtual bool allowCounterEdit => true;
 
         /// <summary>
         /// Called when the header counter value is changed manually by the user. Resizes the list to the requested value and rebuilds visuals.
@@ -490,20 +674,6 @@ namespace Utilities.Xtensions.VisualElements
         {
             CurrentSize = newValue;
             BuildItems();
-        }
-
-        /// <summary>
-        /// Updates the header counter control and the foldout 'expandable' state to reflect the current array size.
-        /// </summary>
-        public virtual void UpdateCounterAndFoldout()
-        {
-            if (header != null && property != null)
-            {
-                if (header != null && header.Counter != null)
-                    header.Counter.SetValueWithoutNotify(property.arraySize);
-                if (header != null && header.FoldoutArrow != null)
-                    header.FoldoutArrow.visible = property.arraySize > 0;
-            }
         }
 
         /// <summary>
@@ -592,7 +762,6 @@ namespace Utilities.Xtensions.VisualElements
                 items.Clear();
             }
             CurrentSize = 0;
-            UpdateCounterAndFoldout();
         }
         /// <summary>
         /// Applies or Reverts Prefab changes before forcing an update.
@@ -603,7 +772,7 @@ namespace Utilities.Xtensions.VisualElements
             Def.Execute();
             property.serializedObject.Update();
             BuildItems();
-            UpdateCounterAndFoldout();
+            header.UpdateCounter();
             TryForceRefreshPrefabMarkers();
         }
 
@@ -624,178 +793,52 @@ namespace Utilities.Xtensions.VisualElements
         }
 
         /// <summary>
-        /// Visual header for a SuperList instance. Contains foldout, counter and add/remove buttons.
+        /// Creates and registers an ITEM visual for the element at the given index.
+        /// The ITEM type must Acquire its information in the overridden BindProperty function based on the ID given.
         /// </summary>
-        public class Header : VisualElement
+        /// <param name="ID">Index of the array element to create a visual for.</param>
+        public void CreateItemElement(int ID)
         {
-            /// <summary>
-            /// Creates a header bound to the provided SuperList instance.
-            /// </summary>
-            /// <param name="Parent">Parent SuperList instance for callbacks and state.</param>
-            /// <param name="showAddbutton">Whether to show the add (+) button.</param>
-            /// <param name="showDeleteButton">Whether to show the delete (-) button.</param>
-            /// <param name="disableCounter">Whether to disable the size counter field.</param>
-            public Header(LIST Parent, bool showAddbutton = true, bool showDeleteButton = true, bool disableCounter = false)
-            {
-                parent = Parent;
+            ITEM holder = Activator.CreateInstance(typeof(ITEM), this as LIST, ID) as ITEM;
 
-                //Self
-                {
-                    name = "listof-headerbar";
-                    style.flexDirection = FlexDirection.Row;
-                    style.alignItems = Align.Center;
-                    style.height = 20;
-                    style.backgroundColor = .2078432f.Gray();
-                    style.borderRightColor = .1411765f.Gray();
-                    style.borderLeftColor = .1411765f.Gray();
-                    style.borderTopColor = .1411765f.Gray();
-                    style.borderBottomColor = .1411765f.Gray();
-                    style.borderRightWidth = 1;
-                    style.borderLeftWidth = 1;
-                    style.borderTopWidth = 1;
-                    style.borderBottomWidth = 1;
-                    style.paddingLeft = 4;
-                    style.borderTopLeftRadius = 6;
-                    style.borderTopRightRadius = 6;
-                    style.justifyContent = Justify.SpaceBetween;
-                }
-
-                Foldout = new Foldout().AddTo(this, F =>
-                {
-                    F.DelayedBuild(() =>
-                    {
-                        F.text = Parent.nameSource;
-                        F.style.flexGrow = 1f;
-                        F.BindProperty(Parent.property);
-
-                        F.RegisterCallback<ContextualMenuPopulateEvent>(Parent.EstablishContextMenu);
-
-                        Toggle = F.Q<Toggle>(null, Foldout.toggleUssClassName);
-                        if (Toggle != null)
-                        {
-                            Toggle.style.marginLeft = 0;
-                            Toggle.RegisterValueChangedCallback(v => Clicked(v.newValue));
-                        }
-
-                        Label = F.Q<Label>(null, "unity-label");
-                        Label.text = Parent.nameSource;
-
-                        FoldoutArrow = F.Q<VisualElement>(null, "unity-foldout__checkmark");
-                        Toggle.SetValueWithoutNotify(Parent.expandedSource);
-                        FoldoutArrow.visible = Parent.CurrentSize > 0;
-                    });
-                });
-
-                Counter = new IntegerField().AddTo(this, c =>
-                {
-                    c.name = "superlist-counter";
-                    c.style
-                        .Align(alignSelf: Align.FlexEnd)
-                        .FixedSize(width: 36)
-                        .Text(null, TextAnchor.MiddleRight)
-                        .Colors(.85f.Gray(), Color.clear)
-                        .Margins(right: 6)
-                        .BorderNull();
-                    if (c.QCache(out VisualElement b, className: "unity-base-text-field__input"))
-                    {
-                        b.style.unityTextAlign = TextAnchor.MiddleRight;
-                        b.style.backgroundColor = Color.clear;
-                        b.style.borderTopColor = Color.clear;
-                        b.style.borderBottomColor = Color.clear;
-                        b.style.borderLeftColor = Color.clear;
-                        b.style.borderRightColor = Color.clear;
-                    }
-                    if (disableCounter) c.SetEnabled(false);
-                    c.RegisterValueChangedCallback(ev => parent.OnCounterTouched(ev.newValue));
-                });
-                Add(Counter);
-
-                if (showAddbutton)
-                {
-                    AddButton = new Button(Parent.AddButtonPressed).AddTo(this, a =>
-                    {
-                        a.text = "+";
-                        a.name = "superlist-add";
-                        a.style
-                            .Align(alignSelf: Align.FlexEnd)
-                            .FixedSize(20, 18)
-                            .Colors(null, Color.clear, Color.clear)
-                            .Text(20, align: TextAnchor.MiddleCenter)
-                            .Border(0)
-                            .Radius(0, topLeft: 6)
-                            .Margins(0)
-                            .Padding(0);
-                        new Highlighter(a, Color.lightGreen, Color.gray3).Hover();
-                        new Highlighter(a, Color.white, Color.lightGreen).Click();
-                    });
-                }
-
-                if (showDeleteButton)
-                {
-                    DeleteButton = new Button(Parent.RemoveButtonPressed).AddTo(this, d =>
-                    {
-                        d.text = "-";
-                        d.name = "superlist-remove";
-                        d.style
-                            .Align(alignSelf: Align.FlexEnd)
-                            .FixedSize(20, 18)
-                            .Text(20, align: TextAnchor.MiddleCenter)
-                            .Colors(null, Color.clear, Color.clear)
-                            .Text(14, TextAnchor.LowerCenter)
-                            .Border(0)
-                            .Radius(0, topRight: 6)
-                            .Margins(0)
-                            .Padding(0);
-                        new Highlighter(d, Color.darkSalmon, Color.gray3).Hover();
-                        new Highlighter(d, Color.white, Color.darkSalmon).Click();
-                    });
-                }
-            }
-
-            /// <summary>
-            /// The SuperList instance that owns this header.
-            /// </summary>
-            new public LIST parent { get; protected set; }
-            /// <summary>
-            /// The Visual Foldout Parent used to hook into the Prefab System.
-            /// </summary>
-            public Foldout Foldout { get; protected set; }
-            /// <summary>
-            /// The Visual Toggle generated from the Foldout.
-            /// </summary>
-            public Toggle Toggle { get; protected set; }
-            /// <summary>
-            /// Visual foldout arrow control generated from the Foldout.
-            /// </summary>
-            public VisualElement FoldoutArrow { get; protected set; }
-            /// <summary>
-            /// Display label for the list generated from the Foldout.
-            /// </summary>
-            public Label Label { get; protected set; }
-            /// <summary>
-            /// Add (+) button instance. May be null when the header was constructed without an add control.
-            /// </summary>
-            public Button AddButton { get; protected set; }
-            /// <summary>
-            /// Delete (-) button instance. May be null when the header was constructed without a delete control.
-            /// </summary>
-            public Button DeleteButton { get; protected set; }
-            /// <summary>
-            /// Integer field used to view and change the list size directly.
-            /// </summary>
-            public IntegerField Counter { get; protected set; }
-
-            /// <summary>
-            /// Internal callback invoked when the foldout arrow is clicked.
-            /// </summary>
-            /// <param name="value">True when expanded, false when collapsed.</param>
-            void Clicked(bool value)
-            {
-                if (parent == null || parent.collectionBackground == null) return;
-                parent.collectionBackground.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
-                parent.expandedSource = !parent.expandedSource;
-            }
+            items.Add(holder);
+            collectionBackground.Add(holder);
         }
+
+        /// <summary>
+        /// Attempt to refresh the prefab markers that may be on this list.
+        /// </summary>
+        public void TryForceRefreshPrefabMarkers()
+        {
+#if UNITY_EDITOR
+            try
+            {
+                var target = property?.serializedObject?.targetObject;
+                if (target != null) EditorUtility.SetDirty(target);
+
+                try
+                {
+#if UNITY_EDITOR
+                    // Ensure Unity records instance property modifications so prefab override markers update
+                    UnityEditor.PrefabUtility.RecordPrefabInstancePropertyModifications(target);
+#endif
+                }
+                catch { }
+
+                // Repaint inspector(s) and hierarchy to prompt Unity to refresh override markers
+                EditorApplication.RepaintHierarchyWindow();
+                var iwType = Type.GetType("UnityEditor.InspectorWindow, UnityEditor");
+                if (iwType != null)
+                {
+                    var wins = UnityEngine.Resources.FindObjectsOfTypeAll(iwType) as UnityEditor.EditorWindow[];
+                }
+                // Best-effort call to repaint all editor windows
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+            }
+            catch { }
+#endif
+        }
+
 
         public static DropdownMenuAction.Status DropDownMenuStatus(DropdownMenuAction A) => DropdownMenuAction.Status.Normal;
     }
@@ -810,18 +853,25 @@ namespace Utilities.Xtensions.VisualElements
         where LIST : SuperList<LIST, ITEM, VALUE>
         where ITEM : SuperListItem<LIST, ITEM, VALUE>
     {
-        public SuperListItem(LIST parentList, SerializedProperty thisProperty)
+        #region Initialization
+        /// <summary>
+        /// Unlike the SuperList itself, it is not recommended to override the constructor heavily. Instead, simply override BindProperty() and get all the data sources from the SuperList.
+        /// </summary>
+        /// <param name="parentList"></param>
+        /// <param name="Index"></param>
+        protected SuperListItem(LIST parentList, int Index)
         {
-            this.parentList = parentList;
+            this.parent = parentList;
+            this.Index = Index;
+            BuildBasicElements();
+            BindProperty();
+        }
+        protected void BuildBasicElements()
+        {
+            this.parent = parent;
 
-            // Background container is the Item root itself
             name = "superlist-item";
-
-            style.Flex(FlexDirection.Row, 1).Align(Align.Center, Justify.FlexStart).Border(vertical: .5f)
-                .Colors(null, Color.clear, new(0, 0, 0, .1f)).Radius(4);
-
-            style.flexGrow = 1;
-            style.minHeight = 18;
+            style.Flex(FlexDirection.Row, 1).Align(Align.Center, Justify.FlexStart).Border(vertical: .5f).Colors(null, Color.clear, new(0, 0, 0, .1f)).Radius(4).MinMaxSize(minHeight: 18);
 
             dragHandle = new VisualElement().AddTo(this, h =>
             {
@@ -848,11 +898,10 @@ namespace Utilities.Xtensions.VisualElements
                 glyph.style
                     .Text(null, TextAnchor.MiddleCenter)
                     .Align(null, null, Align.Center)
-                    .FixedSize(width: 16);
-                glyph.style.flexGrow = 0;
-                glyph.style.maxWidth = 16;
-                glyph.style.marginTop = 0;
-                glyph.style.marginBottom = 0;
+                    .FixedSize(width: 16)
+                    .Flex(grow: 0)
+                    .Margins(vertical: 0)
+                    .Colors(Color.gray5);
 
                 h.Add(glyph);
 
@@ -869,7 +918,7 @@ namespace Utilities.Xtensions.VisualElements
                     {
                         try
                         {
-                            parentList.MoveItem(this as ITEM, delta);
+                            parent.MoveItem(this as ITEM, delta);
                         }
                         catch { /* defensive: swallow */ }
                         evt.StopPropagation();
@@ -878,20 +927,24 @@ namespace Utilities.Xtensions.VisualElements
             });
 
             //Register PointerDownEvent that allows trickledown so that tapping anywhere on the Item will select it. :)
-            RegisterCallback<PointerDownEvent>((evt) => parentList.Select(this as ITEM), TrickleDown.TrickleDown);
-
-            selected = new(UpdateBackground);
-            invalid = new(UpdateBackground);
-
-            InitializeProperty(thisProperty);
-
+            RegisterCallback<PointerDownEvent>((evt) => parent.Select(this as ITEM), TrickleDown.TrickleDown);
+        }
+        /// <summary>
+        /// Unlike the SuperList itself, it is not recommended to override the constructor heavily. Instead, simply override this function and get all the data sources from the SuperList.
+        /// </summary>
+        protected virtual void BindProperty()
+        {
+            property = parent.property.GetArrayElementAtIndex(Index);
+            FinishBind();
+        }
+        protected void FinishBind()
+        {
             if (content != null) this.Remove(content);
             content = Content();
             //Make absolutely sure the content at least takes up a minimum amount of space.
             content.style.flexGrow = 1f;
             content.style.minHeight = 14;
             this.Add(content);
-
             content.DelayedBuild(() =>
             {
                 PostContent();
@@ -900,18 +953,20 @@ namespace Utilities.Xtensions.VisualElements
                     ContextMenuTarget.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
                     dragHandle.MoveCallback<ContextClickEvent>(ContextMenuTarget, TrickleDown.TrickleDown);
                 }
-                else 
+                else
                     dragHandle.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
 
                 (ContextMenuTarget ?? dragHandle)
                 .RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
             });
         }
+        #endregion Initialization
 
+        #region Data
         /// <summary>
         /// The parent <see cref="SuperList{LIST, ITEM, VALUE}"/> that owns this Item.
         /// </summary>
-        public LIST parentList { get; protected set; }
+        new public LIST parent { get; protected set; }
         /// <summary>
         /// The serialized property tied to the item this element represents.
         /// </summary>
@@ -939,16 +994,12 @@ namespace Utilities.Xtensions.VisualElements
         /// <summary>
         /// The Index of this Item within its owning List
         /// </summary>
-        protected int Index => parentList.items.IndexOf(this as ITEM);
+        public int Index { get; protected set; }
+        #endregion Data
 
 
         #region Virtuals
-        /// <summary>
-        /// An overridable function defining how <see cref="property"/> is sourced.
-        /// </summary>
-        /// <param name="newprop"></param>
-        protected virtual void InitializeProperty(SerializedProperty newprop) =>
-            property = newprop ?? parentList.property.GetArrayElementAtIndex(Index);
+
 
         /// <summary>
         /// An overridable function defining how <see cref="content"/> is created.
@@ -971,8 +1022,6 @@ namespace Utilities.Xtensions.VisualElements
             Label = content.Q<Label>(null, "unity-label");
             ContextMenuTarget = Label;
         }
-
-        #endregion
 
         #region Context Menus 
 
@@ -1015,18 +1064,18 @@ namespace Utilities.Xtensions.VisualElements
         /// The Action called when the "Duplicate" Context Menu Item is called.
         /// </summary>
         /// <param name="C"></param>
-        public virtual void DuplicateContextMenu(DropdownMenuAction C) => parentList.DuplicatePropertySlotAt(Index);
+        public virtual void DuplicateContextMenu(DropdownMenuAction C) => parent.DuplicatePropertySlotAt(Index);
         /// <summary>
         /// The Action called when the "Delete" Context Menu Item is called.
         /// </summary>
         /// <param name="C"></param>
         public virtual void DeleteContextMenu(DropdownMenuAction C)
         {
-            if (parentList == null) return;
-            parentList.DeletePropertySlotAt(Index);
-            parentList.RemoveItemElement(this as ITEM);
-            parentList.BuildItems();
-            parentList.TryForceRefreshPrefabMarkers();
+            if (parent == null) return;
+            parent.DeletePropertySlotAt(Index);
+            //parent.RemoveItemElement(this as ITEM);
+            parent.BuildItems();
+            parent.TryForceRefreshPrefabMarkers();
         }
         /// <summary>
         /// The Action called when the "Apply to Prefab" or "Revert" Context Menu Items are called.
@@ -1041,6 +1090,8 @@ namespace Utilities.Xtensions.VisualElements
 
         #endregion
 
+        #endregion
+
         #region Colors
 
         /// <summary>
@@ -1049,18 +1100,26 @@ namespace Utilities.Xtensions.VisualElements
         public bool Selected
         {
             get => selected;
-            set => selected.Value = value;
+            set
+            {
+                selected = value;
+                UpdateBackground();
+            }
         }
-        readonly ListItemFlag selected;
+        protected bool selected;
         /// <summary>
         /// Sets the visual state for if this object is invalid, highlighting it red.
         /// </summary>
         public bool Invalid
         {
             get => invalid;
-            set => invalid.Value = value;
+            set
+            {
+                invalid = value;
+                UpdateBackground();
+            }
         }
-        readonly ListItemFlag invalid;
+        protected bool invalid;
         /// <summary>
         /// An overridable function defining how the background of this item is colored based on different states.
         /// </summary>
@@ -1068,7 +1127,7 @@ namespace Utilities.Xtensions.VisualElements
                 selected ? invalid ? SelectionInvalidColor : SelectionColor
                 : invalid ? InvalidColor : Color.clear;
 
-        public static Color SelectionColor => Highlighter.ButtonClickedBack;
+        public static Color SelectionColor => ElementHighlighter.ButtonClickedBack;
         public static Color InvalidColor = new(.44f, .24f, .24f);
         public static Color SelectionInvalidColor = new(.486f, .274f, .428f);
 
@@ -1084,7 +1143,7 @@ namespace Utilities.Xtensions.VisualElements
     /// <typeparam name="T">The type this list will hold.</typeparam>
     public class SuperList<T> : SuperList<SuperList<T>, SuperListItem<T>, T>
     {
-        public SuperList(SerializedProperty listProperty, Func<Header> HeaderOverride = null) : base(listProperty) { }
+        public SuperList(SerializedProperty listProperty, Func<Header> HeaderOverride = null) : base(listProperty, false) { }
     }
     /// <summary>
     /// A basic example of the highly customizable <see cref="SuperListItem{LIST, ITEM, VALUE}{LIST, ITEM, VALUE}"/> made for basic objects.
@@ -1092,6 +1151,6 @@ namespace Utilities.Xtensions.VisualElements
     /// <typeparam name="T">The type this list will hold.</typeparam>
     public class SuperListItem<T> : SuperListItem<SuperList<T>, SuperListItem<T>, T>
     {
-        public SuperListItem(SuperList<T> parentList, SerializedProperty thisProperty) : base(parentList, thisProperty) { }
+        public SuperListItem(SuperList<T> parentList, int Index) : base(parentList, Index) { }
     }
 }

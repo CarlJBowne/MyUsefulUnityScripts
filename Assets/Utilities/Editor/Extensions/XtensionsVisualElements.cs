@@ -182,14 +182,14 @@ namespace Utilities.Xtensions.VisualElements
         }
     }
 
-    public class Highlighter
+    public class ElementHighlighter
     {
-        public Highlighter(VisualElement source)
+        public ElementHighlighter(VisualElement source)
         {
             target = source;
             Init();
         }
-        public Highlighter(VisualElement source, Color? setMain = null, Color? setBack = null, Color? setBorder = null,
+        public ElementHighlighter(VisualElement source, Color? setMain = null, Color? setBack = null, Color? setBorder = null,
             float? raiseMain = null, float? raiseBack = null, float? raiseBorder = null)
         {
             target = source;
@@ -201,7 +201,7 @@ namespace Utilities.Xtensions.VisualElements
             rBorder = raiseBorder;
             Init();
         }
-        public Highlighter(VisualElement source, float? raiseMain = null, float? raiseBack = null, float? raiseBorder = null)
+        public ElementHighlighter(VisualElement source, float? raiseMain = null, float? raiseBack = null, float? raiseBorder = null)
         {
             target = source;
             rMain = raiseMain;
@@ -324,26 +324,26 @@ namespace Utilities.Xtensions.VisualElements
 
         public static void ButtonDefault(VisualElement target)
         {
-            new Highlighter(target, null, ButtonHoverBackRaise).Hover();
-            new Highlighter(target, null, ButtonClickedBack).Click();
-            new Highlighter(target, null, null, ButtonSelectedOutline).Select();
+            new ElementHighlighter(target, null, ButtonHoverBackRaise).Hover();
+            new ElementHighlighter(target, null, ButtonClickedBack).Click();
+            new ElementHighlighter(target, null, null, ButtonSelectedOutline).Select();
         }
         public static void ButtonStyle(VisualElement target, float? hoverAmount = null, Color? clickColor = null, Color? selectOutline = null)
         {
-            new Highlighter(target, null, hoverAmount ?? ButtonHoverBackRaise).Hover();
-            new Highlighter(target, null, clickColor ?? ButtonClickedBack).Click();
-            new Highlighter(target, null, null, selectOutline ?? ButtonSelectedOutline).Select();
+            new ElementHighlighter(target, null, hoverAmount ?? ButtonHoverBackRaise).Hover();
+            new ElementHighlighter(target, null, clickColor ?? ButtonClickedBack).Click();
+            new ElementHighlighter(target, null, null, selectOutline ?? ButtonSelectedOutline).Select();
         }
         public static void ButtonStyle(VisualElement target, Color? hoverAmount = null, Color? clickColor = null, Color? selectOutline = null)
         {
             (hoverAmount.HasValue
-            ? new Highlighter(target, null, hoverAmount)
-            : new Highlighter(target, null, ButtonHoverBackRaise)
+            ? new ElementHighlighter(target, null, hoverAmount)
+            : new ElementHighlighter(target, null, ButtonHoverBackRaise)
             ).Hover();
-            new Highlighter(target, null, clickColor ?? ButtonClickedBack).Click();
-            new Highlighter(target, null, null, selectOutline ?? ButtonSelectedOutline).Select();
+            new ElementHighlighter(target, null, clickColor ?? ButtonClickedBack).Click();
+            new ElementHighlighter(target, null, null, selectOutline ?? ButtonSelectedOutline).Select();
         }
-        public static void TextDefault(VisualElement target) => new Highlighter(target, TextSelected).Select();
+        public static void TextDefault(VisualElement target) => new ElementHighlighter(target, TextSelected).Select();
     }
 
     public static class Xtensions_VisualElements_StyleBuilders

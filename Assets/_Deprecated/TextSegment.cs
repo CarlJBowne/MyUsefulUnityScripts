@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/*
 public class TextSegment : ScriptableObject
 {
     public string textValue;
@@ -76,3 +77,4 @@ public class TextAffector : Polymorph
 
     }
 }
+*/

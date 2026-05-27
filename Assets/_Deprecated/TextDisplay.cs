@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+/*
 public class TextDisplay : MonoBehaviour
 {
     public TMPro.TextMeshProUGUI textDisplay;
@@ -413,3 +413,4 @@ public class TextDisplay : MonoBehaviour
         _typingCoroutine = TypeTextCoroutine().Begin();
     }
 }
+*/
