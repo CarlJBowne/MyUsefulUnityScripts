@@ -24,7 +24,7 @@ using Utilities.Xtensions.VisualElements;
 
 public class Test : MonoBehaviour
 {
-    public SerializedHashedList<GameObject> action;
+    public HashedListS<int> action; 
     //
     //public SerializedDictionary<string, float> TEST;
     //[SerializeField, SerializeReference] PolymorphTest test;

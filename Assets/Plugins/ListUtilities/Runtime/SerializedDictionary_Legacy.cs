@@ -12,12 +12,12 @@ using Generics = System.Collections.Generic;
 namespace ListUtilities
 {
     [Serializable]
-    public class SerializedDictionary<TKey, TValue> : Generics.Dictionary<TKey, TValue>, ISerializationCallbackReceiver, ISerializedDictionaryNonGeneric
+    public class SerializedDictionary_Legacy<TKey, TValue> : Generics.Dictionary<TKey, TValue>, ISerializationCallbackReceiver, ISerializedDictionaryNonGenericOld
     {
         [SerializeField] internal Generics.List<KeyValuePair> serializedList;
         [NonSerialized] private Generics.Dictionary<TKey, Generics.List<int>> occurences;
 
-        public SerializedDictionary() : base()
+        public SerializedDictionary_Legacy() : base()
         {
             serializedList = new();
             occurences = new();
@@ -180,7 +180,7 @@ namespace ListUtilities
             }
         }
         [Serializable]
-        public class LookupTable : System.Collections.Generic.List<KeyValuePair>, ILookupTableNonGeneric
+        public class LookupTable : System.Collections.Generic.List<KeyValuePair>//, ILookupTableNonGeneric
         {
             public System.Collections.Generic.Dictionary<TKey, System.Collections.Generic.List<int>> occurences = new();
 
@@ -228,12 +228,12 @@ namespace ListUtilities
     }
 
     [Serializable]
-    public class SerializedReferenceDictionary<TKey, TValue> : Generics.Dictionary<TKey, TValue>, ISerializationCallbackReceiver, ISerializedDictionaryNonGeneric
+    public class SerializedReferenceDictionary_Legacy<TKey, TValue> : Generics.Dictionary<TKey, TValue>, ISerializationCallbackReceiver, ISerializedDictionaryNonGenericOld
     {
         [SerializeField] internal Generics.List<KeyValuePair> serializedList;
         [NonSerialized] private Generics.Dictionary<TKey, Generics.List<int>> occurences;
 
-        public SerializedReferenceDictionary() : base()
+        public SerializedReferenceDictionary_Legacy() : base()
         {
             serializedList = new();
             occurences = new();
@@ -396,7 +396,7 @@ namespace ListUtilities
             }
         }
         [Serializable]
-        public class LookupTable : System.Collections.Generic.List<KeyValuePair>, ILookupTableNonGeneric
+        public class LookupTable : System.Collections.Generic.List<KeyValuePair>//, ILookupTableNonGeneric
         {
             public System.Collections.Generic.Dictionary<TKey, System.Collections.Generic.List<int>> occurences = new();
 
@@ -443,7 +443,7 @@ namespace ListUtilities
         }
     }
 
-    public interface ISerializedDictionaryNonGeneric
+    public interface ISerializedDictionaryNonGenericOld
     {
         public System.Collections.IList listAccess { get; }
 
@@ -457,12 +457,6 @@ namespace ListUtilities
 
         public bool[] RecalculateOccurences();
         public bool[] DuplicateValues { get; }
-        public void RemoveDuplicates();
-    }
-    public interface ILookupTableNonGeneric
-    {
-        public bool[] DuplicateValues { get; }
-        public void RecalculateOccurences();
         public void RemoveDuplicates();
     }
 }

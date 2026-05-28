@@ -45,12 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Test
   action:
-    SerializedNames:
-    - A
-    - B
-    - C
-    SerializedKeys: ddb72c16e0b72c16dfb72c16
-    SerializedValues:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
+    serializedNames:
+    - AAAAAAAAAAAAAAA
+    serializedKeys: 5935d4d1
+    serializedValues: 0f000000

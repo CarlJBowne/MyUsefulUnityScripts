@@ -1,4 +1,5 @@
 using System;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -479,4 +480,95 @@ namespace ListUtilities.Editor.Internal
         }
         public static void TextDefault(VisualElement target) => new ElementHighlighter(target, TextSelected).Select();
     }
+
+    public class InsertKeyPopup<T> : VisualElement
+    {
+        public InsertKeyPopup(Action<T> postAction)
+        {
+            this.postAction = postAction;
+            this.Display(false);
+
+            Field = typeof(T) == typeof(string) ? new TextField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.isDelayed = true;
+                PrepAction = () => f.SetValueWithoutNotify(""); //Set to default on Show
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            }) : typeof(UnityEngine.Object).IsAssignableFrom(typeof(T)) ? new ObjectField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                PrepAction = () => f.SetValueWithoutNotify(null); //Set to default on Show
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            }) : typeof(T) == typeof(int) ? new IntegerField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.isDelayed = true;
+                PrepAction = () => f.SetValueWithoutNotify(0);
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            }) : typeof(T) == typeof(double) ? new FloatField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.isDelayed = true;
+                PrepAction = () => f.SetValueWithoutNotify(1f);
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            }) : typeof(T) == typeof(Color) ? new ColorField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                PrepAction = () => f.SetValueWithoutNotify(Color.white);
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            }) : typeof(T).IsEnum ? new EnumField(default(T) as System.Enum).AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                PrepAction = () => f.SetValueWithoutNotify(default(T) as System.Enum);
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            }) : new PopupField<T>().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                T def = f.value;
+                PrepAction = () => f.SetValueWithoutNotify(def);
+                f.RegisterValueChangedCallback(ev => InvokePost(ev.newValue));
+
+            });
+
+            // helper to invoke the generic post action with some resilience to type mismatches
+            void InvokePost(object val)
+            {
+                if (this.postAction == null) return;
+                try
+                {
+                    this.postAction((T)val);
+                }
+                catch
+                {
+                    try
+                    {
+                        var converted = Convert.ChangeType(val, typeof(T));
+                        this.postAction((T)converted);
+                    }
+                    catch { }
+                }
+                this.Display(false);
+                this.Blur();
+            }
+
+        }
+        VisualElement Field;
+        Action<T> postAction;
+        Action PrepAction;
+
+        public void Show()
+        {
+            PrepAction();
+            this.Display(true);
+            Field.Focus();
+        }
+
+    }
+
 }

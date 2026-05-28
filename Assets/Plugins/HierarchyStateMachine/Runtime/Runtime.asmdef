@@ -2,7 +2,8 @@
     "name": "SLS.StateMachineH.Runtime",
     "rootNamespace": "",
     "references": [
-        "Kybernetik.UltEvents"
+        "Kybernetik.UltEvents",
+        "SLS.ListUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

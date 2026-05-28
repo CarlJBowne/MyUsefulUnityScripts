@@ -1,9 +1,8 @@
 {
-    "name": "ListUtilities.Editor",
+    "name": "SLS.ListUtilities.Editor",
     "rootNamespace": "",
     "references": [
-        "ListUtilities",
-        "ListUtilities.InternalUtils"
+        "SLS.ListUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

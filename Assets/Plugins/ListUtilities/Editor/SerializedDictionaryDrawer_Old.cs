@@ -8,8 +8,8 @@ using ListUtilities.Editor.Internal;
 
 namespace ListUtilities.Editor
 {
-    [CustomPropertyDrawer(typeof(ISerializedDictionaryNonGeneric), true)]
-    public class SerializedDictionaryDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(ISerializedDictionaryNonGenericOld), true)]
+    public class SerializedDictionaryDrawer_Old : PropertyDrawer
     {
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
@@ -19,7 +19,7 @@ namespace ListUtilities.Editor
             Type DrawerType = typeof(SerializedDictionaryDrawer<,>)
                 .MakeGenericType(fieldInfo.FieldType.GenericTypeArguments);
             var literal = fieldInfo.GetValue(property.serializedObject.targetObject)
-                as ISerializedDictionaryNonGeneric;
+                as ISerializedDictionaryNonGenericOld;
 
             // Pass the live literal (the actual dictionary instance) to the drawer so it
             // can recalculate occurrences and provide proper binding. Using property.boxedValue
@@ -252,9 +252,9 @@ namespace ListUtilities.Editor
     }
 
     public class SerializedDictionaryDrawer<TK, TV> :
-    SuperList<SerializedDictionaryDrawer<TK, TV>, SerializedDictionaryItem<TK, TV>, SerializedDictionary<TK, TV>.KeyValuePair>
+    SuperList<SerializedDictionaryDrawer<TK, TV>, SerializedDictionaryItem<TK, TV>, SerializedDictionary_Legacy<TK, TV>.KeyValuePair>
     {
-        public SerializedDictionaryDrawer(SerializedProperty rootProperty, ISerializedDictionaryNonGeneric literal, bool BindImmediately = true) : base(rootProperty, true)
+        public SerializedDictionaryDrawer(SerializedProperty rootProperty, ISerializedDictionaryNonGenericOld literal, bool BindImmediately = true) : base(rootProperty, true)
         {
             Literal = literal;
             BuildBasicElements();
@@ -275,7 +275,7 @@ namespace ListUtilities.Editor
         }
 
         public SerializedProperty RootProperty { get; protected set; }
-        public ISerializedDictionaryNonGeneric Literal { get; protected set; }
+        public ISerializedDictionaryNonGenericOld Literal { get; protected set; }
         public override bool allowCounterEdit => false;
 
 
@@ -304,7 +304,7 @@ namespace ListUtilities.Editor
         }
 
     }
-    public class SerializedDictionaryItem<TK, TV> : SuperListItem<SerializedDictionaryDrawer<TK, TV>, SerializedDictionaryItem<TK, TV>, SerializedDictionary<TK, TV>.KeyValuePair>
+    public class SerializedDictionaryItem<TK, TV> : SuperListItem<SerializedDictionaryDrawer<TK, TV>, SerializedDictionaryItem<TK, TV>, SerializedDictionary_Legacy<TK, TV>.KeyValuePair>
     {
         public SerializedDictionaryItem(SerializedDictionaryDrawer<TK, TV> parentList, int Index)
             : base(parentList, Index) { }
