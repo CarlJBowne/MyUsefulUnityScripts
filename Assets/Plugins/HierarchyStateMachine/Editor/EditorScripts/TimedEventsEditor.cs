@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ListUtilities.Editor;
 using NUnit.Framework;
 using SLS.StateMachineH.Editor;
 using SLS.StateMachineH.Timelines;
@@ -9,6 +10,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using static SLS.StateMachineH.Timelines.TimedEvents;
+using SLS.StateMachineH.Editor.Internal;
 
 namespace SLS.StateMachineH.Timelines.Editor
 {
@@ -74,6 +76,8 @@ namespace SLS.StateMachineH.Timelines.Editor
         {
             public ListDrawer(SerializedProperty listProperty) : base(listProperty)
             {
+                BuildBasicElements();
+                BindProperty(listProperty);
             }
 
             public override bool allowReorder => false;
@@ -82,23 +86,25 @@ namespace SLS.StateMachineH.Timelines.Editor
             public override void SetOrCreateItemValue(int ID, object input = null)
             {
                 base.SetOrCreateItemValue(ID, input);
+                if (ID == 0) return;
                 property.GetArrayElementAtIndex(ID).FindPropertyRelative("time").floatValue =
                     property.GetArrayElementAtIndex(ID - 1).FindPropertyRelative("time").floatValue + .001f;
+                property.serializedObject.ApplyModifiedProperties();
             }
-            public override void CreateItemElement(int ID)
-            {
-                if (property == null) throw new InvalidOperationException("Property is null");
-                // Grab a fresh serialized property for this slot
-                SerializedProperty elemProp = property.GetArrayElementAtIndex(ID) ?? throw new ArgumentOutOfRangeException(nameof(ID));
-
-                ItemDrawer holder = new(this as ListDrawer, elemProp);
-
-                items.Add(holder);
-                collectionBackground.Add(holder);
-
-                // Bind the newly created element to the owner object so it displays immediately and reacts to changes.
-                try { holder.Bind(property.serializedObject); } catch { }
-            }
+            //public override void CreateItemElement(int ID)
+            //{
+            //    if (property == null) throw new InvalidOperationException("Property is null");
+            //    // Grab a fresh serialized property for this slot
+            //    SerializedProperty elemProp = property.GetArrayElementAtIndex(ID) ?? throw new ArgumentOutOfRangeException/(nameof/(ID));
+            //
+            //    ItemDrawer holder = new(this as ListDrawer, elemProp);
+            //
+            //    items.Add(holder);
+            //    collectionBackground.Add(holder);
+            //
+            //    // Bind the newly created element to the owner object so it displays immediately and reacts to changes.
+            //    try { holder.Bind(property.serializedObject); } catch { }
+            //}
 
             public void ReorderElements(int index, ChangeEvent<float> ev)
             {
@@ -147,8 +153,9 @@ namespace SLS.StateMachineH.Timelines.Editor
         }
         internal class ItemDrawer : SuperListItem<ListDrawer, ItemDrawer, TimedEvent>
         {
-            public ItemDrawer(ListDrawer parentList, SerializedProperty thisProperty) 
-                : base(parentList, thisProperty){ }
+            public ItemDrawer(ListDrawer parentList, int Index) : base(parentList, Index)
+            {
+            }
 
             public SerializedProperty TimeProp { get; private set; }
             public FloatField TimeField { get; private set; }
@@ -180,7 +187,7 @@ namespace SLS.StateMachineH.Timelines.Editor
                     t.isDelayed = true;
                     t.BindProperty(TimeProp);
                     ContextMenuTarget = t;
-                    t.DelayedBuild(() => t.RegisterValueChangedCallback(ev => parentList.ReorderElements(Index, ev)));
+                    t.DelayedBuild(() => t.RegisterValueChangedCallback(ev => parent.ReorderElements(Index, ev)));
                 });
 
                 EventField = new PropertyField().AddTo(content, e =>

@@ -152,6 +152,8 @@ namespace ListUtilities
         public Dictionary<string, T> ToNameDictionary() => SerializedNames.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
         public Dictionary<int, T> ToKeyDictionary() => ToNativeDictionary();
         public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
+
+        public string NameFromIndex(int i) => SerializedNames[i];
     }
 
     /// <summary>

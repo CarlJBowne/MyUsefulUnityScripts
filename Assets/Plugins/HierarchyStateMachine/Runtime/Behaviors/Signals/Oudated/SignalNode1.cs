@@ -13,12 +13,12 @@ namespace SLS.StateMachineH.Signals
     /// Represents a node in the <see cref="StateMachine"/> that can recieve signals and enact events.  
     /// </summary>  
     [RequireComponent(typeof(State))]
-    public class SignalNode : StateBehavior
+    public class SignalNode_Old : StateBehavior
     {
         /// <summary>  
         /// The signals associated with this node.  
         /// </summary>  
-        [SerializeField] internal SignalSet signals = new();
+        [SerializeField] internal SignalSet_Old signals = new();
 
         /// <summary>  
         /// Indicates whether the node should lock itself upon entering a state.  
@@ -39,31 +39,16 @@ namespace SLS.StateMachineH.Signals
         /// <summary>
         /// Attempts to retrieve an event associated with the specified signal name.
         /// </summary>
-        public bool TryGet(string name, out EVENT Result, bool USENAME = false) =>
-            !USENAME ? signals.TryGet(Animator.StringToHash(name), out Result)
-            : signals.TryGet(name, out Result);
-
+        public bool TryGet(string name, out EVENT Result) => signals.TryGetValue(name, out Result);
         /// <summary>
         /// Returns whether this Signal Node contains an event with the specified name.
         /// </summary>
-        public bool ContainsName(string name, bool USENAME = false) =>
-            !USENAME ? signals.ContainsKey(Animator.StringToHash(name))
-            : signals.ContainsName(name);
-        /// <summary>
-        /// Returns whether this Signal Node contains an event with the specified name.
-        /// </summary>
-        public bool ContainsKey(int key) => signals.ContainsKey(key);
-
+        public bool ContainsKey(string name) => signals.ContainsKey(name);
         /// <summary>
         /// Removes the event with the specified name.
         /// </summary>
         /// <param name="name"></param>
-        public void Remove(string name) => signals.Remove(name);
-        /// <summary>
-        /// Removes the event with the specified name.
-        /// </summary>
-        /// <param name="name"></param>
-        public void Remove(int ID) => signals.Remove(ID);
+        public void Remove(string name) => signals.Remove(name); 
 
         /// <summary>  
         /// Fires a signal if it exists and meets the conditions for invocation.  
@@ -72,7 +57,7 @@ namespace SLS.StateMachineH.Signals
         /// <returns>True if the signal was fired; otherwise, false.</returns>  
         public bool FireSignal(Signal signal)
         {
-            if (signals.ContainsKey(Animator.StringToHash(signal.name)) && (!Locked || signal.ignoreLock))
+            if (signals.ContainsKey(signal.name) && (!Locked || signal.ignoreLock))
             {
                 signals[signal.name]?.Invoke();
                 return true;
@@ -82,7 +67,7 @@ namespace SLS.StateMachineH.Signals
 
         public bool FireEvent(string signalName)
         {
-            if (signals.ContainsKey(Animator.StringToHash(signalName)))
+            if (signals.ContainsKey(signalName))
             {
                 signals[signalName]?.Invoke();
                 return true;
@@ -93,7 +78,7 @@ namespace SLS.StateMachineH.Signals
         {
             if (signals.Count > id && id >= 0)
             {
-                signals.ValueFromIndex(id)?.Invoke();
+                signals.GetValueOfIndex(id)?.Invoke();
                 return true;
             }
             else return false;

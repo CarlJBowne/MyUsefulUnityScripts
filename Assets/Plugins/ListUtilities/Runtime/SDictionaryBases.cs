@@ -114,6 +114,8 @@ namespace ListUtilities
 
         public Dictionary<TK, TV> ToNativeDictionary() => SerializedKeys.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
 
+        public TK KeyFromIndex(int i) => SerializedKeys[i];
+        public TV ValueFromIndex(int i) => SerializedValues[i];
 
         public List<bool> Duplicates()
         {

@@ -15,7 +15,7 @@ namespace SLS.StateMachineH.Signals
     /// Provides functionality for firing signals, queuing signals, and managing signal locks.  
     /// </summary>  
     [RequireComponent(typeof(StateMachine))]
-    public class SignalManager : SignalNode
+    public class SignalManager_Old : SignalNode_Old
     {
 
         /// <summary>  
@@ -45,7 +45,7 @@ namespace SLS.StateMachineH.Signals
         {
             bool signalFired = false;
             if (TryCurrentNode(out SignalNode signalNode) && signalNode.FireSignal(signal.name)) signalFired = true;
-            else if (signals.ContainsName(signal.name))
+            else if (signals.ContainsKey(signal.name))
             {
                 signals[signal]?.Invoke();
                 signalFired = true;

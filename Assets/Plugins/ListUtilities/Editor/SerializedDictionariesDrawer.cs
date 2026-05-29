@@ -8,8 +8,8 @@ using ListUtilities.Editor.Internal;
 
 namespace ListUtilities.Editor
 {
-    [CustomPropertyDrawer(typeof(DictionaryS<,>))]
-    [CustomPropertyDrawer(typeof(DictionarySReference<,>))]
+    [CustomPropertyDrawer(typeof(DictionaryS<,>), true)]
+    [CustomPropertyDrawer(typeof(DictionarySReference<,>), true)]
     public class SerializedDictionaryDrawer : PropertyDrawer
     {
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
@@ -325,8 +325,8 @@ namespace ListUtilities.Editor
         }
 
     }
-    [CustomPropertyDrawer(typeof(HashedListS<>))]
-    [CustomPropertyDrawer(typeof(HashedListSReference<>))]
+    [CustomPropertyDrawer(typeof(HashedListS<>), true)]
+    [CustomPropertyDrawer(typeof(HashedListSReference<>), true)]
     public class HashedListDrawer : PropertyDrawer
     {
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
