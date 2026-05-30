@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using ListUtilities;
 using UnityEngine;
 
 namespace SLS.StateMachineH
@@ -144,6 +145,6 @@ namespace SLS.StateMachineH
                 default: break;
             }
         }
-        public void CacheID() => cachedHash = Animator.StringToHash(NameID);
+        public void CacheID() => cachedHash = NameID.Hash();
     }
 }

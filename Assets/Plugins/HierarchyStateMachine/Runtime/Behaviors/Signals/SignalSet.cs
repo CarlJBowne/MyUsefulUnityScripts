@@ -90,10 +90,9 @@ namespace SLS.StateMachineH.Signals
         /// Serves as the default hash function.  
         /// </summary>  
         /// <returns>A hash code for the current <see cref="Signal"/>.</returns>  
-        public override int GetHashCode() => name?.GetHashCode() ?? 0;
+        public override int GetHashCode() => string.IsNullOrEmpty(name) ? Animator.StringToHash(name) : 0;
 
         public const float DEFAULT_QUEUE_TIME = 0.5f;
 
     }
-
 }

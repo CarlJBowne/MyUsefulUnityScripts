@@ -27,14 +27,14 @@ namespace SLS.StateMachineH.Signals
         /// Attempts to get a <see cref="SignalNode"/> from the active state.  
         /// </summary>  
         /// <returns>The current signal node.</returns>  
-        public SignalNode GetCurrentNode() => Machine.CurrentState.GetComponent<SignalNode>();
+        public SignalNode_Old GetCurrentNode() => Machine.CurrentState.GetComponent<SignalNode_Old>();
 
         /// <summary>  
         /// Attempts to retrieve the current signal node from the active state.  
         /// </summary>  
         /// <param name="signalNode">The retrieved signal node, if found.</param>  
         /// <returns>True if the signal node was found; otherwise, false.</returns>  
-        public bool TryCurrentNode(out SignalNode signalNode) => Machine.CurrentState.TryGetComponent(out signalNode);
+        public bool TryCurrentNode(out SignalNode_Old signalNode) => Machine.CurrentState.TryGetComponent(out signalNode);
 
         /// <summary>  
         /// Fires a signal, invoking its associated event or queuing it if necessary.  
@@ -44,7 +44,7 @@ namespace SLS.StateMachineH.Signals
         public bool FireSignal(Signal signal, bool fromQueue = false)
         {
             bool signalFired = false;
-            if (TryCurrentNode(out SignalNode signalNode) && signalNode.FireSignal(signal.name)) signalFired = true;
+            if (TryCurrentNode(out SignalNode_Old signalNode) && signalNode.FireSignal(signal.name)) signalFired = true;
             else if (signals.ContainsKey(signal.name))
             {
                 signals[signal]?.Invoke();
@@ -64,7 +64,7 @@ namespace SLS.StateMachineH.Signals
         /// </summary>  
         new public void Lock()
         {
-            if (TryCurrentNode(out SignalNode signalNode)) signalNode.Lock();
+            if (TryCurrentNode(out SignalNode_Old signalNode)) signalNode.Lock();
         }
 
         /// <summary>  
@@ -72,7 +72,7 @@ namespace SLS.StateMachineH.Signals
         /// </summary>  
         new public void Unlock()
         {
-            if (TryCurrentNode(out SignalNode signalNode))
+            if (TryCurrentNode(out SignalNode_Old signalNode))
             {
                 signalNode.Unlock();
                 if (queueSignals && SignalQueue.Count > 0) FireSignal(SignalQueue.Dequeue());
@@ -124,6 +124,6 @@ namespace SLS.StateMachineH.Signals
             }
         }
 
-        new public bool Locked => TryCurrentNode(out SignalNode signalNode) && signalNode.Locked;
+        new public bool Locked => TryCurrentNode(out SignalNode_Old signalNode) && signalNode.Locked;
     }
 }

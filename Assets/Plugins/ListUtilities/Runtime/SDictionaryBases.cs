@@ -263,7 +263,7 @@ namespace ListUtilities
         public NameHashValueTrio(string name, T value)
         {
             Name = name;
-            Hash = Animator.StringToHash(name);
+            Hash = name.Hash();
             Value = value;
         }
         public NameHashValueTrio(int hash, T value)
