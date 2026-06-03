@@ -1,31 +1,27 @@
-using Newtonsoft.Json.Linq;
-using System.Collections;
-using System.Collections.Generic;
+using System;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
+using UnityEngine.UIElements;
+using UnityEditor;
+using UnityEditor.UIElements;
 
 public class TestScript : MonoBehaviour
 {
+    [HeaderItem]
+    public Rigidbody body;
 
+    public GameObject buffer;
+
+    [HeaderItem(true)]
+    public Collider col;
+    [HeaderItem(true)]
+    public Collider col2;
 
     private void Awake()
     {
-
-        int inputInt = 1233;
-        string inputString = "YEETUS";
-
-        JToken intToken = inputInt;
-        JToken stringToken = inputString;
-
-        Debug.Log($"Int Token A: {intToken}");
-        Debug.Log($"Int Token B: {intToken.ToObject<int>()}");
-        Debug.Log($"Int Token C: {(int)intToken}");
-
-        Debug.Log($"String Token A: {stringToken}");
-        Debug.Log($"String Token B: {stringToken.ToObject<string>()}");
-        Debug.Log($"String Token C: {(string)stringToken}");
-
-
-
+        HeaderItemAttribute.Reset(this);
     }
 
 }
+
