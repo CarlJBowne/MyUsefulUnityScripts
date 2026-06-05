@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using SLS.EditorUtilities.Editor;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
@@ -9,7 +10,6 @@ using UnityEditor.ProjectWindowCallback;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Utilities.Xtensions.VisualElements;
 
 public class DialogueEditor : GraphViewEditorWindow
 {

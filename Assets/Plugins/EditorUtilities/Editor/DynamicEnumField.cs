@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEngine;
 
-namespace Utilities.Xtensions.VisualElements
+namespace SLS.EditorUtilities.Editor
 {
     /// <summary>
     /// A simple dynamic enum-like field backed by a list of strings. <br/>
@@ -70,7 +70,7 @@ namespace Utilities.Xtensions.VisualElements
         /// </summary>
         public void SetOptions(IEnumerable<string> options, int selectedIndex = 0)
         {
-            _options = (options != null) ? new List<string>(options) : new List<string>();
+            _options = options != null ? new List<string>(options) : new List<string>();
             _selectedIndex = ClampIndex(selectedIndex);
             Rebuild();
         }
@@ -127,7 +127,7 @@ namespace Utilities.Xtensions.VisualElements
         /// </summary>
         public string SelectedValue
         {
-            get => (_selectedIndex >= 0 && _selectedIndex < _options.Count) ? _options[_selectedIndex] : null;
+            get => _selectedIndex >= 0 && _selectedIndex < _options.Count ? _options[_selectedIndex] : null;
             set
             {
                 if(_options.Contains(value)) SelectedIndex = _options.IndexOf(value);
@@ -243,9 +243,7 @@ namespace Utilities.Xtensions.VisualElements
             {
                 // If index valid, set value; otherwise set to first item or keep consistent
                 if (_selectedIndex >= 0 && _selectedIndex < _options.Count)
-                {
                     pf.value = _options[_selectedIndex];
-                }
                 else if (_options.Count > 0)
                 {
                     pf.value = _options[0];

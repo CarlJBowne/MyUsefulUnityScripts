@@ -1,34 +1,20 @@
 using System;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UIElements;
-using System.Reflection;
 using System.Linq;
-#if UNITY_EDITOR
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.UIElements;
-#endif
+using UnityEngine;
+using UnityEngine.UIElements;
+using static SLS.EditorUtilities.ComponentHeaders.HeaderItemAttribute;
 
-public class HeaderItemAttribute : PropertyAttribute
+namespace SLS.EditorUtilities.ComponentHeaders
 {
-    public bool require;
-    public string subLocation;
-    public HeaderItemAttribute(bool require = false, string subLocation = null)
-    {
-        this.require = require;
-        this.subLocation = subLocation;
 
-    }
-    public HeaderItemAttribute(string subLocation)
-    {
-        this.require = false;
-        this.subLocation = subLocation;
-    }
 #if UNITY_EDITOR
     [CustomPropertyDrawer(typeof(HeaderItemAttribute))]
-    public class AttributeDrawer : UnityEditor.PropertyDrawer
+    public class ComponentHeadersEditors : UnityEditor.PropertyDrawer
     {
-        public static float iconSize = 16;
+        public const float iconSize = 16;
         public const string headerClassName = "RelatedComponent__Header";
         Item item;
 
@@ -159,7 +145,7 @@ public class HeaderItemAttribute : PropertyAttribute
                 propertyRow = new VisualElement();
                 propertyRow.style.flexDirection = FlexDirection.Row;
                 propertyRow.style.alignItems = Align.Center;
-                propertyRow.style.marginLeft = 4;
+                propertyRow.style.display = DisplayStyle.None;
 
                 propertyDraw = new ObjectField(property.displayName)
                 {
@@ -170,19 +156,30 @@ public class HeaderItemAttribute : PropertyAttribute
                 propertyDraw.style.flexGrow = 1;
                 propertyDraw.style.flexShrink = 1;
                 propertyDraw.style.marginRight = 4;
+                propertyDraw.RegisterValueChangedCallback(ev => UpdateVisuals());
+
                 propertyDraw.labelElement.style.flexShrink = 1f;
                 propertyDraw.labelElement.style.flexGrow = 0f;
                 propertyDraw.labelElement.style.minWidth = 0;
-                propertyDraw.style.display = DisplayStyle.None; // hidden until selected
-                propertyDraw.RegisterValueChangedCallback(ev => UpdateVisuals());
+                propertyDraw.labelElement.style.marginLeft = 2;
+                propertyDraw.labelElement.style.marginRight = 4;
+                propertyDraw.labelElement.focusable = true;
+                propertyDraw.labelElement.RegisterCallback<FocusEvent>(ev => propertyDraw.Focus());
+                propertyDraw.labelElement.RegisterCallback<BlurEvent>(ev => propertyDraw.Blur());
 
                 getButton = new Button(OnGetClicked) { text = "Get" };
                 getButton.style.width = 36;
                 getButton.style.height = iconSize + 2;
-                getButton.style.display = DisplayStyle.None; // only visible when selected
+                getButton.style.marginRight = 0;
 
-                propertyRow.Add(propertyDraw);
+                propertyDraw.Remove(propertyDraw.labelElement);
+
+                propertyRow.Add(propertyDraw.labelElement);
                 propertyRow.Add(getButton);
+                propertyRow.Add(propertyDraw);
+
+                //propertyRow.Add(propertyDraw);
+                //propertyRow.Add(getButton);
             }
 
             // Called by Header to add the property row into the header property holder.
@@ -222,8 +219,7 @@ public class HeaderItemAttribute : PropertyAttribute
                 itemBack.style.backgroundColor = !makeRed ? Color.clear : new Color(1, 0, 0, .4f);
 
                 // Show or hide the property drawer and button depending on selection
-                propertyDraw.style.display = isSelected ? DisplayStyle.Flex : DisplayStyle.None;
-                getButton.style.display = isSelected ? DisplayStyle.Flex : DisplayStyle.None;
+                propertyRow.style.display = isSelected ? DisplayStyle.Flex : DisplayStyle.None;
 
                 // Update opacity and icon
                 icon.style.opacity = property.objectReferenceValue != null ? 1 : .5f;
@@ -355,18 +351,13 @@ public class HeaderItemAttribute : PropertyAttribute
                 style.height = iconSize + 14;
                 style.borderTopWidth = 2;
                 style.borderBottomWidth = 2;
-                style.borderLeftWidth = 2;
-                style.borderRightWidth = 2;
-                style.borderBottomColor = Color.gray4;
-                style.borderRightColor = Color.gray3;
-                style.borderLeftColor = Color.gray3;
-                style.borderTopColor = Color.gray3;
-                style.borderBottomLeftRadius = 10f;
-                style.borderBottomRightRadius = 0f;
-                style.borderTopLeftRadius = 10f;
-                style.borderTopRightRadius = 10f;
-                style.marginLeft = -14;
-                style.marginRight = -5;
+                style.borderLeftWidth = 0;
+                style.borderRightWidth = 0;
+                style.borderBottomColor = Gray(0.1294118f);
+                style.borderTopColor = Gray(0.0509804f);
+                style.backgroundColor = Gray(0.1647059f);
+                style.marginLeft = -15;
+                style.marginRight = -6;
                 style.flexDirection = FlexDirection.Row;
 
                 PropertyHolder = new VisualElement();
@@ -374,15 +365,15 @@ public class HeaderItemAttribute : PropertyAttribute
                 PropertyHolder.style.flexGrow = 1f;
                 PropertyHolder.style.flexShrink = 1f;
                 PropertyHolder.style.borderTopWidth = 0;
-                PropertyHolder.style.borderRightWidth = 2;
+                PropertyHolder.style.borderRightWidth = 0;
                 PropertyHolder.style.borderLeftWidth = 2;
                 PropertyHolder.style.borderBottomWidth = 2;
                 PropertyHolder.style.borderBottomLeftRadius = 8;
-                PropertyHolder.style.borderBottomRightRadius = 6;
-                PropertyHolder.style.borderBottomColor = Color.gray4;
-                PropertyHolder.style.borderRightColor = Color.gray3;
-                PropertyHolder.style.borderLeftColor = Color.gray3;
-                PropertyHolder.style.marginRight = -5;
+                PropertyHolder.style.backgroundColor = Gray(0.1647059f);
+                PropertyHolder.style.borderBottomColor = Gray(0.1294118f);
+                PropertyHolder.style.borderBottomColor = Gray(0.1294118f);
+                PropertyHolder.style.marginRight = -6;
+                PropertyHolder.style.marginLeft = -2;
             }
 
             public void AddTo(VisualElement selector)
@@ -436,99 +427,7 @@ public class HeaderItemAttribute : PropertyAttribute
                 parent?.Remove(this);
             }
         }
+        internal static Color Gray(float inp) => new(inp, inp, inp);
     }
 #endif
-
-    // Shared helper: centralizes logic to find a component of the given Type on the given MonoBehaviour's GameObject.
-    // Returns the found Component or null. Does not log errors about missing required components (caller handles that).
-    public static Component GetRelatedComponent(MonoBehaviour target, System.Type componentType, string subDirectory, bool addIfNotFound = false)
-    {
-        GameObject foundSubTarget = null;
-        if (subDirectory != null)
-        {
-            string[] directory = subDirectory.Split('/');
-            foundSubTarget = target.gameObject;
-
-            foreach (var d in directory)
-            {
-                Transform child = foundSubTarget.transform.Find(d);
-                if (child != null) foundSubTarget = child.gameObject;
-                else
-                {
-                    foundSubTarget = null;
-                    break;
-                }
-            }
-        }
-
-        Component result = null;
-
-        if (subDirectory != null && foundSubTarget)
-        {
-            result = foundSubTarget.GetComponent(componentType);
-            if (result) return result;
-
-            if (addIfNotFound)
-            {
-                result = foundSubTarget.AddComponent(componentType);
-                Undo.RegisterCreatedObjectUndo(result, "Add Related Component");
-                return result;
-            }
-            else
-            {
-                result = target.GetComponent(componentType);
-                return result;
-            }
-        }
-        else
-        {
-            if (addIfNotFound)
-            {
-                result = target.gameObject.AddComponent(componentType);
-                Undo.RegisterCreatedObjectUndo(result, "Add Related Component");
-                return result;
-            }
-            else
-            {
-                result = target.GetComponent(componentType);
-                return result;
-            }
-
-        }
-
-    }
-
-
-
-    public static void Reset(MonoBehaviour target)
-    {
-        //Run through all fields with RelatedComponentAttribute or PlaceInHeaderAttribute
-        var fields = target.GetType().GetFields();
-        foreach (var field in fields)
-        {
-            // Get all attributes and check for either RelatedComponentAttribute or PlaceInHeaderAttribute
-            var attrs = field.GetCustomAttributes(true);
-            foreach (var a in attrs)
-            {
-                if (a is HeaderItemAttribute placeAttr)
-                {
-                    var fieldType = field.FieldType;
-                    if (typeof(Component).IsAssignableFrom(fieldType))
-                    {
-                        var GetComp = GetRelatedComponent(target, fieldType, placeAttr.subLocation, placeAttr.require);
-                        if (GetComp != null)
-                        {
-                            field.SetValue(target, GetComp);
-                        }
-                        else if (placeAttr.require)
-                        {
-                            var addComp = target.gameObject.AddComponent(fieldType);
-                            field.SetValue(target, addComp);
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-    }
 }

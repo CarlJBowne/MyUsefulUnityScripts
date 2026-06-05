@@ -1,11 +1,12 @@
 {
-    "name": "SLS.StateMachineH.Editor",
+    "name": "SLS.EditorUtilities.Editor",
     "rootNamespace": "",
     "references": [
-        "SLS.StateMachineH.Runtime",
-        "SLS.ListUtilities.Editor"
+        "SLS.EditorUtilities"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

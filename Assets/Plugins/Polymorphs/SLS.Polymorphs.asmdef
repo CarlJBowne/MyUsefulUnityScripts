@@ -1,9 +1,7 @@
 {
-    "name": "SLS.ListUtilities.Editor",
+    "name": "SLS.Polymorphs",
     "rootNamespace": "",
-    "references": [
-        "SLS.ListUtilities"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
