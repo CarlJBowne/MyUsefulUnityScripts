@@ -1,8 +1,8 @@
 {
-    "name": "Utilities",
-    "rootNamespace": "Utilities",
+    "name": "SLS.ObjectPooling",
+    "rootNamespace": "SLS.ObjectPooling",
     "references": [
-        "EditorAttributes",
+        "SLS.Singletons",
         "Unity.VisualScripting.Core"
     ],
     "includePlatforms": [],

@@ -1,11 +1,12 @@
 {
-    "name": "Utilities",
-    "rootNamespace": "Utilities",
+    "name": "SLS.EditorUtilities.Editor",
+    "rootNamespace": "SLS.EditorUtilities.Editor",
     "references": [
-        "EditorAttributes",
-        "Unity.VisualScripting.Core"
+        "SLS.EditorUtilities"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

@@ -1,10 +1,7 @@
 {
-    "name": "Utilities",
-    "rootNamespace": "Utilities",
-    "references": [
-        "EditorAttributes",
-        "Unity.VisualScripting.Core"
-    ],
+    "name": "SLS.Singletons",
+    "rootNamespace": "SLS.Singletons",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -1,0 +1,22 @@
+{
+    "name": "SLS.StateMachineH.Editor",
+    "rootNamespace": "SLS.StateMachineH.Editor",
+    "references": [
+        "SLS.StateMachineH",
+        "SLS.ListUtilities",
+        "SLS.ListUtilities.Editor",
+        "SLS.EditorUtilities",
+        "SLS.EditorUtilities.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

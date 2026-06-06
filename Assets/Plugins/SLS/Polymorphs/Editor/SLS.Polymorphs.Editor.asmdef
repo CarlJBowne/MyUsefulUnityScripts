@@ -1,11 +1,13 @@
 {
-    "name": "Utilities",
-    "rootNamespace": "Utilities",
+    "name": "SLS.Polymorphs.Editor",
+    "rootNamespace": "SLS.Polymorphs.Editor",
     "references": [
-        "EditorAttributes",
-        "Unity.VisualScripting.Core"
+        "SLS.Polymorphs",
+        "SLS.ListUtilities.Editor"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

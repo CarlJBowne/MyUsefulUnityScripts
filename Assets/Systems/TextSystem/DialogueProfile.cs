@@ -82,7 +82,7 @@ public class DialogueProfile
                     string S = (string)input;
                     return
                         DialogueAsset.Current.sfx.TryGetValue(S, out AudioClip namedSound) ? namedSound
-                        : DialogueGlobalData.Get.audioClips.TryGetValue(S, out namedSound) ? namedSound
+                        : DialogueGlobalData.Get.audioClips.TryGet(S, out namedSound) ? namedSound
 
                         : Profiles.TryGetValue(S, out DialogueProfile namedProfile) ? namedProfile.voiceClip
 

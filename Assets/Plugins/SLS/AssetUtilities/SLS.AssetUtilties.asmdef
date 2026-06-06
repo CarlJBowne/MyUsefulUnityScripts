@@ -1,9 +1,8 @@
 {
-    "name": "Utilities",
-    "rootNamespace": "Utilities",
+    "name": "SLS.AssetUtilties",
+    "rootNamespace": "SLS.AssetUtilties",
     "references": [
-        "EditorAttributes",
-        "Unity.VisualScripting.Core"
+        "SLS.Singletons"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

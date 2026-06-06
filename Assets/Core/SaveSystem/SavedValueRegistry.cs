@@ -1,9 +1,7 @@
-﻿using AYellowpaper.SerializedCollections;
-using SaveSystem;
+﻿using SaveSystem;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Utilities.Singletons;
 
 namespace SaveSystem
 {
@@ -11,7 +9,7 @@ namespace SaveSystem
     /// A Globally acessible registry for all saved values in the game. <br/>
     /// An Asset where defaults are defined and cloned from. DO NOT DELETE.
     /// </summary>
-    public class SavedValueRegistry : GlobalAsset<SavedValueRegistry>
+    public class SavedValueRegistry : SLS.Singletons.GlobalAsset<SavedValueRegistry>
     {
         public override void OnInit()
         {

@@ -1,10 +1,7 @@
 {
-    "name": "Utilities",
-    "rootNamespace": "Utilities",
-    "references": [
-        "EditorAttributes",
-        "Unity.VisualScripting.Core"
-    ],
+    "name": "SLS.Physics.3D",
+    "rootNamespace": "SLS.Physics.3D",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
