@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using SLS.EditorUtilities.ComponentHeaders;
 using SLS.ListUtilities;
 using UnityEngine;
 
@@ -20,16 +21,16 @@ namespace SLS.StateMachineH
         /// <summary>  
         /// The <see cref="Animator"/> component used to control animations.  
         /// </summary>  
-        [SerializeField] private Animator animator;
-        public Animator Animator => animator;
+        [field: SerializeField, HeaderItem(true, nameof(_GetAnim))] public Animator Animator { get; private set; }
+        Animator _GetAnim() => GetComponentFromMachine<Animator>();
 
         /// <summary>  
-        /// Sets up the <see cref="StateAnimator_Legacy"/> by attempting to retrieve the <see cref="Animator"/> component.  
+        /// Sets up the <see cref="StateAnimator"/> by attempting to retrieve the <see cref="Animator"/> component.  
         /// </summary>  
         protected override void OnSetup()
         {
-            TryGetComponentFromMachine(out animator);
-            if (animator == null) Destroy(this);
+            Animator = GetComponentFromMachine<Animator>();
+            if (Animator == null) Animator = Machine.gameObject.AddComponent<Animator>();
         }
 
         /// <summary>  
@@ -40,7 +41,7 @@ namespace SLS.StateMachineH
         protected override void OnEnter(State prev, bool isFinal)
         {
             if (!isFinal && !doWhenNotFinal) return;
-            action.Do(animator);
+            action.Do(Animator);
         }
 
         #region Auxilary Alternatives
@@ -48,33 +49,33 @@ namespace SLS.StateMachineH
         /// Plays the specified animation.  
         /// </summary>  
         /// <param name="name">The name of the animation to play.</param>  
-        public void Play(string name) => animator.Play(name);
+        public void Play(string name) => Animator.Play(name);
 
         /// <summary>  
         /// Crossfades to the specified animation over a given duration.  
         /// </summary>  
         /// <param name="name">The name of the animation to crossfade to.</param>  
         /// <param name="time">The duration of the crossfade.</param>  
-        public void CrossFade(string name, float time = 0f) => animator.CrossFade(name, time, 0);
+        public void CrossFade(string name, float time = 0f) => Animator.CrossFade(name, time, 0);
 
         /// <summary>  
         /// Triggers the specified animation.  
         /// </summary>  
         /// <param name="name">The name of the animation trigger.</param>  
-        public void Trigger(string name) => animator.SetTrigger(name);
+        public void Trigger(string name) => Animator.SetTrigger(name);
 
         /// <summary>  
-        /// Plays the specified animation starting at the current normalized time of the animator.  
+        /// Plays the specified animation starting at the current normalized time of the Animator.  
         /// </summary>  
         /// <param name="name">The name of the animation to play.</param>  
-        public void PlayAtCurrentPoint(string name) => animator.Play(name, -1, animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
+        public void PlayAtCurrentPoint(string name) => Animator.Play(name, -1, Animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
 
         /// <summary>  
-        /// Crossfades to the specified animation starting at the current normalized time of the animator.  
+        /// Crossfades to the specified animation starting at the current normalized time of the Animator.  
         /// </summary>  
         /// <param name="name">The name of the animation to crossfade to.</param>  
         /// <param name="time">The duration of the crossfade.</param>  
-        public void CrossFadeAtCurrentPoint(string name, float time = 0f) => animator.CrossFade(name, time, 0, animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
+        public void CrossFadeAtCurrentPoint(string name, float time = 0f) => Animator.CrossFade(name, time, 0, Animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
 
         #endregion
     }
@@ -106,41 +107,41 @@ namespace SLS.StateMachineH
         public int intValue;
         public bool boolValue;
 
-        public void Do(Animator animator)
+        public void Do(Animator Animator)
         {
             if (cachedHash == -1) CacheID();
             switch (type)
             {
                 case Type.Play:
-                    animator.Play(cachedHash);
+                    Animator.Play(cachedHash);
                     break;
                 case Type.PlayAtPoint:
-                    animator.Play(cachedHash, layer, floatValue1);
+                    Animator.Play(cachedHash, layer, floatValue1);
                     break;
                 case Type.PlaySynced:
-                    animator.Play(cachedHash, layer, animator.GetCurrentAnimatorStateInfo(layer).normalizedTime);
+                    Animator.Play(cachedHash, layer, Animator.GetCurrentAnimatorStateInfo(layer).normalizedTime);
                     break;
                 case Type.CrossFade:
-                    animator.CrossFade(cachedHash, floatValue1, layer);
+                    Animator.CrossFade(cachedHash, floatValue1, layer);
                     break;
                 case Type.CrossFadeAtPoint:
-                    animator.CrossFade(cachedHash, floatValue1, layer, floatValue2);
+                    Animator.CrossFade(cachedHash, floatValue1, layer, floatValue2);
                     break;
                 case Type.CrossFadeSynced:
-                    animator.CrossFade(cachedHash, floatValue1, layer, animator.GetCurrentAnimatorStateInfo(layer).normalizedTime);
+                    Animator.CrossFade(cachedHash, floatValue1, layer, Animator.GetCurrentAnimatorStateInfo(layer).normalizedTime);
                     break;
                 case Type.SetTrigger:
-                    if (boolValue) animator.SetTrigger(cachedHash);
-                    else animator.ResetTrigger(cachedHash);
+                    if (boolValue) Animator.SetTrigger(cachedHash);
+                    else Animator.ResetTrigger(cachedHash);
                     break;
                 case Type.SetFloat:
-                    animator.SetFloat(cachedHash, floatValue1);
+                    Animator.SetFloat(cachedHash, floatValue1);
                     break;
                 case Type.SetInt:
-                    animator.SetInteger(cachedHash, intValue);
+                    Animator.SetInteger(cachedHash, intValue);
                     break;
                 case Type.SetBool:
-                    animator.SetBool(cachedHash, boolValue);
+                    Animator.SetBool(cachedHash, boolValue);
                     break;
                 default: break;
             }

@@ -30,7 +30,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
             }
 
             var relatedAttr = attribute as HeaderItemAttribute;
-            item = new Item(property, relatedAttr != null && relatedAttr.require, relatedAttr?.subLocation);
+            item = new Item(property, relatedAttr != null && relatedAttr.require, relatedAttr?.subLocation, relatedAttr?.methodName);
 
 
             VisualElement Blank = new()
@@ -93,18 +93,20 @@ namespace SLS.EditorUtilities.ComponentHeaders
             readonly Type fieldType;
             readonly MonoBehaviour context;
             readonly string subLocation;
+            readonly string methodName;
 
             public Header header { get; private set; }
 
             bool isSelected => header?.SelectedDrawer == this;
             bool makeRed => isRequired && property.objectReferenceValue == null;
 
-            public Item(SerializedProperty prop, bool required, string subLocationPath)
+            public Item(SerializedProperty prop, bool required, string subLocationPath, string methodName)
             {
                 property = prop;
                 isRequired = required;
                 context = property.serializedObject.targetObject as MonoBehaviour;
                 subLocation = subLocationPath;
+                this.methodName = methodName;
 
                 // Determine declared field type via reflection
                 Type resolvedType = typeof(UnityEngine.Object);
@@ -283,7 +285,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                     if (fieldType != null && typeof(Component).IsAssignableFrom(fieldType))
                     {
                         // Use centralized lookup with optional sub-location and do not add yet
-                        found = GetRelatedComponent(context, fieldType, subLocation, false);
+                        found = GetRelatedComponent(context, fieldType, subLocation, methodName, false);
                     }
                     else if (fieldType == typeof(GameObject))
                     {
@@ -292,7 +294,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                     else
                     {
                         // fallback: try centralized lookup which will return null for non-components
-                        found = GetRelatedComponent(context, fieldType, subLocation, false);
+                        found = GetRelatedComponent(context, fieldType, subLocation, methodName, false);
                     }
                 }
                 catch
@@ -313,7 +315,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                         // Ask user if they'd like to add the component if it's required
                         if (EditorUtility.DisplayDialog("Component Not Found", $"The required component of type '{fieldType.Name}' was not found on GameObject '{context.gameObject.name}' and is required for this to work. Would you like to add it?", "Yes", "No"))
                         {
-                            var addedComp = GetRelatedComponent(context, fieldType, subLocation, true);
+                            var addedComp = GetRelatedComponent(context, fieldType, subLocation, methodName, true);
                             property.objectReferenceValue = addedComp;
                             property.serializedObject.ApplyModifiedProperties();
                             propertyDraw.SetValueWithoutNotify(addedComp);

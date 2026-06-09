@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using SLS.EditorUtilities.ComponentHeaders;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,7 +22,7 @@ namespace SLS.StateMachineH
         /// <summary>  
         /// The current <see cref="StateMachineH.State"/>. Useful for referencing this SubObject.  
         /// </summary>  
-        [field: SerializeField] public State State { get; internal set; }
+        [field: SerializeField, HeaderItem(true)] public State State { get; internal set; }
 
         /// <summary>  
         /// An indirection to access the <see cref="StateMachine"/>'s <see cref="GameObject"/> property.  

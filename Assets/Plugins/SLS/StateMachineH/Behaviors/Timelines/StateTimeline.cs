@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using SLS.EditorUtilities.ComponentHeaders;
 using UnityEngine;
 
 namespace SLS.StateMachineH.Timelines
@@ -11,7 +12,9 @@ namespace SLS.StateMachineH.Timelines
     [RequireComponent(typeof(State))]
     public class StateTimeline : StateBehavior
     {
-        [SerializeField] protected StateTimelineManager timeline;
+        [SerializeField, HeaderItem(true, nameof(_GetMan))] protected StateTimelineManager timeline;
+        public StateTimelineManager Manager => timeline;
+        StateTimelineManager _GetMan() => GetComponentFromMachine<StateTimelineManager>();
 
         protected override void Reset()
         {

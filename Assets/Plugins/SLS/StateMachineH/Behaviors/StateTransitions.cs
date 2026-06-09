@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SLS.EditorUtilities.ComponentHeaders;
 using SLS.StateMachineH;
 using SLS.StateMachineH.Timelines;
 using UnityEngine;
@@ -23,7 +24,8 @@ public class StateTransitions : StateTimeline
     }
 
     public List<Transition> transitions = new();
-    [SerializeField] private Animator animator;
+    [SerializeField, HeaderItem(true, nameof(_GetAnim))] public Animator Animator { get; private set; }
+    Animator _GetAnim() => GetComponentFromMachine<Animator>();
 
     Transition activeTransition = null;
     float timer = 0f;
@@ -44,7 +46,7 @@ public class StateTransitions : StateTimeline
 
         if (activeTransition.Animation != null && activeTransition.Animation.type is not AnimatorAction.Type.Null)
         {
-            activeTransition.Animation.Do(animator);
+            activeTransition.Animation.Do(Animator);
             //Disable StateAnimator on Target once disabling is implemented
         }
 

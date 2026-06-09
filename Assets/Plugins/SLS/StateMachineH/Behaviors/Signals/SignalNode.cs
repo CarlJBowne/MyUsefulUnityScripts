@@ -1,5 +1,9 @@
 ﻿using UnityEngine;
 using SLS.ListUtilities;
+using SLS.EditorUtilities.ComponentHeaders;
+using SLS.StateMachineH.Timelines;
+
+
 
 
 #if ULT_EVENTS
@@ -24,7 +28,10 @@ namespace SLS.StateMachineH.Signals
 
         [SerializeField] public bool blockParentNodes = false;
         [SerializeField] public bool blockGlobalNode = false;
-        [SerializeField] private SignalManager manager;
+        [SerializeField, HeaderItem(true, nameof(_GetMan))] protected SignalManager manager;
+        public SignalManager Manager => manager;
+        SignalManager _GetMan() => GetComponentFromMachine<SignalManager>();
+
 
         /// <summary>  
         /// Indexer to access events associated with a signal name.  
