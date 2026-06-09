@@ -1,0 +1,6 @@
+{
+  "name": "com.starlightshadows.polymorphs",
+  "version": "1.0.0",
+  "displayName": "SLS - Polymorphs",
+  "description": "Useful library for reference-serialized c# objects, aka Polymorphs!\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.polymorphs"
+}

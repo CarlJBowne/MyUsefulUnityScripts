@@ -1,0 +1,6 @@
+{
+  "name": "com.starlightshadows.timeutilities",
+  "version": "1.0.0",
+  "displayName": "SLS - Time Utilities",
+  "description": "A Utility Package containing easy Time-related functionality, like Coroutines and Timers\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.timeutilities"
+}

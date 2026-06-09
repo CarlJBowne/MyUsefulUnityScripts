@@ -1,0 +1,6 @@
+{
+  "name": "com.starlightshadows.inversion",
+  "version": "1.0.0",
+  "displayName": "SLS - Inversion",
+  "description": "A Package to help with problems of Inversion, provides Services and Dependency Injection Helpers.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.inversion"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "com.starlightshadows.singletons",
+  "version": "1.0.0",
+  "displayName": "SLS - Singletons",
+  "description": "Provides multiple ways to implement the Singleton pattern.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.singletons"
+}

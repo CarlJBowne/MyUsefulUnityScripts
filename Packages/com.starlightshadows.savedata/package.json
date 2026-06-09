@@ -1,0 +1,6 @@
+{
+  "name": "com.starlightshadows.savesystem",
+  "version": "1.0.0",
+  "displayName": "SLS - Save System",
+  "description": "A robust library on which to base your game's Save Data system.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.savesystem"
+}

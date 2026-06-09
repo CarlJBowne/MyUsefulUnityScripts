@@ -12,6 +12,88 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.starlightshadows.assetutilities": {
+      "version": "file:com.starlightshadows.assetutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.starlightshadows.singletons": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.singletons#v1.0.0",
+        "com.starlightshadows.timeutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.timeutilities#v1.0.0",
+        "com.starlightshadows.listutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.listutilities#v1.0.0"
+      }
+    },
+    "com.starlightshadows.editorutilities": {
+      "version": "file:com.starlightshadows.editorutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.inversion": {
+      "version": "file:com.starlightshadows.inversion",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.listutilities": {
+      "version": "file:com.starlightshadows.listutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.objectpooling": {
+      "version": "file:com.starlightshadows.objectpooling",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.starlightshadows.singletons": "https://github.com/CarlJBowne/MyUsefulUnityScripts?path=/Packages/com.starlightshadows.singletons#v1.0.0",
+        "com.unity.visualscripting": "1.8.0"
+      }
+    },
+    "com.starlightshadows.physics2d": {
+      "version": "file:com.starlightshadows.physics2d",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.physics3d": {
+      "version": "file:com.starlightshadows.physics3d",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.polymorphs": {
+      "version": "file:com.starlightshadows.polymorphs",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.savesystem": {
+      "version": "file:com.starlightshadows.savedata",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.singletons": {
+      "version": "file:com.starlightshadows.singletons",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.statemachineh": {
+      "version": "file:com.starlightshadows.statemachineh",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.starlightshadows.listutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.listutilities#v1.0.0",
+        "com.starlightshadows.editorutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.editorutilities#v1.0.0"
+      }
+    },
+    "com.starlightshadows.timeutilities": {
+      "version": "file:com.starlightshadows.timeutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.addressables": {
       "version": "2.7.2",
       "depth": 0,

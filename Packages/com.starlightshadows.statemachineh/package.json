@@ -1,0 +1,13 @@
+{
+  "name": "com.starlightshadows.statemachineh",
+  "version": "1.0.0",
+  "displayName": "SLS - Hierarchical State Machine",
+  "description": "A State Machine system based on sub-objects.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.statemachineh",
+  "dependencies": {
+    "com.starlightshadows.listutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.listutilities#v1.0.0",
+    "com.starlightshadows.editorutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.editorutilities#v1.0.0"
+  },
+  "optionalDependencies": {
+    "com.kybernetik.ultevents": "3.0.2"
+  }
+}

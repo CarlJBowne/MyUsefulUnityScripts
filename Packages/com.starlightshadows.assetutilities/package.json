@@ -1,0 +1,11 @@
+{
+  "name": "com.starlightshadows.assetutilities",
+  "version": "1.0.0",
+  "displayName": "SLS - Asset Utilities",
+  "description": "A Utilities Library for Assets, centering around Prefabs and Scenes.\nURL: \nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.assetutilities",
+  "dependencies": {
+    "com.starlightshadows.singletons": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.singletons#v1.0.0",
+    "com.starlightshadows.timeutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.timeutilities#v1.0.0",
+    "com.starlightshadows.listutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.listutilities#v1.0.0"
+  }
+}
