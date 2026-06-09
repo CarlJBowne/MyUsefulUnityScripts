@@ -9,20 +9,7 @@ using SLS.EditorUtilities.ComponentHeaders;
 
 public class TestScript : MonoBehaviour
 {
-    [HeaderItem]
-    public Rigidbody body;
-
-    public GameObject buffer;
-
-    [HeaderItem(true)]
-    public Collider col;
-    [HeaderItem(true, "child1/child2")]
-    public Collider col2;
-
-    private void Awake()
-    {
-        HeaderItemAttribute.Reset(this);
-    }
-
+    [SceneField]
+    public string sceneName;
 }
 

@@ -25,11 +25,7 @@ using SLS.EditorUtilities.Editor;
 
 public class Test : MonoBehaviour
 {
-    public HashedListS<int> action; 
-    //
-    //public SerializedDictionary<string, float> TEST;
-    //[SerializeField, SerializeReference] PolymorphTest test;
-    //public Polymorph.ListOf<PolymorphTest> testList = new();
+    public TypeSerialized<UnityEngine.Object> ty;
 }
 
 [System.Serializable]

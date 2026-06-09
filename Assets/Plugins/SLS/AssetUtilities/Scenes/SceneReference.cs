@@ -60,7 +60,7 @@ public class SceneReference : ISerializationCallbackReceiver
 
 }
 
-public enum SceneState
+public enum SceneReferenceState
 {
     NULL = -2,
     INVALID = -1,

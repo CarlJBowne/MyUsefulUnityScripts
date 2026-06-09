@@ -13,7 +13,7 @@ OcclusionCullingSettings:
 --- !u!104 &2
 RenderSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 9
+  serializedVersion: 10
   m_Fog: 0
   m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   m_FogMode: 3
@@ -38,13 +38,12 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 12
-  m_GIWorkflowMode: 1
+  serializedVersion: 13
+  m_BakeOnSceneLoad: 0
   m_GISettings:
     serializedVersion: 2
     m_BounceScale: 1
@@ -94,7 +93,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 0}
+  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -182,15 +181,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 30c1b4f423f57d34e8e07e774f286cd6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  locked: 0
-  separateFromChildren: 0
-  onActivatedEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  states:
-    _serializedList: []
-  _variables:
-    variables: []
 --- !u!4 &410526171
 Transform:
   m_ObjectHideFlags: 0
@@ -251,11 +241,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a81a6bcbb3ccb7548900b343e769497c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  locked: 0
-  separateFromChildren: 0
-  onActivatedEvent:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -281,9 +266,8 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705507993}
   m_Enabled: 1
-  serializedVersion: 10
+  serializedVersion: 11
   m_Type: 1
-  m_Shape: 0
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1
   m_Range: 10
@@ -333,8 +317,12 @@ Light:
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
+  m_ForceVisible: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+  m_LightUnit: 1
+  m_LuxAtDistance: 1
+  m_EnableSpotReflector: 1
 --- !u!4 &705507995
 Transform:
   m_ObjectHideFlags: 0
@@ -360,6 +348,7 @@ GameObject:
   m_Component:
   - component: {fileID: 721401151}
   - component: {fileID: 721401150}
+  - component: {fileID: 721401152}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -379,6 +368,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 697c56ac7de5b264e91c3d6a502e32d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  sceneName: 
 --- !u!4 &721401151
 Transform:
   m_ObjectHideFlags: 0
@@ -394,6 +384,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &721401152
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 721401149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 249b7e0ce359da9458721074d0d3420e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Test
+  ty:
+    assemblyQualifiedName: PolymorphEditors+TabbedDrawer, SLS.Polymorphs.Editor,
+      Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -499,6 +504,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 249b7e0ce359da9458721074d0d3420e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ty:
+    assemblyQualifiedName: 
 --- !u!1 &1467184451
 GameObject:
   m_ObjectHideFlags: 0
@@ -544,11 +551,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a81a6bcbb3ccb7548900b343e769497c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  locked: 0
-  separateFromChildren: 0
-  onActivatedEvent:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1 &2113861990
 GameObject:
   m_ObjectHideFlags: 0
@@ -593,11 +595,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a81a6bcbb3ccb7548900b343e769497c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  locked: 0
-  separateFromChildren: 0
-  onActivatedEvent:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

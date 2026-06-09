@@ -4,7 +4,16 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/_TestScripts/InputTestingScene.unity
+    guid: 428522a32a8885945a54dcdd60337941
+  - enabled: 0
+    path: Assets/_TestScripts/TestScene2.unity
+    guid: f4d46687b0134dc4e890f2b0351e4610
+  - enabled: 1
+    path: Assets/_TestScripts/TestScene3.unity
+    guid: 52d3b44ea3eea354fb0c7c9cb7e49f4c
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: f01f12dd765d5c1439c28101d77adf8e, type: 3}
   m_UseUCBPForAssetBundles: 0

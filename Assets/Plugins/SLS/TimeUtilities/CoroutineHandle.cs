@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 // Coroutine+
-// A customized, advanced form of Coroutine that keeps track of things about how it is running and has various other features.
+// A customized, advanced form of Coroutine inspired by aarthificial that keeps track of things about how it is running and has various other features.
 
 /// <summary>
 /// A customized, advanced Coroutine solution with various features for easier to write and more effective Coroutines. Use a constructor to create.
@@ -179,7 +179,7 @@ public class Coroutine : IEnumerator
     }
     public static void Stop(ref Coroutine slot) => slot?.StopAuto();
 
-    public static CoroutineRunnerUtility Runner => CoroutineRunnerUtility.Self;
+    public static TimeBackgroundUtility Runner => TimeBackgroundUtility.Self;
 
 }
 
@@ -220,76 +220,5 @@ public static class Xtensions_Coroutine
     /// <param name="automatic">Whether or not this coroutine runs automatically. Setting to true does not do anything unless owner is made non-null.</param>
     /// <param name="owner">The MonoBehavior that owns and runs the coroutine. Necessary for automatic running. Input Null to require activation via MoveNext().</param>
     public static Coroutine Begin(this IEnumerator Enum, bool automatic, MonoBehaviour owner = null) => new(Enum, automatic, owner);
-
-}
-
-public class CoroutineRunnerUtility : MonoBehaviour
-{
-    private static CoroutineRunnerUtility _self;
-    public static CoroutineRunnerUtility Self
-    {
-        get
-        {
-            if (_self == null)
-            {
-                GameObject GO = new("--Coroutine-Runner-Utility--");
-                _self = GO.AddComponent<CoroutineRunnerUtility>();
-            }
-            return _self;
-        }
-    }
-}
-
-//Bonus!
-//"WaitFor" Premade Coroutines.
-//By StarLightShadows.
-
-public static class WaitFor
-{
-
-    #region PreExisting
-
-
-    /// <summary>
-    /// Suspends the coroutine execution for the given amount of seconds using scaled time.
-    /// </summary>
-    /// <param name="time">Delay execution by the amount of time in seconds.</param>
-    public static IEnumerator Seconds(float time) { yield return new WaitForSeconds(time); }
-    /// <summary>
-    /// Creates a yield instruction to wait for a given number of seconds using unscaled time.
-    /// </summary>
-    /// <param name="time">Delay execution by the amount of time in seconds.</param>
-    public static IEnumerator SecondsRealtime(float time) { yield return new WaitForSecondsRealtime(time); }
-    /// <summary>
-    /// Waits until the end of the frame after Unity has rendererd every Camera and GUI, just before displaying the frame on screen.
-    /// </summary>
-    public static IEnumerator EndOfFrame() { yield return new WaitForEndOfFrame(); }
-    /// <summary>
-    /// Waits until next fixed frame rate update function. See Also: MonoBehaviour.FixedUpdate.
-    /// </summary>
-    public static IEnumerator FixedUpdate() { yield return new WaitForFixedUpdate(); }
-    /// <summary>
-    /// Suspends the coroutine execution until the supplied delegate evaluates to true. See Also: WaitFor.Frames
-    /// </summary>
-    public static IEnumerator Until(System.Func<bool> predicate) { yield return new WaitUntil(predicate); }
-    /// <summary>
-    /// Suspends the coroutine execution until the supplied delegate evaluates to false.
-    /// </summary>
-    public static IEnumerator While(System.Func<bool> predicate) { yield return new WaitWhile(predicate); }
-    #endregion
-
-
-    /// <summary>
-    /// Suspends the coroutine execution for a set amount of frames.
-    /// </summary>
-    /// <param name="frameCount">Delay execution by the amount of frames.</param>
-    public static IEnumerator Frames(int frameCount)
-    {
-        while (frameCount > 0)
-        {
-            frameCount--;
-            yield return null;
-        }
-    }
 
 }

@@ -2,7 +2,9 @@
     "name": "SLS.AssetUtilties",
     "rootNamespace": "SLS.AssetUtilties",
     "references": [
-        "SLS.Singletons"
+        "SLS.Singletons",
+        "SLS.TimeUtilities",
+        "SLS.ListUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
