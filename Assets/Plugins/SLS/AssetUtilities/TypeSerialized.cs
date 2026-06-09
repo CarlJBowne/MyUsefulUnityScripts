@@ -35,7 +35,8 @@ public class TypeSerialized<T> : TypeSerialized { }
 [CustomPropertyDrawer(typeof(TypeSerialized<>))]
 public class TypeFieldDrawer : PropertyDrawer
 {
-    TextField textField;
+    // Use a PopupField<string> to achieve an enum-like appearance (dropdown arrow).
+    PopupField<string> textField;
     SerializedProperty boundProperty;
     VisualElement actualField;
 
@@ -56,28 +57,46 @@ public class TypeFieldDrawer : PropertyDrawer
         currentAssemblyQualifiedName = property.FindPropertyRelative("assemblyQualifiedName").stringValue;
         currentType = Type.GetType(currentAssemblyQualifiedName);
 
-        textField = new TextField()
-        {
-            label = preferredLabel
-        };
+        string initialDisplay = currentType != null ? GetDisplayName(currentType) : "Click to Select Type";
+
+        // PopupField<string> shows a dropdown arrow and resembles an EnumField visually.
+        var choices = new List<string>() { initialDisplay };
+        textField = new PopupField<string>(preferredLabel, choices, 0);
+
         // Bind property so Unity can handle undo/serialization properly
-        textField.BindProperty(property);
-        textField.SetValueWithoutNotify(currentType != null ? GetDisplayName(currentType) : "Click to Select Type");
-        textField.isReadOnly = true;
+        try
+        {
+            textField.BindProperty(property);
+        }
+        catch
+        {
+            // Some Unity versions may not support binding directly; ignore binding failure gracefully.
+        }
 
-        actualField = textField.Q("unity-text-input", "unity-base-text-field__input");
-        actualField.style.borderLeftColor = Color.green;
-        actualField.style.borderRightColor = Color.green;
+        textField.SetValueWithoutNotify(initialDisplay);
+        textField.SetEnabled(true);
 
-        //Open picker on pointer down
-        actualField.RegisterCallback<PointerDownEvent>(ShowPicker, TrickleDown.TrickleDown);
+        //// Try to find the input element used by base fields so we can style and intercept clicks.
+        //actualField = textField.Q(null, "unity-base-field__input") ?? textField;
+        //
+        //actualField.style.borderLeftColor = Color.green;
+        //actualField.style.borderRightColor = Color.green;
+        //
+        //// Open picker on pointer down (use TrickleDown so we intercept before internal popup behavior).
+        //actualField.RegisterCallback<PointerDownEvent>(ShowPicker, TrickleDown.TrickleDown);
+        textField.RegisterCallback<PointerDownEvent>(ShowPicker, TrickleDown.TrickleDown);
 
         return textField;
     }
 
-    // Called when the user clicks the text field
+    // Called when the user clicks the field
     public void ShowPicker(PointerDownEvent ev)
     {
+        ev.StopPropagation();
+        ev.StopImmediatePropagation();
+        //ev.PreventDefault();
+        textField.Blur();
+
         // Only react to clicks on the field itself
         if (boundProperty == null) return;
 
@@ -171,7 +190,7 @@ public class TypeFieldDrawer : PropertyDrawer
             }
         }
 
-        // Show the menu at the TextField worldBound rectangle
+        // Show the menu at the PopupField worldBound rectangle
         try
         {
             var world = textField.worldBound;
@@ -410,12 +429,28 @@ public class TypeFieldDrawer : PropertyDrawer
                 string[] assemblyPath = assembly.GetName().Name.Split(".");
                 pieces = type.Namespace != null ? type.Namespace.Split(".").ToList() : new();
 
-                int shared = -1;
-                for (; shared < assemblyPath.Length-1 && shared < pieces.Count-1; shared++)
-                    if (assemblyPath[shared + 1] != pieces[shared + 1]) 
-                        break;
-                assemblyPath = assemblyPath[..(shared+1)];
-                pieces.InsertRange(0, assemblyPath);
+                //int shared = -1;
+                //for (; shared < assemblyPath.Length-1 && shared < pieces.Count-1; shared++)
+                //    if (assemblyPath[shared + 1] != pieces[shared + 1]) 
+                //        break;
+                //assemblyPath = assemblyPath[..(shared+1)];
+                //pieces.InsertRange(0, assemblyPath);
+                //pieces.Add(GetDisplayName(type));
+
+                pieces.AddRange(type.Assembly.GetName().Name.Split("."));
+                if (type.Namespace != null) pieces.AddRange(type.Namespace.Split("."));
+
+                List<string> foundString = new();
+                for (int i = 0; i < pieces.Count; i++)
+                {
+                    if (!foundString.Contains(pieces[i])) foundString.Add(pieces[i]);
+                    else
+                    {
+                        pieces.RemoveAt(i);
+                        i--;
+                    }
+                }
+
                 pieces.Add(GetDisplayName(type));
 
                 fullPath = string.Join('.', pieces);
