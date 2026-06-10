@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     /// <summary>
     /// <see cref="PhysicsBody"/> Sub-component that tracks velocity for a PhysicsBody in both local (forward/side/up) and global (x/y/z) coordinate spaces. Assigning to one representation will update the other representations automatically.

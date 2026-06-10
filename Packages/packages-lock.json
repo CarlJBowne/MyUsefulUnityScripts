@@ -28,6 +28,18 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.starlightshadows.gamestatemachine": {
+      "version": "file:com.starlightshadows.gamestatemachine",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.generalutilities": {
+      "version": "file:com.starlightshadows.generalutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.starlightshadows.inversion": {
       "version": "file:com.starlightshadows.inversion",
       "depth": 0,
@@ -36,6 +48,12 @@
     },
     "com.starlightshadows.listutilities": {
       "version": "file:com.starlightshadows.listutilities",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.starlightshadows.menucore": {
+      "version": "file:com.starlightshadows.menucore",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}

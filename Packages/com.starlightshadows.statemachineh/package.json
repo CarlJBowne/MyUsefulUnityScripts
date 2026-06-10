@@ -1,7 +1,7 @@
 {
   "name": "com.starlightshadows.statemachineh",
   "version": "1.0.0",
-  "displayName": "SLS - Hierarchical State Machine",
+  "displayName": "SLS - State Machine Hierarchy",
   "description": "A State Machine system based on sub-objects.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.statemachineh",
   "dependencies": {
     "com.starlightshadows.listutilities": "https://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.listutilities#v1.0.0",

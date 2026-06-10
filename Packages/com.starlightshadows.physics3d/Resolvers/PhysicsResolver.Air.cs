@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     public abstract partial class PhysicsResolver
     {

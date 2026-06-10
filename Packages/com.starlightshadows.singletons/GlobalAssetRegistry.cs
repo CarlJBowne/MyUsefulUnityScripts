@@ -109,7 +109,7 @@ namespace SLS.Singletons
                 ScriptableObject created = CreateInstance(t);
                 if (created == null) return null;
 
-                UnityEditor.AssetDatabase.CreateAsset(created, $"Assets/{t.Name}.asset");
+                UnityEditor.AssetDatabase.CreateAsset(created, $"Assets/Data/{t.Name}.asset");
                 UnityEditor.AssetDatabase.SaveAssets();
 
                 return created as GlobalAssetBase;

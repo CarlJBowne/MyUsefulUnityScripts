@@ -3,10 +3,10 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
-using Utilities.Xtensions;
-using Utilities.Xtensions.Unity;
+//using Utilities.Xtensions;
+//using Utilities.Xtensions.Unity;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     [System.Serializable]
     public class PhysicsBodyDebug : PhysicsSubComponent

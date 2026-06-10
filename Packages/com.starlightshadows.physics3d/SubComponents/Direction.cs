@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     /// <summary>
     /// <see cref="PhysicsBody"/> Sub-component that tracks the facing direction for a PhysicsBody. The Direction is used when converting between local and global velocities and for rotation helper functions (quick turns, limited turns, etc.).

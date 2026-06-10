@@ -457,6 +457,11 @@ namespace SLS.EditorUtilities.Editor
 
     }
 
+    public static class Xtensions_Editor_General
+    {
+        public static string BackingField(this string input) => $"<{input}>k__BackingField";
+    }
+
 //#if UNITY_STANDALONE_WIN
 //    public static class User32
 //    {

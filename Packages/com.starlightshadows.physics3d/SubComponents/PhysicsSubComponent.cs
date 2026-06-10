@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     [System.Serializable]
     public abstract class PhysicsSubComponent

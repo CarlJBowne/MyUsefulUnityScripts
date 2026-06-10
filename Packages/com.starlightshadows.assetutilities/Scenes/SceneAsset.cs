@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -47,8 +48,8 @@ namespace SLS.AssetUtilties
 
         private void FinishLoad(AsyncOperation op)
         {
-
             OnFinishLoad();
+            OnLoad?.Invoke();
             if (DesiredState is SceneState.Loaded) 
             {
                 DesiredState = SceneState.Loaded;
@@ -58,8 +59,8 @@ namespace SLS.AssetUtilties
         }
         private void FinishUnload(AsyncOperation op)
         {
-
             OnFinishUnload();
+            OnUnLoad?.Invoke();
             if (DesiredState is SceneState.Unloaded)
             {
                 DesiredState = SceneState.Unloaded;
@@ -68,8 +69,11 @@ namespace SLS.AssetUtilties
             else Load();
         }
 
-        public virtual void OnFinishLoad() { }
-        public virtual void OnFinishUnload() { }
+        protected virtual void OnFinishLoad() { }
+        protected virtual void OnFinishUnload() { }
+
+        public Action OnLoad;
+        public Action OnUnLoad;
 
         public static SceneAsset CreateRuntime(SceneReference input)
         {

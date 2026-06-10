@@ -25,7 +25,7 @@ namespace SaveSystem
 
         }
 
-        public class Json : JsonSaveFile<SaveData>
+        public class Json : JsonStream<SaveData>
         {
             public Json(int fileID) : base(fileID) { }
 

@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using SLS.EditorUtilities.ComponentHeaders;
-using SLS.ListUtilities;
 using UnityEngine;
 
 namespace SLS.StateMachineH
@@ -78,74 +77,5 @@ namespace SLS.StateMachineH
         public void CrossFadeAtCurrentPoint(string name, float time = 0f) => Animator.CrossFade(name, time, 0, Animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
 
         #endregion
-    }
-
-    [System.Serializable]
-    public class AnimatorAction
-    {
-        public enum Type
-        {
-            Play,
-            PlayAtPoint,
-            PlaySynced,
-            CrossFade,
-            CrossFadeAtPoint,
-            CrossFadeSynced,
-            SetTrigger,
-            SetBool,
-            SetFloat,
-            SetInt,
-            Null,
-        }
-        public Type type;
-        public string NameID;
-        public int cachedHash = -1;
-        public int layer = -1;
-
-        public float floatValue1;
-        public float floatValue2;
-        public int intValue;
-        public bool boolValue;
-
-        public void Do(Animator Animator)
-        {
-            if (cachedHash == -1) CacheID();
-            switch (type)
-            {
-                case Type.Play:
-                    Animator.Play(cachedHash);
-                    break;
-                case Type.PlayAtPoint:
-                    Animator.Play(cachedHash, layer, floatValue1);
-                    break;
-                case Type.PlaySynced:
-                    Animator.Play(cachedHash, layer, Animator.GetCurrentAnimatorStateInfo(layer).normalizedTime);
-                    break;
-                case Type.CrossFade:
-                    Animator.CrossFade(cachedHash, floatValue1, layer);
-                    break;
-                case Type.CrossFadeAtPoint:
-                    Animator.CrossFade(cachedHash, floatValue1, layer, floatValue2);
-                    break;
-                case Type.CrossFadeSynced:
-                    Animator.CrossFade(cachedHash, floatValue1, layer, Animator.GetCurrentAnimatorStateInfo(layer).normalizedTime);
-                    break;
-                case Type.SetTrigger:
-                    if (boolValue) Animator.SetTrigger(cachedHash);
-                    else Animator.ResetTrigger(cachedHash);
-                    break;
-                case Type.SetFloat:
-                    Animator.SetFloat(cachedHash, floatValue1);
-                    break;
-                case Type.SetInt:
-                    Animator.SetInteger(cachedHash, intValue);
-                    break;
-                case Type.SetBool:
-                    Animator.SetBool(cachedHash, boolValue);
-                    break;
-                default: break;
-            }
-        }
-        public void CacheID() => cachedHash = NameID.Hash();
     }
 }

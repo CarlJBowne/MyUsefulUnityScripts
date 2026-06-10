@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     [System.Serializable]
     public class ResolverTree : PhysicsSubComponent

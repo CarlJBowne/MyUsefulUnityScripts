@@ -2,7 +2,7 @@
 using UnityEngine.AI;
 using UnityEngine.Rendering;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     public abstract partial class PhysicsResolver
     {

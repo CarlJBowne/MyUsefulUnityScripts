@@ -1,0 +1,6 @@
+{
+  "name": "com.starlightshadows.gamestatemachine",
+  "version": "1.0.0",
+  "displayName": "SLS - Game State Machine",
+  "description": "A central base system for an application wide state machine.\nURL: \nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.gamestatemachine"
+}

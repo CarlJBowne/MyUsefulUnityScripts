@@ -5,22 +5,12 @@
     {
       "isFolder": true,
       "name": "Utilities",
-      "children": [
-        {
-          "isFolder": false,
-          "name": "ALL"
-        }
-      ]
+      "children": []
     },
     {
       "isFolder": true,
       "name": "UI",
-      "children": [
-        {
-          "isFolder": false,
-          "name": "ALL"
-        }
-      ]
+      "children": []
     },
     {
       "isFolder": true,
@@ -128,6 +118,152 @@
         {
           "isFolder": false,
           "name": "ALL"
+        }
+      ]
+    },
+    {
+      "isFolder": true,
+      "name": "Packages",
+      "children": [
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.assetutilities",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.editorutilities",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.generalutilities",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.statemachineh",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.inversion",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.listutilities",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.menucore",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.objectpooling",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.physics2d",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.physics3d",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.polymorph",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.savesystem",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.singletons",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
+        },
+        {
+          "isFolder": true,
+          "name": "com.starlightshadows.timeutilities",
+          "children": [
+            {
+              "isFolder": false,
+              "name": "ALL"
+            }
+          ]
         }
       ]
     }

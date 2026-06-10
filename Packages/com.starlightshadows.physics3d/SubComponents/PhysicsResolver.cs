@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RageRooster.Physics
+namespace SLS.Physics
 {
     /// <summary>
     /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="PhysicsBody"/>.

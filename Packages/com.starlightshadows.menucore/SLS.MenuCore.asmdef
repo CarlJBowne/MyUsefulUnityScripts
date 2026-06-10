@@ -1,11 +1,8 @@
 {
-    "name": "SLS.Physics.3D",
-    "rootNamespace": "SLS.Physics",
+    "name": "SLS.MenuCore",
+    "rootNamespace": "SLS.MenuCore",
     "references": [
-        "GUID:a769e02df78665d46a5cdcae4de975d9",
-        "GUID:368e100ae2bef9142ba700d2ef3f8fb8",
-        "GUID:02906483d39839a48a2cbdb42d4bac8e",
-        "GUID:8dd05821a4f06af4fb8cf60ffd71f083"
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,11 +1,8 @@
 {
-    "name": "SLS.StateMachineH",
-    "rootNamespace": "SLS.StateMachineH",
+    "name": "SLS.GeneralUtilities",
+    "rootNamespace": "SLS.GeneralUtilities",
     "references": [
-        "Kybernetik.UltEvents",
-        "SLS.ListUtilities",
-        "SLS.EditorUtilities",
-        "SLS.GeneralUtilities"
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -16,9 +13,9 @@
     "defineConstraints": [],
     "versionDefines": [
         {
-            "name": "com.kybernetik.ultevents",
+            "name": "com.unity.inputsystem",
             "expression": "",
-            "define": "ULT_EVENTS"
+            "define": "INPUT_SYSTEM"
         }
     ],
     "noEngineReferences": false
