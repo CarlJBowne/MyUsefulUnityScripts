@@ -1,0 +1,23 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using PlayerCore;
+using SLS.GameStateMachine;
+using SLS.Singletons;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using Utilities.ObjectPooling;
+
+namespace Core
+{
+    public class Paused : GameStateSingle<Paused>
+    {
+
+        public static void LoadMenu()
+        {
+            
+        }
+
+    }
+}

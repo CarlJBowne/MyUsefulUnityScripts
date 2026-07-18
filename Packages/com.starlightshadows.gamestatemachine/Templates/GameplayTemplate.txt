@@ -1,0 +1,42 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using PlayerCore;
+using SLS.GameStateMachine;
+using SLS.Singletons;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using Utilities.ObjectPooling;
+
+namespace Core
+{
+    public class Gameplay : GameStateSingle<Gameplay>
+    {
+        public override bool Additive => false;
+        public static GameObject[] rootObjects;
+        public static bool Active => Get.isActive;
+
+        protected override void TransitionLogic(Action SetCurrent, Action PostAction)
+        {
+            E().Begin();
+            IEnumerator E()
+            {
+                SetCurrent();
+                SceneManager.LoadScene(Scene, LoadSceneMode.Single);
+                var s = SceneManager.GetSceneByName(Scene);
+                rootObjects = s.GetRootGameObjects();
+                yield return null;
+
+                for (int i = 0; i < rootObjects.Length; i++)
+                {
+                    DontDestroyOnLoad(rootObjects[i]);
+                    if (rootObjects[i].TryGetComponent(out PlayerCore.Player player)) player.Awake();
+                    if (rootObjects[i].TryGetComponent(out Cameras cameras)) cameras.Awake();
+                }
+
+                PostAction();
+            }
+        }
+    }
+}

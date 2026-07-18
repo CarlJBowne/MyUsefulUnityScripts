@@ -20,7 +20,7 @@ namespace SLS.StateMachineH
         /// <summary>  
         /// The <see cref="Animator"/> component used to control animations.  
         /// </summary>  
-        [field: SerializeField, HeaderItem(true, nameof(_GetAnim))] public Animator Animator { get; private set; }
+        [field: SerializeField, HeaderItem(true, nameof(_GetAnim))] public virtual Animator Animator { get; private set; }
         Animator _GetAnim() => GetComponentFromMachine<Animator>();
 
         /// <summary>  

@@ -1,7 +1,9 @@
 {
     "name": "SLS.Singletons",
     "rootNamespace": "SLS.Singletons",
-    "references": [],
+    "references": [
+        "SLS.GeneralUtilities"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

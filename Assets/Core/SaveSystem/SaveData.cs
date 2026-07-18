@@ -29,8 +29,8 @@ namespace SaveSystem
         {
             public Json(int fileID) : base(fileID) { }
 
-            protected override JsonFile.LoadResult ReadToData(JObject RootFileData, SaveData ResultingData) => throw new NotImplementedException();
-            protected override JsonFile.FileState WriteFromData(SaveData sourceData) => throw new NotImplementedException();
+            protected override JsonFile.LoadResult ReadData(JObject RootFileData, SaveData ResultingData) => throw new NotImplementedException();
+            protected override JsonFile.FileState WriteData(SaveData sourceData) => throw new NotImplementedException();
         }
     }
 

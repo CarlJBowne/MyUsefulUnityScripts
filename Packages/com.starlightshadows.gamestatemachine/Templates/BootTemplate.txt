@@ -1,0 +1,19 @@
+﻿using SLS.GameStateMachine;
+using SLS.Singletons;
+using UnityEngine;
+
+namespace Core
+{
+	/// <summary>
+    /// A Game State deticated to Booting the game.
+    /// </summary>
+    public class Boot : GameStateSingle<Boot>
+    {
+        protected override void OnEnterLogic() => OnBoot();
+
+        private void OnBoot()
+        {
+            // Insert Boot functionality here.
+        }
+    }
+}

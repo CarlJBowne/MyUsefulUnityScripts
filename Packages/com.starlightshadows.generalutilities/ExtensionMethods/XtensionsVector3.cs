@@ -132,7 +132,7 @@ public static class XtensionsVector3
 
     public static Vector3 ProjectAndScale(this Vector3 value, Vector3 normal) => Vector3.ProjectOnPlane(value, normal).normalized * value.magnitude;
 
-
+    public static bool IsNan(this Vector3 value) => float.IsNaN(value.x) || float.IsNaN(value.y) || float.IsNaN(value.z);
 }
 
 public static class Direction

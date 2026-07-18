@@ -15,7 +15,11 @@ public class SceneReference : ISerializationCallbackReceiver
 
     [field: SerializeField] public string sceneName { get; private set; }
 
+    public static implicit operator SceneReference(string s) => new(s);
     public static implicit operator string(SceneReference R) => R.sceneName;
+    public static implicit operator bool(SceneReference R) => 
+        !string.IsNullOrEmpty(R.sceneName) && R.sceneName != null && R.sceneName != "";
+
 
 #if UNITY_EDITOR 
 
@@ -54,7 +58,12 @@ public class SceneReference : ISerializationCallbackReceiver
     public SceneReference(string sceneName) => this.sceneName = sceneName;
 
 
-    public void OnBeforeSerialize() => ValidateSerialized();
+    public void OnBeforeSerialize() 
+    {
+#if UNITY_EDITOR
+        ValidateSerialized();
+#endif
+    }
     public void OnAfterDeserialize() { }
 
 
@@ -114,7 +123,7 @@ public class SceneReferenceDrawer : PropertyDrawer
         if (EditorGUI.EndChangeCheck())
         {
             property.serializedObject.Update();
-            assetProp.objectReferenceValue = asset; 
+            assetProp.objectReferenceValue = asset;
             property.serializedObject.ApplyModifiedProperties();
 
             // Use reflection to call ValidateAsset() on the SceneReference instance

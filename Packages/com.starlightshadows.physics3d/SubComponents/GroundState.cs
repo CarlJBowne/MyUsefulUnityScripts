@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SLS.Physics
+namespace SLS.Physics3D
 {
     /// <summary>
     /// <see cref="PhysicsBody"/> Sub-component that tracks whether the body is grounded and relevant information about the ground contact (normal, slope, collider, etc.). This component also provides helper methods for performing ground checks and transitioning between grounded and airborne states.
@@ -81,13 +81,13 @@ namespace SLS.Physics
 
             value = Values.Grounded;
             anchor = newAnchorPoint;
-            body.Velocity.y = 0;
+            Body.Velocity.y = 0;
 
             if (objectChange)
             {
-                movingAnchor?.RemoveBody(body);
+                movingAnchor?.RemoveBody(Body);
                 movingAnchor = newAnchorPoint.collider.GetComponent<IMovablePlatform>();
-                movingAnchor?.AddBody(body);
+                movingAnchor?.AddBody(Body);
             }
 
             if (wasntGrounded)
@@ -95,7 +95,7 @@ namespace SLS.Physics
 
             }
 
-            body.OnLand(wasntGrounded, objectChange);
+            Body.OnLand(wasntGrounded, objectChange);
             //OnNavMesh = true;
         }
         /// <summary>
@@ -122,10 +122,10 @@ namespace SLS.Physics
             anchor = AnchorPoint.Null;
             if (movingAnchor != null)
             {
-                movingAnchor?.RemoveBody(body);
+                movingAnchor?.RemoveBody(Body);
                 movingAnchor = null;
             }
-            body.OnUnLand(newState);
+            Body.OnUnLand(newState);
             //OnNavMesh = false;
         }
 
@@ -143,7 +143,7 @@ namespace SLS.Physics
         /// <returns>True when a standable surface was detected beneath the body.</returns>
         public bool Check(out AnchorPoint groundHit, bool dontApply = false)
         {
-            bool result = body.Sweep(Vector3.down * groundCheckBuffer, out RaycastHit raycast, groundCheckBuffer) && WithinSlopeAngle(raycast.normal);
+            bool result = Body.Sweep(Vector3.down * groundCheckBuffer, out RaycastHit raycast, groundCheckBuffer) && WithinSlopeAngle(raycast.normal);
             groundHit = AnchorPoint.Null;
             if (!dontApply) groundHit = raycast;
             return result;
@@ -163,7 +163,7 @@ namespace SLS.Physics
         /// <returns>True when a standable surface was detected beneath the body.</returns>
         public bool Check(out AnchorPoint groundHit, out RaycastHit raycast, bool dontApply = false)
         {
-            bool result = body.Sweep(Vector3.down * groundCheckBuffer, out raycast, groundCheckBuffer) && WithinSlopeAngle(raycast.normal);
+            bool result = Body.Sweep(Vector3.down * groundCheckBuffer, out raycast, groundCheckBuffer) && WithinSlopeAngle(raycast.normal);
             groundHit = AnchorPoint.Null;
             if (!dontApply) groundHit = raycast;
             return result;
@@ -183,9 +183,9 @@ namespace SLS.Physics
         /// <returns>True if a floor was found and the body was moved, otherwise false.</returns>
         public bool InstantSnapToFloor(out RaycastHit hit)
         {
-            if (body.Sweep(Vector3.down * 1000, out hit, .5f))
+            if (Body.Sweep(Vector3.down * 1000, out hit, .5f))
             {
-                body.Position += Vector3.down * hit.distance;
+                Body.Position += Vector3.down * hit.distance;
                 return true;
             }
             return false;

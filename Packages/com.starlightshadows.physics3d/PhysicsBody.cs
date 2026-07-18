@@ -3,13 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using SLS.EditorUtilities.ComponentHeaders;
 using UnityEngine;
 using UnityEngine.AI;
-using SLS.EditorUtilities.ComponentHeaders;
-//using Utilities.Xtensions;
-//using Utilities.Xtensions.Unity;
+using UnityEngine.UIElements;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.UIElements;
+#endif
 
-namespace SLS.Physics
+namespace SLS.Physics3D
 {
     /// <summary>
     /// Core physics body component that owns per-entity physics state and delegates movement
@@ -19,36 +22,39 @@ namespace SLS.Physics
     /// coordinates resolver selection and invocation each FixedUpdate.
     /// </summary>
     [RequireComponent(typeof(Rigidbody), typeof(Collider), typeof(NavMeshAgent))]
-    public partial class PhysicsBody : MonoBehaviour
+    public class PhysicsBody : MonoBehaviour
     {
         protected virtual void FixedUpdate()
         {
-            //if (Gameplay.GameState != Gameplay.GameStates.Active || BodyState != BodyStates.Enabled) return;
+            if (DISABLE_PHYSICS_BODIES) return;
 
+#if UNITY_EDITOR
             if (Debug.DisplayDebugString)
             {
                 Debug.ResetDebugString();
                 //DebugRR.DebugTextOverlay.ClearText();
             }
             if (Debug.DisplaySweeps) Debug.ClearSweeps();
+#endif
 
             RB.linearVelocity = Vector3.zero;
             RB.angularVelocity = Vector3.zero;
 
-            Resolvers.Active?.FixedUpdateFormer();
+            Resolver?.FixedUpdateFormer();
 
-            if (Velocity.r != 0f) Direction.RotationY += Velocity.r * Time.fixedDeltaTime;
+            if(Direction.lookTarget != null && Velocity.lookVelocity > 0f) 
+                Direction.Set(Direction.lookTarget.position - Position, Velocity.lookVelocity * Time.fixedDeltaTime);
+            else if (Velocity.r != 0f) Direction.RotationY += Velocity.r * Time.fixedDeltaTime;
 
             Vector3 stepZeroVelocity = Velocity.Global * Time.fixedDeltaTime;
 
             Step = 0;
-            if (//stepZeroVelocity.IsNaN() || 
-                stepZeroVelocity.sqrMagnitude > 300)
+            if (stepZeroVelocity.IsNan() || stepZeroVelocity.sqrMagnitude > 300)
                 stepZeroVelocity = Vector3.zero;
 
-            Resolvers.Active?.Move(stepZeroVelocity);
+            Resolver?.Move(stepZeroVelocity);
 
-            Resolvers.Active?.FixedUpdateLatter();
+            Resolver?.FixedUpdateLatter();
 
             //if (Velocity.y <= 0)
             //{
@@ -70,7 +76,7 @@ namespace SLS.Physics
         /// <summary>
         /// The Serialized Tree of <see cref="PhysicsResolver"/>s available for this body. The <see cref="ResolverTree"/>
         /// </summary>
-        [field: SerializeField] public ResolverTree Resolvers { get; private set; }
+        [field: SerializeField] public PhysicsResolver firstResolver { get; private set; }
 
         /// <summary>
         /// The current velocity container for this body. Contains both local (f/s/u) and
@@ -98,10 +104,18 @@ namespace SLS.Physics
 
         #region Resolvers
 
+        public PhysicsResolver Resolver { get; private set; }
+        public void UpdateResolver() => UpdateResolver(firstResolver);
+        public void UpdateResolver(PhysicsResolver resolver)
+        {
+            if (resolver == Resolver) return;
+            Resolver?.Exit();
+            Resolver = resolver;
+            Resolver?.Enter();
+        }
+
         [Tooltip("The maximum amount of steps this resolver allows.")]
         [SerializeField] public int maxPhysicsSteps = 6;
-
-
         /// <summary>
         /// The amount of MoveSteps this <see cref="PhysicsBody"/> has gone through in this FixedUpdate sharedacross //all of its <see cref="PhysicsResolver"/>s
         /// </summary>
@@ -145,6 +159,7 @@ namespace SLS.Physics
             hit.distance = (hit.distance - buffer).Min(0);
 
 
+#if UNITY_EDITOR
             if (Debug.DisplaySweeps)
             {
                 var display = new PhysicsBodyDebug.SweepTestDisplay()
@@ -157,27 +172,22 @@ namespace SLS.Physics
                 };
                 Debug.Add(display);
             }
+#endif
 
             return result;
         }
 
         #region LifeCycle and Components
 
-        [field: SerializeField, HeaderItem(true)] public Rigidbody RB { get; protected set; }
-        /// <summaryHeader
-        /// The <see cref="CapsuleCollider"/> component attached to this <see cref="CharacterMovementBody"/>.
-        /// </summary>
-        [field: SerializeField, HeaderItem(true)] public Collider Collider { get; protected set; }
+        [field: SerializeField, HeaderItem(true)] public Rigidbody RB { get; internal set; }
+        [field: SerializeField, HeaderItem(true)] public Collider Collider { get; internal set; }
+        [field: SerializeField, HeaderItem(false)] public NavMeshAgent NavAgent { get; internal set; }
 
         /// <summary>
         /// Unity Reset callback used to initialize related components when the component
         /// is first added or when Reset is invoked in the editor.
         /// </summary>
-        protected virtual void Reset()
-        {
-            RB = GetComponent<Rigidbody>();
-            Collider = GetComponent<CapsuleCollider>();
-        }
+        protected virtual void Reset() => HeaderItemAttribute.Reset(this);
 
         /// <summary>
         /// Unity Awake lifecycle event. Ensures required components exist, initializes
@@ -187,92 +197,48 @@ namespace SLS.Physics
         {
             if (RB == null) RB = GetComponent<Rigidbody>();
             if (Collider == null) Collider = GetComponent<Collider>();
+            if (NavAgent == null) NavAgent = GetComponent<NavMeshAgent>();
+
+            if (NavAgent != null)
+            {
+                NavAgent.updateRotation = false;
+                NavAgent.enabled = false;
+            }
 
             Ground.Init(this);
 
             Direction.Init(this);
             Velocity.Init(this);
             Debug.Init(this);
-            Resolvers.Init(this);
-            for (int i = 0; i < Resolvers.ResolverCount; i++)
-            {
-                Resolvers[i]?.Init(this);
-                Resolvers[i]?.Start();
-            }
-
-            if (Resolvers.defaultGroundedIndex != -1 && Ground.InstantSnapToFloor(out RaycastHit hit))
-            {
-                Ground.Land(hit);
-                Resolvers.Update(Resolvers.defaultGroundedIndex);
-            }
-            else if (Resolvers.defaultAirIndex != -1)
-            {
-                Resolvers.Update(Resolvers.defaultAirIndex);
-            }
-            else enabled = false; //WTF.
+            PhysicsResolver[] resolvers = gameObject.GetComponents<PhysicsResolver>();
+            for (int i = 0; i < resolvers.Length; i++) resolvers[i].OnStart();
         }
 
-        /// <summary>
-        /// Called when the component is enabled.
-        /// </summary>
-        /// <summary>
-        /// Unity OnEnable lifecycle event. Restores the active physics state if the body
-        /// was previously turned off.
-        /// </summary>
-        void OnEnable() { if (_rbState == BodyStates.OFF) BodyState = BodyStates.Enabled; }
-        /// <summary>
-        /// Called when the component is disabled.
-        /// </summary>
-        /// <summary>
-        /// Unity OnDisable lifecycle event. Puts the body into the OFF state which makes
-        /// the Rigidbody kinematic and disables collision checks.
-        /// </summary>
-        void OnDisable() => BodyState = BodyStates.OFF;
-
-
-        /// <summary>
-        /// The possible states for a <see cref="CharacterMovementBody"/>.
-        /// </summary>
-        public enum BodyStates
+        void OnEnable()
         {
-            Enabled,
-            Ragdoll,
-            OFF
+            RB.isKinematic = false;
+            RB.detectCollisions = true;
+            RB.useGravity = false;
+            Collider.enabled = true;
+            UpdateResolver();
+        }
+        void OnDisable()
+        {
+            RB.isKinematic = true;
+            RB.detectCollisions = false;
+            RB.useGravity = false;
+            Collider.enabled = false;
+            NavAgent.enabled = false;
+            UpdateResolver(null);
         }
 
-        /// <summary>
-        /// The current state of this <see cref="CharacterMovementBody"/>.
-        /// </summary>
-        public BodyStates BodyState
+        public void Enable(Vector3? atPosition, Vector3? withDirection)
         {
-            get => _rbState;
-            set
-            {
-                _rbState = value;
-                switch (value)
-                {
-                    case BodyStates.Enabled:
-                        RB.isKinematic = false;
-                        RB.detectCollisions = true;
-                        RB.useGravity = false;
-                        Collider.enabled = true;
-                        break;
-                    case BodyStates.Ragdoll:
-                        RB.isKinematic = false;
-                        RB.detectCollisions = true;
-                        RB.useGravity = true;
-                        Collider.enabled = false;
-                        break;
-                    case BodyStates.OFF:
-                        RB.isKinematic = true;
-                        RB.detectCollisions = false;
-                        RB.useGravity = false;
-                        Collider.enabled = false;
-                        break;
-                }
-            }
+            if (atPosition.HasValue) Position = atPosition.Value;
+            if (withDirection.HasValue) Direction.Set(withDirection.Value);
+            enabled = true;
         }
-        BodyStates _rbState = BodyStates.Enabled;
+
 
         #endregion LifeCycle
 
@@ -283,31 +249,25 @@ namespace SLS.Physics
         /// </summary>
         public Vector3 Position
         {
-            get => BodyState == BodyStates.Enabled
-                ? Resolvers.Active is not PhysicsResolver.NavMesh N
+            get => enabled
+                ? Resolver is not NavMeshPhysResolver
                     ? RB.position
-                    : N.NavAgent.nextPosition
+                    : NavAgent.nextPosition
                 : transform.position;
             set
             {
-                if (BodyState != BodyStates.Enabled) return;
+                if (enabled)
+                {
+                    if (NavAgent.enabled) NavAgent.Warp(value);
+                    else RB.MovePosition(value);
+                }
+                else
+                {
+                    transform.position = value;
+                    RB.position = value;
+                    RB.MovePosition(value);
+                }
 
-                if (Resolvers.Active is PhysicsResolver.NavMesh N) N.NavAgent.nextPosition = value;
-                else RB.MovePosition(value);
-            }
-        }
-
-        /// <summary>
-        /// Sets the position even if the Rigidbody is kinematic.
-        /// </summary>
-        /// <param name="newPosition">The new position.</param>
-        public Vector3 PositionForce
-        {
-            set
-            {
-                transform.position = value;
-                RB.position = value;
-                RB.MovePosition(value);
             }
         }
 
@@ -360,7 +320,7 @@ namespace SLS.Physics
         /// </summary>
         /// <param name="wasntGrounded">True if the body was previously not grounded.</param>
         /// <param name="objectChange">True if the collider surface changed since last ground.</param>
-        public virtual void OnLand(bool wasntGrounded, bool objectChange) => Resolvers.Update();
+        public virtual void OnLand(bool wasntGrounded, bool objectChange) => UpdateResolver();
 
         /// <summary>
         /// Called by <see cref="GroundState"/> when this body leaves the ground. Override
@@ -368,7 +328,7 @@ namespace SLS.Physics
         /// will re-evaluate the active resolver.
         /// </summary>
         /// <param name="newValue">The new ground state value being transitioned to.</param>
-        public virtual void OnUnLand(GroundState.Values newValue) => Resolvers.Update();
+        public virtual void OnUnLand(GroundState.Values newValue) => UpdateResolver();
 
         public virtual void WalkOff() => Ground.UnLand(GroundState.Values.Hangtime);
         public virtual bool LastChanceStopper(Vector3 velocity, Vector3 normal) => false;
@@ -376,8 +336,208 @@ namespace SLS.Physics
 
         #endregion
 
+        public static bool DISABLE_PHYSICS_BODIES = false;
+
 #if UNITY_EDITOR
         private void OnDrawGizmos() => Debug.DisplayGizmos();
+
+        [CustomEditor(typeof(PhysicsBody), true)]
+        public class Editor : UnityEditor.Editor
+        {
+            PhysicsBody This;
+
+            public PropertyField ResolverField;
+            public PropertyField GroundCheckBufferField;
+            public PropertyField MaxSlopeAngleField;
+            public PropertyField AllowBackwardsVelocityField;
+
+            public TabView TabView;
+            public Tab ConfigTab;
+            public Tab ActiveTab;
+            public Tab DebugTab;
+
+            public Label ResolverLabel;
+            public Label LVelocityLabel;
+            public Label GVelocityLabel;
+            public Label DirectionLabel;
+            public Label RotationLabel;
+            public Label RotationQLabel;
+            public Label GroundStateLabel;
+            public Label AnchorLabel;
+
+            private bool _subscribedToUpdate = false;
+
+            public override VisualElement CreateInspectorGUI()
+            {
+                This = (PhysicsBody)target;
+
+                TabView = new();
+                MakeConfigTab();
+                MakeActiveTab();
+                MakeDebugTab();
+
+                // Setup update loop for runtime info when in Play Mode
+                void SubscribeUpdate()
+                {
+                    if (_subscribedToUpdate) return;
+                    EditorApplication.update += EditorUpdate;
+                    _subscribedToUpdate = true;
+                }
+                void UnsubscribeUpdate()
+                {
+                    if (!_subscribedToUpdate) return;
+                    EditorApplication.update -= EditorUpdate;
+                    _subscribedToUpdate = false;
+                }
+
+                // Initial subscription if playing
+                if (EditorApplication.isPlaying) SubscribeUpdate();
+                else UnsubscribeUpdate();
+
+                // When inspector is created, also ensure we react to play mode changes to start/stop updating
+                EditorApplication.playModeStateChanged += (state) =>
+                {
+                    if (state == PlayModeStateChange.EnteredPlayMode)
+                    {
+                        if (ActiveTab == null) MakeActiveTab();
+                        if (DebugTab == null) MakeDebugTab();
+                        SubscribeUpdate();
+                    }
+                    else if (state == PlayModeStateChange.ExitingPlayMode || state == PlayModeStateChange.EnteredEditMode)
+                    {
+                        if (ActiveTab != null)
+                        {
+                            TabView.Remove(ActiveTab);
+                            ActiveTab = null;
+                        }
+                        if (DebugTab != null)
+                        {
+                            TabView.Remove(DebugTab);
+                            DebugTab = null;
+                        }
+                        UnsubscribeUpdate();
+                    }
+                };
+
+                return TabView;
+            }
+
+            public virtual void MakeConfigTab()
+            {
+                ConfigTab = new("Config");
+                ConfigTab.tabHeader.style.flexGrow = 1;
+                TabView.Add(ConfigTab);
+
+                ResolverField = new(serializedObject.FindBackingField(nameof(firstResolver)));
+
+                GroundCheckBufferField = new(serializedObject.FindProperty
+                    (nameof(Ground).BackingField()).FindBackingFieldRelative(nameof(GroundState.groundCheckBuffer)));
+                MaxSlopeAngleField = new(serializedObject.FindProperty
+                    (nameof(Ground).BackingField()).FindBackingFieldRelative(nameof(GroundState.maxSlopeNormalAngle)));
+                AllowBackwardsVelocityField = new(serializedObject.FindBackingField(nameof(Velocity))
+                    .FindPropertyRelative(nameof(Velocity.allowBackwards)));
+
+                ConfigTab.Add(ResolverField);
+                ConfigTab.Add(GroundCheckBufferField);
+                ConfigTab.Add(MaxSlopeAngleField);
+                ConfigTab.Add(AllowBackwardsVelocityField);
+            }
+            public virtual void MakeActiveTab()
+            {
+                if (!Application.isPlaying) return;
+                ActiveTab = new("Active");
+                ActiveTab.tabHeader.style.flexGrow = 1;
+                TabView.Add(ActiveTab);
+
+                ResolverLabel = CreateDisplayRow("Resolver:");
+                LVelocityLabel = CreateDisplayRow("Local Velocity:");
+                GVelocityLabel = CreateDisplayRow("Global Velocity:");
+                DirectionLabel = CreateDisplayRow("Direction:");
+                RotationLabel = CreateDisplayRow("Rotation:");
+                RotationQLabel = CreateDisplayRow("Quaternion:");
+                GroundStateLabel = CreateDisplayRow("Ground State:");
+                AnchorLabel = CreateDisplayRow("Current Anchor:");
+            }
+            public virtual void MakeDebugTab()
+            {
+                if (!Application.isPlaying) return;
+                DebugTab = new("Debug");
+                DebugTab.tabHeader.style.flexGrow = 1;
+                TabView.Add(DebugTab);
+
+                Toggle String = new("Debug String Builder");
+                String.RegisterValueChangedCallback(ev => This.Debug.DisplayDebugString = ev.newValue);
+                DebugTab.Add(String);
+
+                Toggle Sweeps = new("Body Sweeps");
+                String.RegisterValueChangedCallback(ev => This.Debug.DisplaySweeps = ev.newValue);
+                DebugTab.Add(Sweeps);
+
+                Toggle Hits = new("Collision Normals");
+                String.RegisterValueChangedCallback(ev => This.Debug.DisplayHitNormals = ev.newValue);
+                DebugTab.Add(Hits);
+
+                Toggle Jumps = new("Jump Marker");
+                String.RegisterValueChangedCallback(ev => This.Debug.DisplayJumpMarker = ev.newValue);
+                DebugTab.Add(Jumps);
+
+                Toggle Nav = new("Closest Nav Mesh Edge");
+                String.RegisterValueChangedCallback(ev => This.Debug.DisplayClosestNavEdge = ev.newValue);
+                DebugTab.Add(Nav);
+            }
+
+            public Label CreateDisplayRow(string name)
+            {
+                VisualElement row = new();
+                row.style.flexDirection = FlexDirection.Row;
+                Label label = new(name);
+                label.style.unityFontStyleAndWeight = FontStyle.Bold;
+                label.style.width = new Length(30, LengthUnit.Percent);
+                Label result = new("Value");
+                label.style.unityFontStyleAndWeight = FontStyle.Italic;
+                result.style.width = new Length(70, LengthUnit.Percent);
+                row.Add(label);
+                row.Add(result);
+                ActiveTab.Add(row);
+                return result;
+            }
+
+            private void OnDisable()
+            {
+                if (_subscribedToUpdate)
+                {
+                    EditorApplication.update -= EditorUpdate;
+                    _subscribedToUpdate = false;
+                }
+            }
+
+            private void EditorUpdate()
+            {
+                if (serializedObject == null) return;
+                if (This == null) return;
+                if (!This.enabled) return;
+
+                // Update textual info; guard with try/catch to avoid throwing during domain reloads
+                try
+                {
+                    ResolverLabel.text = This.Resolver.GetType().Name.Replace("PhysResolver", "");
+                    LVelocityLabel.text = $" F:{This.Velocity.f}, U:{This.Velocity.u}, S:{This.Velocity.s}";
+                    GVelocityLabel.text = $" X:{This.Velocity.x}, Y:{This.Velocity.y}, Z:{This.Velocity.z}";
+                    DirectionLabel.text = This.Direction.value.ToString("F3");
+                    RotationLabel.text = This.Direction.Rotation.ToString("F3");
+                    RotationQLabel.text = This.Direction.RotationQ.ToString("F2");
+                    GroundStateLabel.text = This.Ground.value.ToString();
+                    AnchorLabel.text = This.Ground.anchor.collider != null
+                        ? $"{This.Ground.anchor.normal.ToString("F2")}({This.Ground.anchor.collider.gameObject.name})"
+                        : This.Ground.anchor.normal.ToString("F2");
+                }
+                catch
+                {
+                    // swallow exceptions during assembly reloads / domain changes
+                }
+            }
+
+        }
 #endif
     }
 }

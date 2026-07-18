@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
-
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public delegate void Delegate();
 
@@ -99,6 +101,11 @@ public static class Xtensions_String
     /// <param name="propertyName">the input property name. Generally advised to use a "nameof()"</param>
     /// <returns>the identifier of the backing field for use in a FindProperty method.</returns>
     public static string BackingField(this string propertyName) => $"<{propertyName}>k__BackingField";
+
+#if UNITY_EDITOR
+    public static SerializedProperty FindBackingField(this SerializedObject obj, string propertyName) => obj.FindProperty($"<{propertyName}>k__BackingField");
+    public static SerializedProperty FindBackingFieldRelative(this SerializedProperty property, string propertyName) => property.FindPropertyRelative($"<{propertyName}>k__BackingField");
+#endif
 }
 
 public static class Xtensions_Collections
@@ -187,5 +194,72 @@ public static class Xtensions_Color
     {
         color.Shift(r, g, b, a, clamp);
         return color;
+    }
+}
+
+public static class Xtensions_Types
+{
+    public static bool Inherits(this Type derived, Type upper)
+    {
+        if (upper is null)
+            return false;
+
+        if (!upper.IsGenericType || !upper.IsGenericTypeDefinition)
+            return upper.IsAssignableFrom(derived);
+
+        if (upper.IsInterface)
+            foreach (Type @interface in derived.GetInterfaces())
+                if (@interface.IsGenericType && @interface.GetGenericTypeDefinition() == upper)
+                    return true;
+
+        if (derived.IsGenericType && derived.GetGenericTypeDefinition() == upper)
+            return true;
+
+        return derived.BaseType != null && Inherits(derived.BaseType, upper);
+    }
+
+    public static bool IsInteritedBy(this Type upper, Type derived)
+    {
+        if (upper is null)
+            return false;
+
+        if (!upper.IsGenericType || !upper.IsGenericTypeDefinition)
+            return upper.IsAssignableFrom(derived);
+
+        if (upper.IsInterface)
+            foreach (Type @interface in derived.GetInterfaces())
+                if (@interface.IsGenericType && @interface.GetGenericTypeDefinition() == upper)
+                    return true;
+
+        if (derived.IsGenericType && derived.GetGenericTypeDefinition() == upper)
+            return true;
+
+        return derived.BaseType != null && Inherits(derived.BaseType, upper);
+    }
+
+    public static bool IsSubclassOfRawGeneric(this Type toCheck, Type generic)
+    {
+        while (toCheck != null && toCheck != typeof(object))
+        {
+            var cur = toCheck.IsGenericType ? toCheck.GetGenericTypeDefinition() : toCheck;
+            if (generic == cur)
+            {
+                return true;
+            }
+            toCheck = toCheck.BaseType;
+        }
+        return false;
+    }
+
+    public static Type[] GetAllInheritors(this Type Top, 
+        bool excludeAbstracts = true, bool excludeGenerics = true, bool excludeSelf = true)
+    {
+        return AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(assembly => assembly.GetTypes())
+                    .Where(i => i.Inherits(Top)
+                    && (!i.IsAbstract || !excludeAbstracts)
+                    && (!i.IsGenericType || !excludeGenerics)
+                    && (i != Top || !excludeSelf)
+                    ).ToArray();
     }
 }

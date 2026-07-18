@@ -1,51 +1,31 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-namespace SLS.Physics
+namespace SLS.Physics3D
 {
     [System.Serializable]
     public class ResolverTree : PhysicsSubComponent
     {
-        [field: SerializeField] private Polymorph.ListOf<PhysicsResolver> resolvers = new();
-        [field: SerializeField] public int defaultGroundedIndex { get; private set; } = 0;
-        [field: SerializeField] public int defaultAirIndex { get; private set; } = 1;
+
+        [field: SerializeField] public PhysicsResolver rootResolver { get; private set; }
 
         public PhysicsResolver Active { get; private set; }
 
-        public PhysicsResolver this[int i] => resolvers[i];
-        public T GetResolver<T>() where T : PhysicsResolver
+        public override void Init(PhysicsBody owner)
         {
-            for (int i = 0; i < resolvers.Count; i++)
-                if (resolvers[i].GetType() == typeof(T))
-                    return resolvers[i] as T;
-            return null;
+            base.Init(owner);
+            PhysicsResolver[] resolvers = owner.GetComponents<PhysicsResolver>();
+            for (int i = 0; i < resolvers.Length; i++) resolvers[i].OnStart();
         }
-        public bool TryGetResolver<T>(out T result) where T : PhysicsResolver
-        {
-            for (int i = 0; i < resolvers.Count; i++)
-                if (resolvers[i].GetType() == typeof(T))
-                {
-                    result = resolvers[i] as T;
-                    return true;
-                }
-            result = null;
-            return false;
-        }
-        public int ResolverCount => resolvers.Count;
-        public int IndexOf(PhysicsResolver resolver) => resolvers.IndexOf(resolver);
 
-        public void Update()
-        {
-            if (body.Ground) Update(defaultGroundedIndex);
-            else Update(defaultAirIndex);
-        }
-        public void Update(int target) => Update(resolvers[target]);
+        public void Update() => Update(rootResolver);
         public void Update(PhysicsResolver resolver)
         {
             if (resolver == Active) return;
             Active?.Exit();
             Active = resolver;
-            Active.Enter();
+            Active?.Enter();
         }
     }
 }

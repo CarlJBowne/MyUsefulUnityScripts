@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SLS.Physics
+namespace SLS.Physics3D
 {
     /// <summary>
     /// A struct representing a contact point used for grounding and other physics interactions. Contains the contact point, normal, and collider information. Can be implicitly created from RaycastHit or ContactPoint data.

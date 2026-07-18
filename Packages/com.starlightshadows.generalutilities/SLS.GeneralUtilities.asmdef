@@ -2,7 +2,8 @@
     "name": "SLS.GeneralUtilities",
     "rootNamespace": "SLS.GeneralUtilities",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Kybernetik.UltEvents"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -16,6 +17,11 @@
             "name": "com.unity.inputsystem",
             "expression": "",
             "define": "INPUT_SYSTEM"
+        },
+        {
+            "name": "com.kybernetik.ultevents",
+            "expression": "",
+            "define": "ULT_EVENTS"
         }
     ],
     "noEngineReferences": false

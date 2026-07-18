@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace SLS.Physics
+namespace SLS.Physics3D
 {
     /// <summary>
     /// <see cref="PhysicsBody"/> Sub-component that tracks the facing direction for a PhysicsBody. The Direction is used when converting between local and global velocities and for rotation helper functions (quick turns, limited turns, etc.).
@@ -46,11 +46,11 @@ namespace SLS.Physics
         /// </summary>
         public Quaternion RotationQ
         {
-            get => body.RB.rotation;
+            get => Body.RB.rotation;
             set
             {
-                body.RB.rotation = value;
-                body.Velocity.CallThisPostRotation();
+                Body.RB.rotation = value;
+                Body.Velocity.CallThisPostRotation();
             }
         }
         /// <summary>
@@ -62,7 +62,7 @@ namespace SLS.Physics
             set
             {
                 transform.eulerAngles = value;
-                body.Velocity.CallThisPostRotation();
+                Body.Velocity.CallThisPostRotation();
             }
         }
         /// <summary>
@@ -94,7 +94,7 @@ namespace SLS.Physics
                 return;
             }
 
-            Coroutine.Begin(ref QuickTurnRoutine, Enum(), body, true);
+            Coroutine.Begin(ref QuickTurnRoutine, Enum(), Body, true);
             IEnumerator Enum()
             {
                 float deltaRad = Vector3.Angle(value, target) * Mathf.Deg2Rad;
@@ -119,7 +119,7 @@ namespace SLS.Physics
             target = target.XZ(); //Ensure no weird rotations
             if (maxDelta <= 0f) return;
 
-            Coroutine.Begin(ref QuickTurnRoutine, Enum(), body, true);
+            Coroutine.Begin(ref QuickTurnRoutine, Enum(), Body, true);
             IEnumerator Enum()
             {
                 float fullDelta = Vector3.Angle(value, target) * Mathf.Deg2Rad;
@@ -135,5 +135,7 @@ namespace SLS.Physics
             }
         }
         private Coroutine QuickTurnRoutine;
+
+        public Transform lookTarget;
     }
 }

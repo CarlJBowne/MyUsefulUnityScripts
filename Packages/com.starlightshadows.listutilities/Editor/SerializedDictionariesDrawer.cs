@@ -49,7 +49,7 @@ namespace SLS.ListUtilities.Editor
 
             public override int CurrentSize
             {
-                get => ValuesProperty.arraySize;
+                get => ValuesProperty != null ? ValuesProperty.arraySize : 0;
                 set
                 {
                     bool isBigger = value > ValuesProperty.arraySize;

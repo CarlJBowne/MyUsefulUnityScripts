@@ -15,6 +15,7 @@ public class Timer
     public float length;
     public bool loop;
     public Action targetAction;
+    public bool unscaled = false;
 
     // State
     public float time { get; private set; }
@@ -57,9 +58,9 @@ public class Timer
         if (replaceAction != null) Target(replaceAction);
 
         if (IsStateBackground(newState) && !IsBackground) 
-            TimeBackgroundUtility.AttachTimer(this);
+            UpdateProxy.AttachTimer(this);
         else if (!IsStateBackground(newState) && IsBackground)
-            TimeBackgroundUtility.DetachTimer(this);
+            UpdateProxy.DetachTimer(this);
 
         state = newState;
         time = 0;
@@ -122,7 +123,7 @@ public class Timer
             return true;
         }
 
-        time += Time.deltaTime;
+        time += unscaled ? Time.unscaledDeltaTime : Time.deltaTime;
         if (time < length) return false;
 
         // fire
@@ -162,8 +163,8 @@ public class Timer
     public static void Begin(ref Timer timer, float length, bool loop, Action targetAction = null, bool background = false)
     {
         if (timer == null) timer = new(length, loop, targetAction,
-            background ? global::Timer.State.BackgroundDriven : global::Timer.State.Updating);
-        else timer.SetState(background ? global::Timer.State.BackgroundDriven : global::Timer.State.Updating, true);
+            background ? State.BackgroundDriven : State.Updating);
+        else timer.SetState(background ? State.BackgroundDriven : State.Updating, true);
     }
 }
 

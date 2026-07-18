@@ -58,7 +58,7 @@ namespace Utilities.JSON
 
             ResultingData = new();
 
-            return ReadToData(RootFile.Data as JObject, ResultingData);
+            return ReadData(RootFile.Data as JObject, ResultingData);
         }
 
         public virtual JsonFile.LoadResult FileVersionBehavior()
@@ -70,14 +70,14 @@ namespace Utilities.JSON
             return JsonFile.LoadResult.Success;
         }
 
-        protected abstract JsonFile.LoadResult ReadToData(JObject RootFileData, T ResultingData);
+        protected abstract JsonFile.LoadResult ReadData(JObject RootFileData, T ResultingData);
 
 
         public JsonFile.FileState SaveToFile(T sourceData)
         {
             if (fileID == -1) throw new Exception("No file target set. Use SetFileTarget before loading or saving.");
 
-            JsonFile.FileState writeResult = WriteFromData(sourceData);
+            JsonFile.FileState writeResult = WriteData(sourceData);
             if (writeResult != JsonFile.FileState.Valid) return writeResult;
 
             JsonFile.FileState resultState;
@@ -93,7 +93,7 @@ namespace Utilities.JSON
             return resultState;
         }
 
-        protected abstract JsonFile.FileState WriteFromData(T sourceData);
+        protected abstract JsonFile.FileState WriteData(T sourceData);
 
         public JsonFile.FileState DeleteFile()
         {

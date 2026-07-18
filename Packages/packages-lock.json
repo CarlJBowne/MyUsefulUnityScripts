@@ -40,12 +40,6 @@
       "source": "embedded",
       "dependencies": {}
     },
-    "com.starlightshadows.inversion": {
-      "version": "file:com.starlightshadows.inversion",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
     "com.starlightshadows.listutilities": {
       "version": "file:com.starlightshadows.listutilities",
       "depth": 0,

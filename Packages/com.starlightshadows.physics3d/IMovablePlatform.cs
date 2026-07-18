@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SLS.Physics
+namespace SLS.Physics3D
 {
     public interface IMovablePlatform
     {

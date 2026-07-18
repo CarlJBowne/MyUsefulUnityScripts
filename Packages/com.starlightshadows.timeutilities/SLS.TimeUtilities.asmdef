@@ -1,7 +1,9 @@
 {
     "name": "SLS.TimeUtilities",
     "rootNamespace": "SLS.TimeUtilities",
-    "references": [],
+    "references": [
+        "SLS.Singletons"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

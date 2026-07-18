@@ -2,11 +2,12 @@
     "name": "SLS.GameStateMachine",
     "rootNamespace": "SLS.GameStateMachine",
     "references": [
-        "GUID:02906483d39839a48a2cbdb42d4bac8e",
-        "GUID:6d063cf7280b1f542885dd7f4e6f8951",
-        "GUID:57a6d82589ae03c4cabdc058f719f231",
-        "GUID:5da6ef10f301323468b00d008826c9b1",
-        "GUID:c7ced203015732043a2d0e8860a5dd95"
+        "SLS.Polymorphs",
+        "SLS.ListUtilities",
+        "Kybernetik.UltEvents",
+        "SLS.AssetUtilties",
+        "SLS.Singletons",
+        "SLS.GeneralUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

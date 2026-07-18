@@ -22,12 +22,12 @@ namespace SLS.EditorUtilities.ComponentHeaders
         {
             MonoBehaviour context = property.serializedObject.targetObject as MonoBehaviour;
 
-            if (item != null)
-            {
-                Selection.activeGameObject = null;
-                item.RegisterCallbackOnce<DetachFromPanelEvent>(ev => Selection.activeGameObject = context.gameObject);
-                return null;
-            }
+            //if (item != null)
+            //{
+            //    Selection.activeGameObject = null;
+            //    item.RegisterCallbackOnce<DetachFromPanelEvent>(ev => Selection.activeGameObject = //context.gameObject);
+            //    return null;
+            //}
 
             var relatedAttr = attribute as HeaderItemAttribute;
             item = new Item(property, relatedAttr != null && relatedAttr.require, relatedAttr?.subLocation, relatedAttr?.methodName);

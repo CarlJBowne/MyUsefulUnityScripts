@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+#if UNITY_EDITOR
+using UnityEditor.UIElements;
+#endif
 
 [System.Serializable]
 public abstract partial class Polymorph

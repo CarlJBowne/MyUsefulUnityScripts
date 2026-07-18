@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
-using UnityEditor;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 using SLS.Singletons;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.UIElements;
+#endif
 
 namespace Utilities.ObjectPooling
 {

@@ -76,7 +76,7 @@ public class SceneFieldDrawer : PropertyDrawer
         primaryLabel.Add(icon);
 
         objectField = new ObjectField();
-        objectField.objectType = typeof(SceneAsset);
+        objectField.objectType = typeof(SceneSO);
         objectField.allowSceneObjects = false;
         objectField.style.flexGrow = 1;
         primaryLabel.Add(objectField);
@@ -90,10 +90,10 @@ public class SceneFieldDrawer : PropertyDrawer
         bool suppressCallbacks = false;
 
         // Helper local functions
-        SceneAsset LoadSceneAssetFromPath(string path)
+        SceneSO LoadSceneAssetFromPath(string path)
         {
             if (string.IsNullOrEmpty(path)) return null;
-            return AssetDatabase.LoadAssetAtPath<SceneAsset>(path);
+            return AssetDatabase.LoadAssetAtPath<SceneSO>(path);
         }
 
         int FindBuildIndexForPath(string path)
@@ -115,7 +115,7 @@ public class SceneFieldDrawer : PropertyDrawer
         }
 
 
-        SceneState DetermineSceneState(SceneAsset asset)
+        SceneState DetermineSceneState(SceneSO asset)
         {
             if (asset == null) return SceneState.Null;
             var path = AssetDatabase.GetAssetPath(asset);
@@ -200,7 +200,7 @@ public class SceneFieldDrawer : PropertyDrawer
             if (suppressCallbacks) return;
             suppressCallbacks = true;
 
-            var asset = evt.newValue as SceneAsset;
+            var asset = evt.newValue as SceneSO;
             string path = asset ? AssetDatabase.GetAssetPath(asset) : string.Empty;
 
             property.serializedObject.Update();

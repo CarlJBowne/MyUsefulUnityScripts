@@ -143,3 +143,14 @@ public class Menu : MonoBehaviour
 
     #endregion
 }
+
+public enum UILayer
+{
+    OverEVERYTHING = 50,
+    OverMenus = 35,
+    Menus = 30,
+    OverHUD = 25,
+    HUD = 10,
+    UnderHUD = 5,
+    UnderEVERYTHING = -5
+}

@@ -110,14 +110,22 @@ public static class Xtensions_Unity_Core
         if (com != null) return com;
         C.TryGetComponent(out com);
 
-        if (com == null)
 #if UNITY_EDITOR
+        if (com == null)
             Debug.LogError($"MonoBehaviour {C.name} Missing Necessary Component of type {typeof(T)}");
 #endif
         return com;
     }
 
     public static Vector2 GetUp(this PlatformEffector2D P) => P.transform.up.Rotated(P.rotationalOffset, Direction.back);
+
+    public static void EndGame(this UnityEngine.Object o)
+    {
+        Application.Quit();
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
 }
 
 public static class Xtensions_Unity_Math
@@ -391,10 +399,6 @@ public static class Xtensions_UnityColliders
             Gizmos.color = prevColor;
             Gizmos.matrix = prevMatrix;
         }
-    }
 #endif
-}
-public static class Xtensions_Unity_ScriptableObjects
-{
-
+    }
 }
