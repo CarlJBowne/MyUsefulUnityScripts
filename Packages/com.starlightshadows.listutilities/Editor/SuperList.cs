@@ -302,7 +302,14 @@ namespace SLS.ListUtilities.Editor
         protected void FinishBind()
         {
             BuildItems();
-            Undo.undoRedoPerformed += BuildItems;
+            Undo.undoRedoPerformed += UndoRedoPerformed;
+            this.RegisterCallbackOnce<DetachFromPanelEvent>(_ => Undo.undoRedoPerformed -= UndoRedoPerformed);
+        }
+
+        protected void UndoRedoPerformed()
+        {
+            property.serializedObject.Update();
+            BuildItems();
         }
 
         /// <summary>
@@ -818,7 +825,7 @@ namespace SLS.ListUtilities.Editor
                 {
 #if UNITY_EDITOR
                     // Ensure Unity records instance property modifications so prefab override markers update
-                    PrefabUtility.RecordPrefabInstancePropertyModifications(target);
+                    UnityEditor.PrefabUtility.RecordPrefabInstancePropertyModifications(target);
 #endif
                 }
                 catch { }
@@ -828,7 +835,7 @@ namespace SLS.ListUtilities.Editor
                 var iwType = Type.GetType("UnityEditor.InspectorWindow, UnityEditor");
                 if (iwType != null)
                 {
-                    var wins = Resources.FindObjectsOfTypeAll(iwType) as EditorWindow[];
+                    var wins = UnityEngine.Resources.FindObjectsOfTypeAll(iwType) as UnityEditor.EditorWindow[];
                 }
                 // Best-effort call to repaint all editor windows
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
@@ -859,14 +866,14 @@ namespace SLS.ListUtilities.Editor
         /// <param name="Index"></param>
         protected SuperListItem(LIST parentList, int Index)
         {
-            parent = parentList;
+            this.parent = parentList;
             this.Index = Index;
             BuildBasicElements();
             BindProperty();
         }
         protected void BuildBasicElements()
         {
-            parent = parent;
+            this.parent = parent;
 
             name = "superlist-item";
             style.Flex(FlexDirection.Row, 1).Align(Align.Center, Justify.FlexStart).Border(vertical: .5f).Colors(null, Color.clear, new(0, 0, 0, .1f)).Radius(4).MinMaxSize(minHeight: 18);
@@ -937,12 +944,12 @@ namespace SLS.ListUtilities.Editor
         }
         protected void FinishBind()
         {
-            if (content != null) Remove(content);
+            if (content != null) this.Remove(content);
             content = Content();
             //Make absolutely sure the content at least takes up a minimum amount of space.
             content.style.flexGrow = 1f;
             content.style.minHeight = 14;
-            Add(content);
+            this.Add(content);
             content.DelayedBuild(() =>
             {
                 PostContent();
