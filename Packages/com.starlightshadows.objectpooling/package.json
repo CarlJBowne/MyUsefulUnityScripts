@@ -1,8 +1,8 @@
 {
-  "name": "com.starlightshadows.objectpooling",
+  "name": "com.starlightshadows.objectutilities",
   "version": "1.0.0",
-  "displayName": "SLS - Object Pooling",
-  "description": "A robust object pooling solution.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.objectpooling",
+  "displayName": "SLS - Object Utilities",
+  "description": "Object Utilities including Pooling and Spawning solutions as well as Projectil Management.\nURL:\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.objectpooling",
   "dependencies": {
     "com.starlightshadows.singletons": "https://github.com/CarlJBowne/MyUsefulUnityScripts?path=/Packages/com.starlightshadows.singletons#v1.0.0",
     "com.unity.visualscripting": "1.8.0"

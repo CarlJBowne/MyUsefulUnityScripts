@@ -3,7 +3,11 @@
     "rootNamespace": "SLS.ObjectPooling",
     "references": [
         "SLS.Singletons",
-        "Unity.VisualScripting.Core"
+        "Unity.VisualScripting.Core",
+        "SLS.GeneralUtilities",
+        "SLS.TimeUtilities",
+        "SLS.EditorUtilities",
+        "SLS.EditorUtilities.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

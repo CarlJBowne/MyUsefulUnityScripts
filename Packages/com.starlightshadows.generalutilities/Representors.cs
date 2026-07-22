@@ -22,11 +22,20 @@ public struct Placement
         positionData = position;
         rotationData = rotation;
     }
-    public Placement(Transform transform)
+    public Placement(Transform transform, bool cloneOnly = false)
     {
-        Transform = transform;
-        positionData = transform.position;
-        rotationData = transform.rotation;
+        if (cloneOnly)
+        {
+            Transform = transform;
+            positionData = transform.position;
+            rotationData = transform.rotation;
+        }
+        else
+        {
+            Transform = null;
+            positionData = transform.position;
+            rotationData = transform.rotation;
+        }
     }
     public Placement(Vector3 position, Vector3 eularAngles)
     {

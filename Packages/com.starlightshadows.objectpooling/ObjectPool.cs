@@ -3,45 +3,68 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UIElements;
+using UnityEditor.Experimental.GraphView;
+using SLS.EditorUtilities.Editor;
+
+
+
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.UIElements;
+#endif
 
 namespace Utilities.ObjectPooling
 {
     /// <summary>
-    /// An active <see cref="ObjectPool"/> in the game's memory, can be attached directly to a behavior or the <see cref="GlobalPool"/>.
+    /// An active <see cref="ObjectPool"/> in the game's memory, can be attached directly to a behavior or the GlobalPool.
+    /// Updated to work with the new Utilities.Spawnable API.
     /// </summary>
     [System.Serializable, Inspectable]
     public class ObjectPool
     {
-        [field: SerializeField] public string name { private set; get; }
-        [field: SerializeField] public PoolableObject prefab { private set; get; }
-        [field: SerializeField] public int initialSize { private set; get; } = 5;
-        [field: SerializeField] public bool canGrow { private set; get; } = true;
-        [field: SerializeField] public bool autoEnable { private set; get; } = true;
-        [field: SerializeField] public float autoDisableTime { private set; get; } = -1;
-        [field: SerializeField] public Transform poolParentOverride { private set; get; }
-        [field: SerializeField] public bool orphanOnDestroy { private set; get; } = false;
+        [field: SerializeField] public string name { protected set; get; }
+        [field: SerializeField] public Spawnable prefab { protected set; get; }
+        [field: SerializeField] public int initialSize { protected set; get; } = 5;
+        [field: SerializeField] public bool canGrow { protected set; get; } = true;
+        [field: SerializeField] public float autoDisableTime { protected set; get; } = -1;
+        [field: SerializeField] public Transform parentOverride { protected set; get; }
+        [field: SerializeField] public bool orphanOnDestroy { protected set; get; } = false;
 
         //Data
-        [field: NonSerialized] public readonly List<PoolableObject> poolList = new();
+        [field: NonSerialized] public readonly List<Spawnable> poolList = new();
         [field: NonSerialized] public int activeObjects { get; protected set; } = 0;
         [field: NonSerialized] public int currentIndex { get; protected set; } = 0;
         [field: NonSerialized] public bool initialized { get; protected set; } = false;
         [field: NonSerialized] public bool initializing { get; protected set; } = false;
         public int pooledObjects => poolList.Count;
-        public Transform poolParent => poolParentOverride != null ? poolParentOverride : GlobalPool.poolParent;
+        public Transform poolParent => parentOverride != null ? parentOverride : DefaultPoolParent;
+        public static Transform DefaultPoolParent;
 
         //Customizable Callbacks
         public Action<ObjectPool> onInitialize;
-        public Action<PoolableObject> onCreateInstance;
-        public Action<PoolableObject> onPreInstanceEnable;
-        public Action<PoolableObject> onInstanceDisable;
+        public Action<Spawnable> onCreateInstance;
+        public Action<Spawnable> onPreInstanceEnable;
+        public Action<Spawnable> onInstanceDisable;
         public Action onFailedPump;
+
+        public static ObjectPool NEW(Spawnable prefab, int initialSize = 5, bool canGrow = true, float autoDisableTime = -1, Transform poolParentOverride = null, bool orphanOnDestroy = false)
+        {
+            ObjectPool This = new();
+            This.prefab = prefab;
+            This.initialSize = initialSize;
+            This.canGrow = canGrow;
+            This.autoDisableTime = autoDisableTime;
+            This.parentOverride = poolParentOverride;
+            This.orphanOnDestroy = orphanOnDestroy;
+            return This;
+        }
 
         public virtual void Initialize()
         {
             if (initialized || initializing) return;
             initializing = true;
-            //InitializeEnum().Begin(); 
+            InitializeEnum().Begin();
         }
 
         protected virtual IEnumerator InitializeEnum()
@@ -55,25 +78,50 @@ namespace Utilities.ObjectPooling
 
         protected virtual void NewInstance()
         {
-            PoolableObject poolable = PoolableObject.Instantiate(prefab, poolParent);
+            if (prefab == null) return;
+            // Use the Spawnable.Instantiate API which expects a GameObject and a client (we pass poolParent as client)
+            Spawnable poolable = Spawnable.Instantiate(prefab.gameObject, poolParent);
             AfterNewInstance(poolable);
         }
 
         protected virtual IEnumerator NewInstanceEnum(int count = 1)
         {
-            AsyncInstantiateOperation<PoolableObject> op = UnityEngine.Object.InstantiateAsync(prefab, count, poolParent);
-            while (!op.isDone) yield return null;
-            for (int i = 0; i < op.Result.Length; i++)
+            if (prefab == null) yield break;
+
+            for (int i = 0; i < count; i++)
             {
-                PoolableObject poolable = op.Result[i];
+                Spawnable poolable = Spawnable.Instantiate(prefab.gameObject, poolParent);
                 AfterNewInstance(poolable);
+                // Spread creations across frames to avoid hitches
+                if (i % 4 == 1) yield return null;
             }
+
+            yield return null;
         }
-        protected virtual void AfterNewInstance(PoolableObject newInstance)
+
+        protected virtual void AfterNewInstance(Spawnable newInstance)
         {
-            newInstance.Initialize(this);
+            if (newInstance == null) return;
+
+            // Register with pool list
             poolList.Add(newInstance);
             onCreateInstance?.Invoke(newInstance);
+
+            // Maintain activeObjects count via spawnable's events.
+            // onActivate increments, onDeactivate decrements and notifies onInstanceDisable.
+            newInstance.onActivate += () =>
+            {
+                activeObjects++;
+            };
+
+            newInstance.onDeactivate += () =>
+            {
+                activeObjects = Math.Max(0, activeObjects - 1);
+                onInstanceDisable?.Invoke(newInstance);
+            };
+
+            // If the spawnable starts as Prefab, ensure it's set to Inactive so pool can reuse it.
+            if (newInstance.IsPrefab) newInstance.Despawn();
         }
 
 
@@ -81,79 +129,50 @@ namespace Utilities.ObjectPooling
         public void Update(float delta)
         {
             if (autoDisableTime > 0)
+            {
                 for (int i = 0; i < poolList.Count; i++)
-                    if (poolList[i].Active && poolList[i].spawnTime + autoDisableTime <= delta)
-                        poolList[i].Active = false;
+                {
+                    var s = poolList[i];
+                    if (s == null) continue;
+                    if (!s.Ready && s.spawnTime + autoDisableTime <= delta)
+                    {
+                        s.Despawn();
+                    }
+                }
+            }
         }
 
-        public PoolableObject Pump()
+        protected void IncrementSelection()
+        {
+            currentIndex++;
+            if (currentIndex >= pooledObjects) currentIndex = 0;
+        }
+
+        public Spawnable Pump(Placement placement)
         {
             if (!initialized) Initialize();
 
             IncrementSelection();
 
             //FindNext Instance
-            PoolableObject instance = null;
-            if (!poolList[currentIndex].Active) instance = poolList[currentIndex];
-            else if (activeObjects >= pooledObjects)
+            Spawnable instance = null;
+            if (poolList.Count == 0)
             {
                 if (canGrow)
                 {
                     NewInstance();
                     currentIndex = pooledObjects - 1;
-                    instance = poolList[currentIndex];
-                }
-            }
-            else
-            {
-                int safetyCounter = 0;
-                while (poolList[currentIndex].Active)
-                {
-                    IncrementSelection();
-                    safetyCounter++;
-                    if (safetyCounter > initialSize * 1000) break;
                 }
             }
 
-            if (instance != null && !instance.Active)
+            if (poolList.Count > 0)
             {
-                instance.Active = true;
-                activeObjects++;
-
-                onPreInstanceEnable?.Invoke(instance);
-                if (autoEnable) instance.Active = true;
-                return instance;
-            }
-            else
-            {
-                onFailedPump?.Invoke();
-                return null;
-            }
-
-        }
-        public bool Pump(out PoolableObject result)
-        {
-            result = Pump();
-            return result != null;
-        }
-
-        public void Pump(Action<PoolableObject> result)
-        {
-            //Enum().Begin();
-            IEnumerator Enum()
-            {
-                if (!initialized) yield return InitializeEnum();
-
-                IncrementSelection();
-
-                //FindNext Instance
-                PoolableObject instance = null;
-                if (!poolList[currentIndex].Active) instance = poolList[currentIndex];
+                if (poolList[currentIndex].Ready) instance = poolList[currentIndex];
                 else if (activeObjects >= pooledObjects)
                 {
                     if (canGrow)
                     {
-                        yield return NewInstanceEnum();
+                        NewInstance();
                         currentIndex = pooledObjects - 1;
                         instance = poolList[currentIndex];
                     }
@@ -161,50 +180,109 @@ namespace Utilities.ObjectPooling
                 else
                 {
                     int safetyCounter = 0;
-                    while (poolList[currentIndex].Active)
+                    int maxSafety = Math.Max(1, initialSize) * 1000;
+                    while (!poolList[currentIndex].Ready)
                     {
                         IncrementSelection();
                         safetyCounter++;
-                        if (safetyCounter > initialSize * 1000) break;
+                        if (safetyCounter > maxSafety) break;
+                    }
+
+                    if (poolList[currentIndex].Ready)
+                        instance = poolList[currentIndex];
+                }
+            }
+
+            if (instance != null && instance.Ready)
+            {
+                onPreInstanceEnable?.Invoke(instance);
+                instance.Spawn(placement);
+                return instance;
+            }
+            else
+            {
+                onFailedPump?.Invoke();
+                return null;
+            }
+        }
+        public bool Pump(out Spawnable result, Placement placement)
+        {
+            result = Pump(placement);
+            return result != null;
+        }
+
+        public void Pump(Action<Spawnable> result, Placement placement)
+        {
+            Enum().Begin();
+            IEnumerator Enum()
+            {
+                if (!initialized) yield return InitializeEnum();
+
+                IncrementSelection();
+
+                //FindNext Instance
+                Spawnable instance = null;
+                if (poolList.Count == 0)
+                {
+                    if (canGrow)
+                    {
+                        yield return NewInstanceEnum(1);
+                        currentIndex = pooledObjects - 1;
+                        instance = poolList[currentIndex];
+                    }
+                }
+                else
+                {
+                    if (poolList[currentIndex].Ready) instance = poolList[currentIndex];
+                    else if (activeObjects >= pooledObjects)
+                    {
+                        if (canGrow)
+                        {
+                            yield return NewInstanceEnum(1);
+                            currentIndex = pooledObjects - 1;
+                            instance = poolList[currentIndex];
+                        }
+                    }
+                    else
+                    {
+                        int safetyCounter = 0;
+                        int maxSafety = Math.Max(1, initialSize) * 1000;
+                        while (!poolList[currentIndex].Ready)
+                        {
+                            IncrementSelection();
+                            safetyCounter++;
+                            if (safetyCounter > maxSafety) break;
+                        }
+
+                        if (poolList[currentIndex].Ready)
+                            instance = poolList[currentIndex];
                     }
                 }
 
-                if (instance != null && !instance.Active)
+                if (instance != null && instance.Ready)
                 {
-                    instance.Active = true;
-                    activeObjects++;
-
                     onPreInstanceEnable?.Invoke(instance);
-                    if (autoEnable) instance.Active = true;
-                    result.Invoke(instance);
+                    instance.Spawn(placement);
+                    result?.Invoke(instance);
                 }
-                else onFailedPump?.Invoke();
+                else
+                {
+                    onFailedPump?.Invoke();
+                    result?.Invoke(null);
+                }
             }
         }
 
-        protected virtual void IncrementSelection()
+        // Utility to destroy or disable through Spawnable API
+        public static void DestroyOrDisable(GameObject subject)
         {
-            currentIndex++;
-            if (currentIndex >= pooledObjects) currentIndex = 0;
-            if (currentIndex > poolList.Count)
-                Debug.Break();
+            Spawnable.DestroyOrDisable(subject);
         }
 
-
-
-        /// <summary>
-        /// Callback for when an instance in this pool has been disabled. Do not call outside of PoolableObject.
-        /// </summary>
-        /// <param name="obj"></param>
-        public virtual void OnInstanceDisable(PoolableObject obj)
-        {
-            activeObjects--;
-            onInstanceDisable?.Invoke(obj);
-        }
 
         public virtual void DisableAll()
         {
-            foreach (PoolableObject item in poolList) item.Active = false;
+            foreach (Spawnable item in poolList) item.Despawn();
             activeObjects = 0;
             currentIndex = 0;
         }
@@ -220,12 +298,92 @@ namespace Utilities.ObjectPooling
                 if (orphanOnDestroy) UnityEngine.Object.Destroy(poolList[i]);
                 else
                 {
-                    poolList[i].Active = false;
-                    UnityEngine.Object.Destroy(poolList[i].gameObject);
+                    poolList[i].Despawn();
+                    if (poolList[i].gameObject != null) UnityEngine.Object.Destroy(poolList[i].gameObject);
+                    onFailedPump?.Invoke();
+                    //result?.Invoke(null); //Not sure what the hell this is.
                 }
             }
         }
 
+
+#if UNITY_EDITOR
+        [CustomPropertyDrawer(typeof(ObjectPool), true)]
+        private class Editor : UnityEditor.PropertyDrawer
+        {
+
+            Foldout primaryFoldout;
+            Label label;
+
+            public override VisualElement CreatePropertyGUI(SerializedProperty property)
+            {
+                VisualElement root = new();
+
+                SerializedProperty initSizeProp = property.FindBackingFieldRelative(nameof(initialSize));
+
+
+                primaryFoldout = new Foldout().AddTo(root, primaryFoldout =>
+                {
+                    primaryFoldout.text = property.displayName;
+                    primaryFoldout.BindProperty(property);
+                    label = primaryFoldout.Q<Label>(className: Foldout.textUssClassName);
+                    label.style.unityTextAlign = TextAnchor.MiddleLeft;
+                });
+
+                new PropertyField(property.FindBackingFieldRelative(nameof(prefab)), "").AddTo(label, t =>
+                {
+                    t.style.unityTextAlign = TextAnchor.UpperLeft;
+                    t.style.minWidth = Length.Percent(75);
+                    t.style.alignSelf = Align.FlexEnd;
+                });
+
+                new TextField("Title").AddTo(primaryFoldout, t =>
+                {
+                    t.BindProperty(property.FindBackingFieldRelative(nameof(ObjectPool.name)));
+                });
+                new VisualElement().AddTo(primaryFoldout, t =>
+                {
+                    t.style.flexDirection = FlexDirection.Row;
+
+                    new IntegerField("Initial Size").AddTo(t, t2 =>
+                    {
+                        t2.BindProperty(initSizeProp);
+                        t2.style.flexGrow = 1;
+                    });
+
+                    SerializedProperty canGrowProp = property.FindBackingFieldRelative(nameof(canGrow));
+                    Button toggle = null; toggle = new Button(() => UpdateCanGrow(!canGrowProp.boolValue)).AddTo(t);
+                    {
+                        toggle.text = "+";
+                        toggle.style.flexShrink = 1;
+                        toggle.style.width = 20;
+                        toggle.style.unityTextAlign = TextAnchor.MiddleCenter;
+                        toggle.style.marginRight = -2.5f;
+                        //toggle.BindProperty(canGrowProp);
+                        toggle.style.backgroundColor = canGrowProp.boolValue ? new(.4f, .6f, .4f) : Color.clear;
+                    }
+                    void UpdateCanGrow(bool value)
+                    {
+                        canGrowProp.boolValue = value;
+                        canGrowProp.serializedObject.ApplyModifiedProperties();
+                        toggle.style.backgroundColor = value ? new(.4f, .8f, .4f) : Color.clear;
+                    }
+
+                });
+
+                new FloatField("Auto Disable Time").AddTo(primaryFoldout, t =>
+                {
+                    t.BindProperty(property.FindBackingFieldRelative(nameof(parentOverride)));
+                });
+                new Toggle("Orphan On Pool Death").AddTo(primaryFoldout, t =>
+                {
+                    t.BindProperty(property.FindBackingFieldRelative(nameof(orphanOnDestroy)));
+                });
+
+                return root;
+            }
+        }
+#endif
     }
 
     /// <summary>
@@ -238,18 +396,30 @@ namespace Utilities.ObjectPooling
     {
         [NonSerialized] private List<T> componentList = new();
 
-        protected override void AfterNewInstance(PoolableObject newInstance)
+        public static new ObjectPool<T> NEW(Spawnable prefab, int initialSize = 5, bool canGrow = true, float autoDisableTime = -1, Transform poolParentOverride = null, bool orphanOnDestroy = false)
+        {
+            ObjectPool<T> This = new();
+            This.prefab = prefab;
+            This.initialSize = initialSize;
+            This.canGrow = canGrow;
+            This.autoDisableTime = autoDisableTime;
+            This.parentOverride = poolParentOverride;
+            This.orphanOnDestroy = orphanOnDestroy;
+            return This;
+        }
+
+        protected override void AfterNewInstance(Spawnable newInstance)
         {
             base.AfterNewInstance(newInstance);
             if (newInstance.TryGetComponent(out T comp)) componentList.Add(comp);
         }
 
-        public new T Pump() => base.Pump() ? componentList[currentIndex] : null;
-        public PoolableObject PumpBase() => base.Pump();
+        public new T Pump(Placement placement) => base.Pump(placement) ? componentList[currentIndex] : null;
+        public Spawnable PumpBase(Placement placement) => base.Pump(placement);
 
-        public bool Pump(out T result)
+        public bool Pump(out T result, Placement placement)
         {
-            if (Pump(out PoolableObject p))
+            if (Pump(out Spawnable p, placement))
             {
                 result = componentList[currentIndex];
                 return true;
@@ -260,110 +430,14 @@ namespace Utilities.ObjectPooling
                 return false;
             }
         }
-        public bool Pump(out PoolableObject resultP, out T resultT)
+        public bool Pump(out Spawnable resultP, out T resultT, Placement placement)
         {
-            if (Pump(out resultP))
-            {
-                resultT = componentList[currentIndex];
-                return true;
-            }
-            else
-            {
-                resultT = null;
-                return false;
-            }
+            var result = base.Pump(out resultP, placement);
+            resultT = componentList[currentIndex];
+            return result;
         }
-
-        public void Pump(Action<PoolableObject, T> result) => base.Pump(P => { result?.Invoke(P, componentList[currentIndex]); });
-
+        public void Pump(Action<Spawnable, T> result, Placement placement) => base.Pump(P => { result?.Invoke(P, componentList[currentIndex]); }, placement);
         public T GetCurrentIndexComponent() => componentList[currentIndex];
-    }
 
-    /// <summary>
-    /// An active <see cref="ObjectPool"/> in the game's memory, with additional tracking for two <see cref="MonoBehaviour"/> <see cref="Type"/>s, <see cref="T1"/> and <see cref="T2"/>.
-    /// <br/> Can be attached directly to a behavior or the <see cref="GlobalPool"/>.
-    /// </summary>
-    /// <typeparam name="T1">The first <see cref="Type"/> to be tracked.</typeparam>
-    /// <typeparam name="T2">The second <see cref="Type"/> to be tracked.</typeparam>
-    [System.Serializable, Inspectable]
-    public class ObjectPool<T1, T2> : ObjectPool where T1 : MonoBehaviour where T2 : MonoBehaviour
-    {
-        [NonSerialized] private List<T1> componentList1 = new();
-        [NonSerialized] private List<T2> componentList2 = new();
-
-
-        protected override void AfterNewInstance(PoolableObject newInstance)
-        {
-            base.AfterNewInstance(newInstance);
-            if (newInstance.TryGetComponent(out T1 comp1)) componentList1.Add(comp1);
-            if (newInstance.TryGetComponent(out T2 comp2)) componentList2.Add(comp2);
-        }
-
-        public T1 Pump1() => base.Pump() ? componentList1[currentIndex] : null;
-        public T2 Pump2() => base.Pump() ? componentList2[currentIndex] : null;
-        public PoolableObject PumpBase() => base.Pump();
-
-        public bool Pump(out T1 result)
-        {
-            if (Pump(out PoolableObject p))
-            {
-                result = componentList1[currentIndex];
-                return true;
-            }
-            else
-            {
-                result = null;
-                return false;
-            }
-        }
-        public bool Pump(out T2 result)
-        {
-            if (Pump(out PoolableObject p))
-            {
-                result = componentList2[currentIndex];
-                return true;
-            }
-            else
-            {
-                result = null;
-                return false;
-            }
-        }
-        public bool Pump(out T1 result1, out T2 result2)
-        {
-            if (Pump(out PoolableObject p))
-            {
-                result1 = componentList1[currentIndex];
-                result2 = componentList2[currentIndex];
-                return true;
-            }
-            else
-            {
-                result1 = null;
-                result2 = null;
-                return false;
-            }
-        }
-        public bool Pump(out PoolableObject resultP, out T1 result1, out T2 result2)
-        {
-            if (Pump(out resultP))
-            {
-                result1 = componentList1[currentIndex];
-                result2 = componentList2[currentIndex];
-                return true;
-            }
-            else
-            {
-                result1 = null;
-                result2 = null;
-                return false;
-            }
-        }
-
-        public void Pump(Action<PoolableObject, T1, T2> result) => base.Pump(P => { result?.Invoke(P, componentList1[currentIndex], componentList2[currentIndex]); });
-
-        public T1 GetCurrentIndexComponent1() => componentList1[currentIndex];
-        public T2 GetCurrentIndexComponent2() => componentList2[currentIndex];
     }
 }
-
