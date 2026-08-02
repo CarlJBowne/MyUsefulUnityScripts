@@ -50,7 +50,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
             this.methodName = null;
         }
 
-        public static Component GetRelatedComponent(MonoBehaviour target, System.Type componentType, string subDirectory, string methodName = null, bool addIfNotFound = false) => ComponentHeaders.GetRelatedComponent(target, componentType, subDirectory, methodName, addIfNotFound);
+        public static Component GetHeaderItem(MonoBehaviour target, System.Type componentType, string subDirectory, string methodName = null, bool addIfNotFound = false) => ComponentHeaders.GetHeaderItem(target, componentType, subDirectory, methodName, addIfNotFound);
 
         public static void Reset(MonoBehaviour target) => ComponentHeaders.Reset(target);
     }
@@ -59,7 +59,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
     {
         // Shared helper: centralizes logic to find a component of the given Type on the given MonoBehaviour's GameObject.
         // Returns the found Component or null. Does not log errors about missing required components (caller handles that).
-        public static Component GetRelatedComponent(MonoBehaviour target, System.Type componentType, string subDirectory, string accessorMethodName = null, bool addIfNotFound = false)
+        public static Component GetHeaderItem(MonoBehaviour target, System.Type componentType, string subDirectory, string accessorMethodName = null, bool addIfNotFound = false)
         {
             // First, if an accessor method name is provided, attempt to invoke it and resolve from the returned object.
             if (!string.IsNullOrEmpty(accessorMethodName))
@@ -203,11 +203,11 @@ namespace SLS.EditorUtilities.ComponentHeaders
 
         public static void Reset(MonoBehaviour target)
         {
-            //Run through all fields with RelatedComponentAttribute or PlaceInHeaderAttribute
+            //Run through all fields with HeaderItemAttribute or PlaceInHeaderAttribute
             var fields = target.GetType().GetFields();
             foreach (var field in fields)
             {
-                // Get all attributes and check for either RelatedComponentAttribute or PlaceInHeaderAttribute
+                // Get all attributes and check for either HeaderItemAttribute or PlaceInHeaderAttribute
                 var attrs = field.GetCustomAttributes(true);
                 foreach (var a in attrs)
                 {
@@ -216,7 +216,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                         var fieldType = field.FieldType;
                         if (typeof(Component).IsAssignableFrom(fieldType))
                         {
-                            var GetComp = GetRelatedComponent(target, fieldType, placeAttr.subLocation, placeAttr.methodName, placeAttr.require);
+                            var GetComp = GetHeaderItem(target, fieldType, placeAttr.subLocation, placeAttr.methodName, placeAttr.require);
                             if (GetComp != null)
                             {
                                 field.SetValue(target, GetComp);

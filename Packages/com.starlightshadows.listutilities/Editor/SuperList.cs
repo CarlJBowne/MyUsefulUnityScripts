@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
-using SLS.ListUtilities.Editor.Internal;
+using SLS.EditorUtilities.Editor;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -45,7 +46,7 @@ namespace SLS.ListUtilities.Editor
         protected void BuildBasicElements()
         {
             header = new Header(this as LIST).AddTo(this);
-
+            Selection = new(this as LIST);
             collectionBackground = new VisualElement().AddTo(this, b =>
             {
                 b.name = "superlist-collection";
@@ -163,8 +164,8 @@ namespace SLS.ListUtilities.Editor
                             .Radius(0, topLeft: 6)
                             .Margins(0)
                             .Padding(0);
-                        new ElementHighlighter(a, Color.lightGreen, Color.gray3).Hover();
-                        new ElementHighlighter(a, Color.white, Color.lightGreen).Click();
+                        new ElementHighlight(a, Color.lightGreen, Color.gray3).Hover();
+                        new ElementHighlight(a, Color.white, Color.lightGreen).Click();
                     });
                 }
 
@@ -184,8 +185,8 @@ namespace SLS.ListUtilities.Editor
                             .Radius(0, topRight: 6)
                             .Margins(0)
                             .Padding(0);
-                        new ElementHighlighter(d, Color.darkSalmon, Color.gray3).Hover();
-                        new ElementHighlighter(d, Color.white, Color.darkSalmon).Click();
+                        new ElementHighlight(d, Color.darkSalmon, Color.gray3).Hover();
+                        new ElementHighlight(d, Color.white, Color.darkSalmon).Click();
                     });
                 }
             }
@@ -329,10 +330,6 @@ namespace SLS.ListUtilities.Editor
         /// The visual item holders currently displayed by the list. The index/order matches the serialized array.
         /// </summary>
         public List<ITEM> items { get; protected set; } = new();
-        /// <summary>
-        /// Currently selected item in the list, or null when nothing is selected.
-        /// </summary>
-        public ITEM selectedItem { get; protected set; }
 
         #endregion
 
@@ -348,14 +345,18 @@ namespace SLS.ListUtilities.Editor
         {
             if (property == null) return;
 
-            Select(null);
+            Selection.Clear();
 
-            // Clear existing visuals
-            collectionBackground?.Clear();
-            items.Clear();
+            UnbuildItems();
 
             for (int i = 0; i < CurrentSize; i++)
                 CreateItemElement(i);
+        }
+
+        public virtual void UnbuildItems()
+        {
+            for (int i = 0; i < items.Count; i++) items[i].RemoveFromHierarchy();
+            items.Clear();
         }
 
         #region Add Systems
@@ -369,7 +370,7 @@ namespace SLS.ListUtilities.Editor
             CreatePropertySlot(out int newID);
             SetOrCreateItemValue(newID);
             CreateItemElement(newID);
-            Select(items[newID]);
+            Selection.Select(newID);
         }
 
         /// <summary>
@@ -379,13 +380,10 @@ namespace SLS.ListUtilities.Editor
         /// <param name="newID">Outputs the index of the newly allocated slot.</param>
         public virtual void CreatePropertySlot(out int newID)
         {
-            if (property == null) throw new InvalidOperationException("Property is null");
-
-            CurrentSize++;
-
-            property.serializedObject.ApplyModifiedProperties();
-
-            newID = CurrentSize - 1;
+            if (property == null) throw new ArgumentNullException();
+            newID = Selection.NewItemID;
+            property.InsertArrayElementAtIndex(newID);
+            header.UpdateCounter(true);
         }
 
         /// <summary>
@@ -584,11 +582,12 @@ namespace SLS.ListUtilities.Editor
             if (property == null) return;
             if (CurrentSize == 0) return;
 
-            ITEM selected = selectedItem ?? items[^1];
-            int id = items.IndexOf(selected);
+            if (Selection.Count < 1) DeletePropertySlotAt(CurrentSize - 1);
+            else if (Selection.Count == 1) DeletePropertySlotAt(Selection.FirstSelected);
+            else for (int i = CurrentSize - 1; i >= 0; i--)
+                if (Selection[i]) DeletePropertySlotAt(i);
 
-            Select(null);
-            DeletePropertySlotAt(id);
+            property.serializedObject.ApplyModifiedProperties();
             BuildItems();
         }
 
@@ -615,8 +614,7 @@ namespace SLS.ListUtilities.Editor
             }
 
             // Keep UI counter accurate
-            CurrentSize = property.arraySize;
-            property.serializedObject.ApplyModifiedProperties();
+            header.UpdateCounter(false);
         }
 
         /// <summary>
@@ -650,18 +648,7 @@ namespace SLS.ListUtilities.Editor
         /// <summary>
         /// Gets or sets the array size (property.arraySize). Setting adjusts the underlying serialized array size.
         /// </summary>
-        public virtual int CurrentSize
-        {
-            get => property.arraySize;
-            set
-            {
-                bool nowBigger = value > property.arraySize;
-                property.arraySize = value;
-                header.UpdateCounter(nowBigger);
-
-                // Do not ApplyModifiedProperties here — callers should apply as needed, but keep UI in sync
-            }
-        }
+        public virtual int CurrentSize => property.arraySize;
 
         /// <summary>
         /// Overridable definition of whether this allows reordering.
@@ -675,9 +662,11 @@ namespace SLS.ListUtilities.Editor
         /// Called when the header counter value is changed manually by the user. Resizes the list to the requested value and rebuilds visuals.
         /// </summary>
         /// <param name="newValue">The new requested size value.</param>
-        public virtual void OnCounterTouched(int newValue)
+        public virtual void OnCounterTouched(int value)
         {
-            CurrentSize = newValue;
+            bool nowBigger = value > property.arraySize;
+            property.arraySize = value;
+            header.UpdateCounter(nowBigger);
             BuildItems();
         }
 
@@ -691,7 +680,7 @@ namespace SLS.ListUtilities.Editor
             if (!allowReorder) return;
             if (property == null) return;
 
-            bool wasSelected = item == selectedItem;
+            bool wasSelected = Selection[item.Index];
 
             int i = items.IndexOf(item);
             if (i < 0) return;
@@ -715,7 +704,7 @@ namespace SLS.ListUtilities.Editor
             // Rebuild visuals to reflect new ordering.
             BuildItems();
 
-            Select(items[newIndex]);
+            Selection[item.Index] = wasSelected;
 
             //Tried to move the mouse to the new position but it wouldn't work.
             //Vector2 pos = EditorWindow.focusedWindow.position.position + selectedItem.dragHandle.worldBound.position 
@@ -766,7 +755,8 @@ namespace SLS.ListUtilities.Editor
                 }
                 items.Clear();
             }
-            CurrentSize = 0;
+            property.arraySize = 0;
+            header.UpdateCounter(false);
         }
         /// <summary>
         /// Applies or Reverts Prefab changes before forcing an update.
@@ -786,16 +776,83 @@ namespace SLS.ListUtilities.Editor
 
         #endregion
 
-        /// <summary>
-        /// Selects the given item instance and toggles the Selected state on the previously selected item.
-        /// </summary>
-        /// <param name="E">Item to select (or null to clear selection).</param>
-        public void Select(ITEM E)
+        #region Selection
+
+        public ListSelection Selection { get; private set; }
+        public class ListSelection
         {
-            if (selectedItem != null) selectedItem.Selected = false;
-            selectedItem = E;
-            if (selectedItem != null) selectedItem.Selected = true;
+            public ListSelection(LIST l) => list = l;
+            private LIST list;
+            public int Count { get; private set; } = 0;
+            int listCount => list.items.Count;
+
+            public bool this[int i]
+            {
+                get => list.items[i].Selected;
+                set
+                {
+                    if (list.items[i].Selected == value) return;
+                    list.items[i].Selected = value;
+                    Count = value ? Count + 1 : Count - 1;
+                }
+            }
+
+            public int FirstSelected
+            {
+                get
+                {
+                    for (int i = 0; i < listCount; i++)
+                        if (this[i])
+                            return i;
+                    return -1;
+                }
+            }
+            public int LastSelected
+            {
+                get
+                {
+                    for (int i = listCount - 1; i >= 0; i--)
+                        if (this[i])
+                            return i;
+                    return -1;
+                }
+            }
+
+            public int NewItemID => Count > 0 ? list.items[LastSelected].Index + 1 : listCount;
+
+            public void Select(int target, SelectionOp type = SelectionOp.ForceSingle)
+            {
+                if (type is SelectionOp.Normal)
+                {
+                    if (Count > 1 || (Count == 1 && !this[target]))
+                        for (int i = 0; i < listCount; i++)
+                            this[i] = i == target;
+                    else this[target] = !this[target];
+                }
+                else if (type is SelectionOp.ForceSingle)
+                    for (int i = 0; i < listCount; i++)
+                        this[i] = i == target;
+                else if (type is SelectionOp.Control) this[target] = !this[target];
+                else if (type is SelectionOp.Shift)
+                {
+                    int first = FirstSelected;
+                    int last = LastSelected;
+                    if (Count == 0) Clear(true);
+                    else
+                    {
+                        int start = Mathf.Min(first, target);
+                        int end = Mathf.Max(last, target);
+                        for (int i = 0; i < listCount; i++)
+                            this[i] = i >= start && i <= end;
+                    }
+                }
+            }
+
+
+            public void Clear(bool invert = false)
+            { for (int i = 0; i < listCount; i++) this[i] = invert; }
         }
+        #endregion
 
         /// <summary>
         /// Creates and registers an ITEM visual for the element at the given index.
@@ -932,7 +989,14 @@ namespace SLS.ListUtilities.Editor
             });
 
             //Register PointerDownEvent that allows trickledown so that tapping anywhere on the Item will select it. :)
-            RegisterCallback<PointerDownEvent>((evt) => parent.Select(this as ITEM), TrickleDown.TrickleDown);
+            RegisterCallback<PointerDownEvent>((evt) =>
+            {
+                SelectionOp op =
+                evt.ctrlKey ? SelectionOp.Control
+                : evt.shiftKey ? SelectionOp.Shift
+                : SelectionOp.Normal;
+                parent.Selection.Select(Index, op);
+            }, TrickleDown.TrickleDown);
         }
         /// <summary>
         /// Unlike the SuperList itself, it is not recommended to override the constructor heavily. Instead, simply override this function and get all the data sources from the SuperList.
@@ -1132,7 +1196,7 @@ namespace SLS.ListUtilities.Editor
                 selected ? invalid ? SelectionInvalidColor : SelectionColor
                 : invalid ? InvalidColor : Color.clear;
 
-        public static Color SelectionColor => ElementHighlighter.ButtonClickedBack;
+        public static Color SelectionColor => ElementHighlight.ButtonClickedBack;
         public static Color InvalidColor = new(.44f, .24f, .24f);
         public static Color SelectionInvalidColor = new(.486f, .274f, .428f);
 
@@ -1141,6 +1205,49 @@ namespace SLS.ListUtilities.Editor
         public static DropdownMenuAction.Status DropDownMenuStatus(DropdownMenuAction A) => DropdownMenuAction.Status.Normal;
 
     }
+    public enum SelectionOp
+    {
+        Normal,
+        ForceSingle,
+        Shift,
+        Control,
+    }
+    public class EnterDataMenu : VisualElement
+    {
+        public EnterDataMenu(Action<string> result, bool Override = false)
+        {
+            if (Override) return;
+            style.flexDirection = FlexDirection.Row;
+            this.Display(false);
+
+            TextField = new TextField("").AddTo(this);
+            TextField.style.flexGrow = 1f;
+
+            Result = result;
+            FinishButton = new Button(Complete).AddTo(this);
+            FinishButton.style.width = 20;
+            FinishButton.text = "+";
+            FinishButton.style.backgroundColor = new Color(.5f, .75f, .5f);
+        }
+
+        public TextField TextField { get; protected set; }
+        public Button FinishButton { get; protected set; }
+        public Action<string> Result { get; protected set; }
+
+        public virtual void Show()
+        {
+            if(!parent.IsDisplay()) parent.Display(true);
+            this.Display(!this.IsDisplay());
+            TextField.Focus();
+        }
+        protected virtual void Complete()
+        {
+            Result?.Invoke(TextField.text);
+            TextField.SetValueWithoutNotify("");
+            this.Display(false);
+        }
+    }
+
 
     /// <summary>
     /// A basic example of the highly customizable <see cref="SuperList{LIST, ITEM, VALUE}"/> made for basic objects.
@@ -1158,4 +1265,5 @@ namespace SLS.ListUtilities.Editor
     {
         public SuperListItem(SuperList<T> parentList, int Index) : base(parentList, Index) { }
     }
+
 }

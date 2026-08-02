@@ -159,8 +159,9 @@ public class Prefab
     }
 
     public static implicit operator bool(Prefab prefab) => prefab != null && prefab.TryResolve();
-    public static bool operator ==(Prefab prefab, GameObject gameObject) => prefab != null && prefab.TryResolve() && prefab.readOnlyObject == gameObject;
-    public static bool operator !=(Prefab prefab, GameObject gameObject) => prefab == null || !prefab.TryResolve() || prefab.readOnlyObject != gameObject;
+    //Something is wrong here.
+    public static bool operator ==(Prefab prefab, GameObject gameObject) => prefab != (object)null && prefab.readOnlyObject == gameObject;
+    public static bool operator !=(Prefab prefab, GameObject gameObject) => prefab == (object)null || prefab.readOnlyObject != gameObject;
     public override bool Equals(object obj) => base.Equals(obj);
     public override int GetHashCode() => base.GetHashCode();
     public override string ToString() => base.ToString();

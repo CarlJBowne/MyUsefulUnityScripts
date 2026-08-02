@@ -4,7 +4,7 @@ using SLS.EditorUtilities.ComponentHeaders;
 using UnityEditor;
 using UnityEngine;
 
-namespace SLS.StateMachineH 
+namespace SLS.StateMachineH
 {
 
     /// <summary>  
@@ -75,13 +75,21 @@ namespace SLS.StateMachineH
         /// Called when this <see cref="StateBehavior"/>'s <see cref="State"/> is active during the <see cref="StateMachine"/>'s Update phase. Override to add custom logic. 
         /// </summary>  
         protected virtual void OnUpdate() { }
-        internal void DoUpdate() => OnUpdate();
+        internal void DoUpdate()
+        {
+            if (blockedForCycle) return;
+            OnUpdate();
+        }
 
         /// <summary>  
         /// Called when this <see cref="StateBehavior"/>'s <see cref="State"/> is active during the <see cref="StateMachine"/>'s FixedUpdate. Override to add custom logic.  
         /// </summary>  
         protected virtual void OnFixedUpdate() { }
-        internal void DoFixedUpdate() => OnFixedUpdate();
+        internal void DoFixedUpdate()
+        {
+            if (blockedForCycle) return;
+            OnFixedUpdate();
+        }
 
         /// <summary>  
         /// Called when entering this <see cref="StateBehavior"/>'s <see cref="State"/>. Override to add custom logic. 
@@ -89,14 +97,26 @@ namespace SLS.StateMachineH
         /// <param name="prev">The previous <see cref="State"/> being left in this transition process.</param>  
         /// <param name="isFinal">Whether this is the end <see cref="State"/> being entered or if it has children.</param>
         protected virtual void OnEnter(State prev, bool isFinal) { }
-        internal void DoEnter(State prev, bool isFinal)=> OnEnter(prev, isFinal);
+        internal void DoEnter(State prev, bool isFinal)
+        {
+            if (blockedForCycle) return;
+            OnEnter(prev, isFinal);
+        }
 
         /// <summary>  
         /// Called when exiting this <see cref="StateBehavior"/>'s <see cref="State"/>. Override to add custom logic. 
         /// </summary>  
         /// <param name="next">The new <see cref="State"/> being entered in this transition process.</param>  
         protected virtual void OnExit(State next) { }
-        internal void DoExit(State next) => OnExit(next);
+        internal void DoExit(State next)
+        {
+            if (blockedForCycle)
+            {
+                blockedForCycle = false;
+                return;
+            }
+            OnExit(next);
+        }
 
         /// <summary>  
         /// Retrieves a <see cref="Component"/> from the associated <see cref="StateMachine"/>.  
@@ -117,5 +137,28 @@ namespace SLS.StateMachineH
         /// Gets whether the <see cref="StateMachineH.State"> is currently active. 
         /// </summary>  
         public static implicit operator bool(StateBehavior B) => B != null && B.State.Active;
+
+        /// <summary>
+        /// Blocks this <see cref="StateBehavior"/> from doing anything for the duration of the <see cref="SLS.StateMachineH.State"/>'s activation. <br/>
+        /// Automatically undone when the State is exited.<br/>
+        /// Can be undone with <see cref="UnBlockForThisCycle"/>
+        /// </summary>
+        public void BlockForThisCycle()
+        {
+            blockedForCycle = true;
+        }
+
+        /// <summary>
+        /// Undoes the effects of <see cref="BlockForThisCycle"/>, re-enabling functionality. <br/>
+        /// If run while the current <see cref="SLS.StateMachineH.State"/> is active, will cause OnEnter like functionality unless manually disabled. <br/>
+        /// Be very intentional with how you use this.
+        /// </summary>
+        public void UnBlockForThisCycle(bool doEnterLogic = true)
+        {
+            blockedForCycle = false;
+            if (State.Active && doEnterLogic)
+                OnEnter(null, Machine.CurrentState == State);
+        }
+        private bool blockedForCycle;
     }
 }

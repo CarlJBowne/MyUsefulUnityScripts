@@ -71,8 +71,8 @@ namespace SLS.GameStateMachine
         [field: SerializeField] public Prefab Prefab { get; private set; }
         [field: SerializeField] public virtual bool FreezeTillSceneLoad { get; private set; }
 
-        [field: SerializeField] public DualEvent OnExit { get; private set; } = new();
-        [field: SerializeField] public DualEvent OnEnter { get; private set; } = new();
+        public DualEvent OnExit = new();
+        public DualEvent OnEnter = new();
         [field: SerializeField] public DictionaryS<string, string> Parameters { get; private set; } = new();
 
         protected virtual void OnEnterLogic() { }

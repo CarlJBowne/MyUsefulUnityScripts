@@ -125,7 +125,12 @@ public static class Xtensions_Collections
             if (list[i] == null)
                 list.RemoveAt(i);
     }
-
+    public static void Add<T>(this List<T> list, T item, bool unique)
+    {
+        if (list == null) return;
+        if (unique && list.Contains(item)) return;
+        list.Add(item);
+    }
 
 }
 

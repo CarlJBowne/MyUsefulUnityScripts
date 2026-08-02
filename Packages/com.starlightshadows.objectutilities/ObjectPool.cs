@@ -14,7 +14,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 #endif
 
-namespace Utilities.ObjectPooling
+namespace SLS.ObjectUtilities
 {
     /// <summary>
     /// An active <see cref="ObjectPool"/> in the game's memory, can be attached directly to a behavior or the GlobalPool.

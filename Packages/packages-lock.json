@@ -53,7 +53,7 @@
       "dependencies": {}
     },
     "com.starlightshadows.objectutilities": {
-      "version": "file:com.starlightshadows.objectpooling",
+      "version": "file:com.starlightshadows.objectutilities",
       "depth": 0,
       "source": "embedded",
       "dependencies": {

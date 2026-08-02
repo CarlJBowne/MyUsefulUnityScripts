@@ -15,7 +15,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
     public class ComponentHeadersEditors : UnityEditor.PropertyDrawer
     {
         public const float iconSize = 16;
-        public const string headerClassName = "RelatedComponent__Header";
+        public const string headerClassName = "HeaderItem__Header";
         Item item;
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
@@ -285,7 +285,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                     if (fieldType != null && typeof(Component).IsAssignableFrom(fieldType))
                     {
                         // Use centralized lookup with optional sub-location and do not add yet
-                        found = GetRelatedComponent(context, fieldType, subLocation, methodName, false);
+                        found = GetHeaderItem(context, fieldType, subLocation, methodName, false);
                     }
                     else if (fieldType == typeof(GameObject))
                     {
@@ -294,7 +294,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                     else
                     {
                         // fallback: try centralized lookup which will return null for non-components
-                        found = GetRelatedComponent(context, fieldType, subLocation, methodName, false);
+                        found = GetHeaderItem(context, fieldType, subLocation, methodName, false);
                     }
                 }
                 catch
@@ -315,7 +315,7 @@ namespace SLS.EditorUtilities.ComponentHeaders
                         // Ask user if they'd like to add the component if it's required
                         if (EditorUtility.DisplayDialog("Component Not Found", $"The required component of type '{fieldType.Name}' was not found on GameObject '{context.gameObject.name}' and is required for this to work. Would you like to add it?", "Yes", "No"))
                         {
-                            var addedComp = GetRelatedComponent(context, fieldType, subLocation, methodName, true);
+                            var addedComp = GetHeaderItem(context, fieldType, subLocation, methodName, true);
                             property.objectReferenceValue = addedComp;
                             property.serializedObject.ApplyModifiedProperties();
                             propertyDraw.SetValueWithoutNotify(addedComp);

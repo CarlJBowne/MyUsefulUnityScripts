@@ -91,20 +91,6 @@ namespace SLS.StateMachineH.Timelines.Editor
                     property.GetArrayElementAtIndex(ID - 1).FindPropertyRelative("time").floatValue + .001f;
                 property.serializedObject.ApplyModifiedProperties();
             }
-            //public override void CreateItemElement(int ID)
-            //{
-            //    if (property == null) throw new InvalidOperationException("Property is null");
-            //    // Grab a fresh serialized property for this slot
-            //    SerializedProperty elemProp = property.GetArrayElementAtIndex(ID) ?? throw new ArgumentOutOfRangeException/(nameof/(ID));
-            //
-            //    ItemDrawer holder = new(this as ListDrawer, elemProp);
-            //
-            //    items.Add(holder);
-            //    collectionBackground.Add(holder);
-            //
-            //    // Bind the newly created element to the owner object so it displays immediately and reacts to changes.
-            //    try { holder.Bind(property.serializedObject); } catch { }
-            //}
 
             public void ReorderElements(int index, ChangeEvent<float> ev)
             {

@@ -23,6 +23,8 @@ namespace SLS.GameStateMachine
         /// </summary>
         public static bool Present => S.Active;
 
+        public static bool Active => S.Get.isActive;
+
         /// <summary>
         /// Attempts to get the currently registered singleton instance.
         /// </summary>

@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Utilities.ObjectPooling;
 
-namespace Utilities
+namespace SLS.ObjectUtilities
 {
     public class EntitySpawn : MonoBehaviour
     {
@@ -78,8 +77,9 @@ namespace Utilities
             }
         }
 
-        float Distance => Vector3.Distance(PlayerPosition.position,
-                (measureFromSpawn || active == null) ? transform.position : active.transform.position);
+        float Distance => PlayerPosition != null ? Vector3.Distance(PlayerPosition.position,
+                (measureFromSpawn || active == null) ? transform.position : active.transform.position)
+            : float.PositiveInfinity;
 
         void AttemptLoad()
         {

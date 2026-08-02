@@ -5,6 +5,7 @@ using System.IO;
 using UnityEngine;
 using Utilities.JSON;
 
+/*
 namespace SaveSystem
 {
     public partial class SaveData
@@ -91,3 +92,4 @@ namespace SaveSystem
 
     }
 }
+*/

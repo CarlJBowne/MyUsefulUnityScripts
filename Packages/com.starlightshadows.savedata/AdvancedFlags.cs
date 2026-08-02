@@ -12,7 +12,7 @@ using UnityEditor;
 namespace SaveSystem.Flags
 {
     [System.Serializable]
-    public abstract class Flag
+    public abstract class Flag : Polymorph
     {
 
         public bool IsType<T>() => type == TypeEnumFromCType<T>();
@@ -30,7 +30,7 @@ namespace SaveSystem.Flags
         // Shared TrySetValue(object value) implementation
         public virtual bool TrySetValue(object value)
         {
-            if(value == null || valueObject.GetType() != value.GetType()) return false;
+            if (value == null || valueObject.GetType() != value.GetType()) return false;
             valueObject = value;
             return true;
         }
@@ -185,8 +185,17 @@ namespace SaveSystem.Flags
                 return t;
             }
 
-            public override JToken SaveToJson() => value.Serialize();
-            public override void LoadFromJson(JToken input) => value.Deserialize((JObject)input);
+            public override JToken SaveToJson()
+            {
+                return new JArray(value.x, value.y, value.z);
+            }
+            public override void LoadFromJson(JToken input)
+            {
+                JToken t = input;
+                value.x = t[0].ToObject<float>();
+                value.y = t[1].ToObject<float>();
+                value.z = t[2].ToObject<float>();
+            }
         }
 
         public class String : Flag

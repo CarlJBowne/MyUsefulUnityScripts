@@ -3,7 +3,9 @@
     "rootNamespace": "SLS.Polymorphs.Editor",
     "references": [
         "SLS.Polymorphs",
-        "SLS.ListUtilities.Editor"
+        "SLS.ListUtilities.Editor",
+        "SLS.EditorUtilities.Editor",
+        "SLS.ListUtilities"
     ],
     "includePlatforms": [
         "Editor"

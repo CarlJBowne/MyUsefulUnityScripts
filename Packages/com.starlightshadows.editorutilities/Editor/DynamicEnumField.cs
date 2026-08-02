@@ -127,7 +127,7 @@ namespace SLS.EditorUtilities.Editor
         /// </summary>
         public string SelectedValue
         {
-            get => _selectedIndex >= 0 && _selectedIndex < _options.Count ? _options[_selectedIndex] : null;
+            get => _selectedIndex >= 0 && _selectedIndex < _options.Count ? _options[_selectedIndex] : "SELECT";
             set
             {
                 if(_options.Contains(value)) SelectedIndex = _options.IndexOf(value);

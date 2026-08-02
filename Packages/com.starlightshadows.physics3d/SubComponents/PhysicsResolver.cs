@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
 using Unity.VisualScripting;
+using System.Collections.Generic;
+
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -102,99 +104,125 @@ namespace SLS.Physics3D
     [UnityEditor.CustomPropertyDrawer(typeof(PhysicsResolver), true)]
     public class Editor : UnityEditor.PropertyDrawer
     {
-        SerializedProperty property;
-        VisualElement root;
-        Foldout foldout;
-        Button GetButton;
+        static List<UnityEngine.Object> shown = new();
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            this.property = property;
-            root = new();
-            foldout = new()
+            // Localize everything to avoid reuse issues with PropertyDrawer instances.
+            var root = new VisualElement();
+
+            var foldout = new Foldout
             {
-                text = property.displayName
+                text = property.displayName,
+                value = false
             };
             foldout.BindProperty(property);
+            foldout.SetValueWithoutNotify(false);
             root.Add(foldout);
-            GetButton = new(ButtonPress);
-            GetButton.style.width = new Length(40, LengthUnit.Percent);
-            GetButton.style.height = 14;
-            GetButton.style.position = Position.Absolute;
-            GetButton.style.top = 0;
-            GetButton.style.right = 0;
-            root.Add(GetButton);
 
-            Build();
+            var getButton = new Button(ButtonPress)
+            {
+                style =
+                {
+                    width = new Length(40, LengthUnit.Percent),
+                    height = 14,
+                    position = Position.Absolute,
+                    top = 0,
+                    right = 0,
+                }
+            };
+            root.Add(getButton);
 
-            Undo.undoRedoPerformed += Build;
-            root.RegisterCallbackOnce<DetachFromPanelEvent>(ev => { Undo.undoRedoPerformed -= Build; });
+            void UpdateButtonText()
+            {
+                getButton.text = property.objectReferenceValue != null
+                    ? property.objectReferenceValue.GetType().Name.Replace("PhysResolver", "")
+                    : "Select";
+            }
+            UpdateButtonText();
+
+            // Register the foldout callback after attachment to panel (mirrors previous intent).
+            foldout.RegisterCallbackOnce<AttachToPanelEvent>(c =>
+                foldout.schedule.Execute(() => foldout.RegisterValueChangedCallback(FoldoutChange))
+            );
+
+            void FoldoutChange(ChangeEvent<bool> e)
+            {
+                if (e.target != e.currentTarget) return;
+                UpdateButtonText();
+
+                if (e.newValue)
+                {
+                    var target = property.objectReferenceValue;
+                    if (target != null && shown.Contains(target)) return;
+
+                    if (target != null) shown.Add(target);
+
+                    if (target != null)
+                        foldout.Add(new InspectorElement(new SerializedObject(target)));
+                }
+                else
+                {
+                    var target = property.objectReferenceValue;
+                    if (target != null && shown.Contains(target)) shown.Remove(target);
+                    foldout.contentContainer.Clear();
+                }
+            }
+
+            void ButtonPress()
+            {
+                var menu = new GenericMenu();
+
+                PhysicsResolver[] existingResolvers = (property.serializedObject.targetObject as Component).GetComponents<PhysicsResolver>();
+                for (int i = 0; i < existingResolvers.Length; i++)
+                {
+                    int t = i;
+                    menu.AddItem(new($"{i + 1} : {existingResolvers[t].GetType().Name.Replace("PhysResolver", "")}"),
+                        property.objectReferenceValue == existingResolvers[t],
+                        () => PostMenuE(existingResolvers[t]));
+                }
+
+                menu.AddSeparator("");
+
+                Type[] subTypes = GetSubtypes();
+                for (int i = 0; i < subTypes.Length; i++)
+                {
+                    int t = i;
+                    menu.AddItem(new($"+ {subTypes[t].Name.Replace("PhysResolver", "")}"), false, () => PostMenuN(subTypes[t]));
+                }
+
+                if (property.objectReferenceValue != null)
+                {
+                    menu.AddSeparator("");
+                    menu.AddItem(new("Nullify"), false, PostMenuNull);
+                }
+
+                menu.ShowAsContext();
+            }
+
+            void PostMenuE(PhysicsResolver input)
+            {
+                property.objectReferenceValue = input;
+                property.serializedObject.ApplyModifiedProperties();
+                // Expand so the user can see the newly selected resolver
+                foldout.value = true;
+            }
+            void PostMenuN(Type targetType)
+            {
+                PhysicsResolver newRes = (property.serializedObject.targetObject as Component).gameObject.AddComponent(targetType) as PhysicsResolver;
+                property.objectReferenceValue = newRes;
+                newRes.hideFlags = HideFlags.HideInInspector;
+                property.serializedObject.ApplyModifiedProperties();
+                foldout.value = true;
+            }
+            void PostMenuNull()
+            {
+                property.objectReferenceValue = null;
+                property.serializedObject.ApplyModifiedProperties();
+                foldout.value = true;
+            }
 
             return root;
-        }
-
-        void Build()
-        {
-            foldout.contentContainer.Clear();
-            GetButton.text = property.objectReferenceValue != null
-                ? property.objectReferenceValue.GetType().Name.Replace("PhysResolver", "")
-                : "Select";
-            if (property.objectReferenceValue != null)
-                foldout.Add(new InspectorElement(new SerializedObject(property.objectReferenceValue)));
-        }
-
-        void ButtonPress()
-        {
-            GenericMenu Menu = new();
-
-            PhysicsResolver[] existingResolvers = (property.serializedObject.targetObject as Component).GetComponents<PhysicsResolver>();
-
-            for (int i = 0; i < existingResolvers.Length; i++)
-            {
-                int t = i;
-                Menu.AddItem(new($"{i + 1} : {existingResolvers[t].GetType().Name.Replace("PhysResolver", "")}"),
-                    property.objectReferenceValue == existingResolvers[t],
-                    () => PostMenuE(existingResolvers[t]));
-            }
-
-
-            Menu.AddSeparator("");
-
-            Type[] subTypes = GetSubtypes();
-            for (int i = 0; i < subTypes.Length; i++)
-            {
-                int t = i;
-                Menu.AddItem(new($"+ {subTypes[t].Name.Replace("PhysResolver", "")}"), false, () => PostMenuN(subTypes[t]));
-            }
-
-
-            if (property.objectReferenceValue != null)
-            {
-                Menu.AddSeparator("");
-                Menu.AddItem(new("Nullify"), false, PostMenuNull);
-            }
-
-            Menu.ShowAsContext();
-        }
-        void PostMenuE(PhysicsResolver input)
-        {
-            property.objectReferenceValue = input;
-            property.serializedObject.ApplyModifiedProperties();
-            Build();
-        }
-        void PostMenuN(Type targetType)
-        {
-            PhysicsResolver newRes = (property.serializedObject.targetObject as Component).gameObject.AddComponent(targetType) as PhysicsResolver;
-            property.objectReferenceValue = newRes;
-            newRes.hideFlags = HideFlags.HideInInspector;
-            property.serializedObject.ApplyModifiedProperties();
-            Build();
-        }
-        void PostMenuNull()
-        {
-            property.objectReferenceValue = null;
-            property.serializedObject.ApplyModifiedProperties();
-            Build();
         }
 
         public static Type[] GetSubtypes()
@@ -212,7 +240,6 @@ namespace SLS.Physics3D
                 )
                 .ToArray();
         }
-
     }
-#endif 
+#endif
 }

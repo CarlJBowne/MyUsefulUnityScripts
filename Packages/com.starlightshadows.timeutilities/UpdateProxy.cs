@@ -49,8 +49,10 @@ public class UpdateProxy : MonoBehaviour
     public static void RegisterChannel(string channelName, float maxUpdatesPerFrame = 4)
     {
         if (!updateChannelKeys.Contains(channelName))
-            updateChannels[updateChannelKeys.IndexOf(channelName)] 
-                = new Channel { maxUpdatesPerFrame = maxUpdatesPerFrame };
+        {
+            updateChannelKeys.Add(channelName);
+            updateChannels.Add(new Channel { maxUpdatesPerFrame = maxUpdatesPerFrame });
+        }
     }
 
     public static void QueueUpdate(Action updateAction, string channelName, bool isFixedUpdate = false)
@@ -68,7 +70,7 @@ public class UpdateProxy : MonoBehaviour
     internal static void AttachTimer(Timer timer)
     {
         if (attachedTimers.Contains(timer)) return;
-        if (timer.targetAction == null) return; //Wont do anything if it's not registered.
+        if (timer.action == null) return; //Wont do anything if it's not registered.
         attachedTimers.Add(timer);
     }
     internal static void DetachTimer(Timer timer)

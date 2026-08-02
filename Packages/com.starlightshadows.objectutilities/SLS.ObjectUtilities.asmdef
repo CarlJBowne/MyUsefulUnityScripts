@@ -1,6 +1,6 @@
 {
-    "name": "SLS.ObjectPooling",
-    "rootNamespace": "SLS.ObjectPooling",
+    "name": "SLS.ObjectUtilities",
+    "rootNamespace": "SLS.ObjectUtilities",
     "references": [
         "SLS.Singletons",
         "Unity.VisualScripting.Core",

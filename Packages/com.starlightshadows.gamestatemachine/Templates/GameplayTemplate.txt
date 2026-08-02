@@ -7,7 +7,7 @@ using SLS.GameStateMachine;
 using SLS.Singletons;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Utilities.ObjectPooling;
+using SLS.ObjectUtilities;
 
 namespace Core
 {

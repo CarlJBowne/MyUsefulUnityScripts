@@ -2,76 +2,11 @@
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using JToken = Newtonsoft.Json.Linq.JToken;
 
-namespace Utilities.JSON
+namespace SLS.SaveData
 {
     public static class XtensionsJson
     {
-        /// <summary>
-        /// Serializes the input object into a JToken. 
-        /// <br />For when you're unsure if the target object is an ICustomSerialized or not.
-        /// <br />*Must be used with one a newly constructed JToken via new().
-        /// </summary>
-        /// <param name="OBJ">The Source Object to be Serialized.</param>
-        /// <returns></returns>
-        public static JToken Serialize(this JToken THIS, object OBJ)
-        {
-            THIS = typeof(ICustomSerialized).IsAssignableFrom(OBJ.GetType())
-                ? (OBJ as ICustomSerialized).Serialize()
-                : JObject.FromObject(OBJ);
-            return THIS;
-        }
-
-        /// <summary>
-        /// Deserializes this Token into the desired Type.
-        /// <br />For when you're unsure if the target object is an ICustomSerialized or not.
-        /// </summary>
-        /// <typeparam name="T">The Type to Deserialize into.</typeparam>
-        /// <returns>The Deserialized Value.</returns>
-        public static T Deserialize<T>(this JToken THIS)
-        {
-            if (typeof(ICustomSerialized).IsAssignableFrom(typeof(T)))
-            {
-                var Result = Activator.CreateInstance<T>() as ICustomSerialized;
-                Result.Deserialize(THIS);
-                return (T)Result;
-            }
-            else return THIS.ToObject<T>();
-        }
-        /// <summary>
-        /// Attempts to Deserialize this Token into the desired Type.
-        /// <br />For when you're unsure if the target object is an ICustomSerialized or not.
-        /// </summary>
-        /// <typeparam name="T">The Type to Deserialize into.</typeparam>
-        /// <param name="result"></param>
-        /// <returns>Whether the Deserialization was succesful.</returns>
-        public static bool TryDeserialize<T>(this JToken THIS, out T result)
-        {
-            if (typeof(ICustomSerialized).IsAssignableFrom(typeof(T)))
-            {
-                var IResult = Activator.CreateInstance<T>() as ICustomSerialized;
-                IResult.Deserialize(THIS);
-                result = (T)IResult;
-            }
-            else result = THIS.Value<T>();
-            return result != null;
-        }
-
-        /// <summary>
-        /// Populates an existing object using this Token.
-        /// <br />For when you're unsure if the target object is an ICustomSerialized or not.
-        /// </summary>
-        /// <param name="target">The Target object.</param>
-        public static void DeserializeInto(this JToken THIS, object target)
-        {
-            var Custom = target as ICustomSerialized;
-            if (Custom != null) Custom.Deserialize(THIS);
-            else
-                using (JsonReader sr = THIS.CreateReader())
-                    JsonSerializer.CreateDefault().Populate(sr, target);
-        }
-
         public static void RemoveIfNull(this JObject THIS, string name)
         {
             if (THIS.ContainsKey(name) && THIS[name].Type is JTokenType.Null) 
@@ -79,23 +14,6 @@ namespace Utilities.JSON
         }
     }
 
-    public interface ICustomSerialized
-    {
-
-        /// <summary>
-        /// Serializes the object into a JToken.
-        /// <br />HEAVILY encouraged to create an implicit JToken operator redirecting to this for easier/faster conversion.
-        /// </summary>
-        /// <param name="name">Optional name for if serialized as a full Json Property</param>
-        /// <returns>The Json representation.</returns>
-        public JToken Serialize(string name = null);
-        /// <summary>
-        /// Deserializes a JToken and populates this object with its data.
-        /// </summary>
-        /// <param name="Data">The Json representation to be Deserialized.</param>
-        public void Deserialize(JToken Data);
-
-    }
 
     #region SerializableStructs
 

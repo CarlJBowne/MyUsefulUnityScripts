@@ -15,16 +15,16 @@ public class StateTransitions : StateTimeline
     [System.Serializable]
     public class Transition
     {
-        [SerializeField] public State TargetState { get; private set; }
-        [SerializeField] public bool TransitionAtEnd { get; private set; }
-        [SerializeField] public EVENT BeginEvent { get; private set; }
-        [SerializeField] public float Length { get; private set; }
-        [SerializeField] public EVENT EndEvent { get; private set; }
-        [SerializeField] public AnimatorAction Animation { get; private set; }
+        public State TargetState;
+        public bool TransitionAtEnd;
+        public EVENT BeginEvent;
+        public float Length;
+        public EVENT EndEvent;
+        public AnimatorAction Animation;
     }
 
     public List<Transition> transitions = new();
-    [SerializeField, HeaderItem(true, nameof(_GetAnim))] public Animator Animator { get; private set; }
+    [field: SerializeField, HeaderItem(true, nameof(_GetAnim))] public Animator Animator { get; private set; }
     Animator _GetAnim() => GetComponentFromMachine<Animator>();
 
     Transition activeTransition = null;
@@ -47,7 +47,8 @@ public class StateTransitions : StateTimeline
         if (activeTransition.Animation != null && activeTransition.Animation.type is not AnimatorAction.Type.Null)
         {
             activeTransition.Animation.Do(Animator);
-            //Disable StateAnimator on Target once disabling is implemented
+            if (activeTransition.TargetState.TryGetComponent(out StateAnimator animator)) animator.BlockForThisCycle();
+
         }
 
         if(activeTransition.Length <= 0f) End();
@@ -66,4 +67,5 @@ public class StateTransitions : StateTimeline
         timer = -1f;
     }
 
+    protected override void OnEnter(State prev, bool isFinal) { }
 }

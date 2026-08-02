@@ -119,7 +119,7 @@ namespace SLS.StateMachineH.Signals
             }
         }
 
-        private List<SignalNode> NodeStack;
+        private List<SignalNode> NodeStack = new();
         public void Register(SignalNode node) => NodeStack.Add(node);
         public void Deregister(SignalNode node) => NodeStack.Remove(node);
     }

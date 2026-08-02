@@ -242,7 +242,7 @@ namespace SLS.ListUtilities
                 _enumerator = source.GetEnumerator();
             }
 
-            public DictionaryEntry Entry => new DictionaryEntry(_enumerator.Current.Key, _enumerator.Current.Value);
+            public DictionaryEntry Entry => new(_enumerator.Current.Key, _enumerator.Current.Value);
             public object Key => _enumerator.Current.Key;
             public object Value => _enumerator.Current.Value;
             public object Current => Entry;

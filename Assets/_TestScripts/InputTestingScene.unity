@@ -1113,6 +1113,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 958082391199211992, guid: 7e7b7bce86e462a44b3f5bcdf10079ee, type: 3}
+      propertyPath: ty.assemblyQualifiedName
+      value: SLS.MenuCore.Menu, SLS.MenuCore, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+      objectReference: {fileID: 0}
+    - target: {fileID: 958082391199211992, guid: 7e7b7bce86e462a44b3f5bcdf10079ee, type: 3}
       propertyPath: action.serializedKeys.Array.size
       value: 0
       objectReference: {fileID: 0}

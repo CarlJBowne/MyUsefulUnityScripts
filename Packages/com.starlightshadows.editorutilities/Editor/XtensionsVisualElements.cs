@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Numerics;
-using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using static UnityEngine.GraphicsBuffer;
 
 namespace SLS.EditorUtilities.Editor
 {
@@ -151,9 +148,22 @@ namespace SLS.EditorUtilities.Editor
             return arrayProperty.GetArrayElementAtIndex(arrayProperty.arraySize - 1);
         }
 
-        public static void DelayedBuild(this VisualElement V, Action result) =>
+        public static T DelayedBuild<T>(this T V, Action result) where T : VisualElement
+        {
             V.RegisterCallbackOnce<AttachToPanelEvent>(_ => V.schedule.Execute(result));
+            return V;
+        }
 
+        public static void ShrinkToTextWidth(this Label l)
+        {
+            void DO()
+            {
+                float width = EditorStyles.label.CalcSize(new(l.text)).x + 2;
+                if (width < l.style.width.value.value)
+                    l.style.width = width;
+            }
+            l.RegisterValueChangedCallback(_ => DO());
+        }
 
         public static bool QCache<T>(this VisualElement V, out T result, string name = null, string className = null) where T : VisualElement
         {
@@ -443,7 +453,13 @@ namespace SLS.EditorUtilities.Editor
         }
         public static Color Gray(this float v) => new(v, v, v, 1);
 
-
+        public static IStyle Display(this IStyle v, bool value)
+        {
+            v.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+            return v;
+        }
+        public static void Display(this VisualElement v, bool value) => v.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+        public static bool IsDisplay(this VisualElement v) => v.style.display == DisplayStyle.Flex;
 
 
 
@@ -460,7 +476,119 @@ namespace SLS.EditorUtilities.Editor
     public static class Xtensions_Editor_General
     {
         public static string BackingField(this string input) => $"<{input}>k__BackingField";
+
+        public static void Reset(this SerializedProperty prop)
+        {
+            switch (prop.propertyType)
+            {
+                case SerializedPropertyType.Integer: prop.intValue = 0; break;
+                case SerializedPropertyType.Float: prop.floatValue = 0f; break;
+                case SerializedPropertyType.Boolean: prop.boolValue = false; break;
+                case SerializedPropertyType.String: prop.stringValue = string.Empty; break;
+                case SerializedPropertyType.Vector2: prop.vector2Value = new(); break;
+                case SerializedPropertyType.Vector3: prop.vector3Value = new(); break;
+                case SerializedPropertyType.Vector2Int: prop.vector2IntValue = new(); break;
+                case SerializedPropertyType.Vector3Int: prop.vector3IntValue = new(); break;
+                case SerializedPropertyType.Color: prop.colorValue = Color.clear; break;
+                case SerializedPropertyType.Bounds: prop.boundsValue = new Bounds(); break;
+                case SerializedPropertyType.BoundsInt: prop.boundsIntValue = new BoundsInt(); break;
+                case SerializedPropertyType.Enum: prop.enumValueIndex = 0; break;
+                case SerializedPropertyType.Rect: prop.rectValue = new(); break;
+                case SerializedPropertyType.RectInt: prop.rectIntValue = new(); break;
+                case SerializedPropertyType.AnimationCurve: prop.animationCurveValue = new(); break;
+                case SerializedPropertyType.Gradient: prop.gradientValue = new(); break;
+                case SerializedPropertyType.LayerMask: prop.intValue = 0; break;
+                case SerializedPropertyType.Quaternion: prop.quaternionValue = new(); break;
+                case SerializedPropertyType.Vector4: prop.vector4Value = new(); break;
+
+                // General Types
+                case SerializedPropertyType.ObjectReference: prop.objectReferenceValue = null; break;
+                case SerializedPropertyType.ExposedReference: prop.exposedReferenceValue = null; break;
+                case SerializedPropertyType.ManagedReference:
+                    System.Type type = Type.GetType(prop.managedReferenceFieldTypename); // Requires reflection fallback
+                    if (type != null && type.IsValueType)
+                        prop.boxedValue = System.Activator.CreateInstance(type);
+                    break;
+                // Generic handles custom structs and serialization hierarchies safely
+                case SerializedPropertyType.Generic:
+                    if (prop.isArray)
+                    {
+                        prop.ClearArray();
+                    }
+                    else
+                    {
+                        // If it's a valid struct/class wrapper, boxedValue can handle it 
+                        // provided you reflect the true default constructor type.
+                        System.Type attemptType = Type.GetType(prop.type); // Requires reflection fallback
+                        if (attemptType != null && attemptType.IsValueType)
+                            prop.boxedValue = System.Activator.CreateInstance(attemptType);
+                    }
+                    break;
+                default: break;
+            }
+        }
+        /// <summary>
+        /// Attempts to safely set the value of a SerializedProperty using a generic input.
+        /// </summary>
+        public static void SetGenericValue<T>(this SerializedProperty prop, T value)
+        {
+            if (prop == null) throw new ArgumentNullException(nameof(prop));
+
+            // 1. Direct boxed assignment for custom Structs, Classes, and Managed References
+            try
+            {
+                // boxedValue handles custom serializable structs and objects beautifully
+                prop.boxedValue = value;
+                return;
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    switch (value)
+                    {
+                        case int i: prop.intValue = i; break;
+                        case float f: prop.floatValue = f; break;
+                        case bool b: prop.boolValue = b; break;
+                        case string s: prop.stringValue = s ?? string.Empty; break;
+                        case Vector2 v2: prop.vector2Value = v2; break;
+                        case Vector3 v3: prop.vector3Value = v3; break;
+                        case Vector2Int v2I: prop.vector2IntValue = v2I; break;
+                        case Vector3Int v3I: prop.vector3IntValue = v3I; break;
+                        case Vector4 v4: prop.vector4Value = v4; break;
+                        case Quaternion q: prop.quaternionValue = q; break;
+                        case Color c: prop.colorValue = c; break;
+                        case Gradient g: prop.gradientValue = g; break;
+                        case AnimationCurve ac: prop.animationCurveValue = ac; break;
+                        case Bounds b: prop.boundsValue = b; break;
+                        case BoundsInt bi: prop.boundsIntValue = bi; break;
+                        case Rect r: prop.rectValue = r; break;
+                        case RectInt ri: prop.rectIntValue = ri; break;
+                        case UnityEngine.Object obj: prop.objectReferenceValue = obj; break;
+                        case LayerMask lm: prop.intValue = lm.value; break;
+
+                        default:
+                            // 3. Last resort edge cases (e.g., passing 'null' to reference properties)
+                            if (value == null)
+                            {
+                                if (prop.propertyType == SerializedPropertyType.ObjectReference)
+                                {
+                                    prop.objectReferenceValue = null;
+                                }
+                            }
+                            else
+                            {
+                                Debug.LogError($"[SetGenericValue] Cannot apply value of type '{typeof(T)}' to SerializedProperty '{prop.propertyPath}' (Type: {prop.propertyType})");
+                            }
+                            break;
+                    }
+                }
+                catch (Exception) { }
+            }
+        }
     }
+
+}
 
 //#if UNITY_STANDALONE_WIN
 //    public static class User32
@@ -479,5 +607,3 @@ namespace SLS.EditorUtilities.Editor
 //        }
 //    }
 //#endif
-}
-

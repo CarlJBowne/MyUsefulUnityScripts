@@ -5,7 +5,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using SLS.ListUtilities;
-using SLS.ListUtilities.Editor.Internal;
+using SLS.EditorUtilities.Editor;
 
 namespace SLS.ListUtilities.Editor
 {
@@ -34,9 +34,10 @@ namespace SLS.ListUtilities.Editor
                 LookupTable = literal;
 
                 BuildBasicElements();
+                NewItemInput = new(PostItemNaming);
+                collectionBackground.Add(NewItemInput);
+
                 if (BindImmediately) BindProperty(rootProperty);
-                //NewItemInput = new(PostItemNaming);
-                //this.Add(NewItemInput);
             }
             new public void BindProperty(SerializedProperty input)
             {
@@ -47,17 +48,7 @@ namespace SLS.ListUtilities.Editor
                 FinishBind();
             }
 
-            public override int CurrentSize
-            {
-                get => ValuesProperty != null ? ValuesProperty.arraySize : 0;
-                set
-                {
-                    bool isBigger = value > ValuesProperty.arraySize;
-                    KeysProperty.arraySize = value;
-                    ValuesProperty.arraySize = value;
-                    header.UpdateExpanded(isBigger);
-                }
-            }
+            public override int CurrentSize => ValuesProperty != null ? ValuesProperty.arraySize : 0;
             public override bool allowCounterEdit => false;
 
             public ILookupTable LookupTable { get; private set; }
@@ -70,61 +61,35 @@ namespace SLS.ListUtilities.Editor
                 CallUpdateColors();
             }
 
-            protected override void AddButtonPressed()
-            {
-                CreatePropertySlot(out int newID);
-                //SetOrCreateItemValue(newID);
-                CreateItemElement(newID);
-                Select(items[newID]);
-            }
-            /*
-            #region Add Systems
             protected override void AddButtonPressed() => NewItemInput.Show();
-            private InsertKeyPopup<TK> NewItemInput;
-            void PostItemNaming(TK value)
+            InsertKeyPopup<TK> NewItemInput;
+            public void PostItemNaming(TK value)
             {
                 CreatePropertySlot(out int newID);
 
-                KeysProperty.GetArrayElementAtIndex(newID).intValue = value;
+                SerializedProperty keyProp = KeysProperty.GetArrayElementAtIndex(newID);
+                keyProp.SetGenericValue(value);
+
                 SerializedProperty valProp = ValuesProperty.GetArrayElementAtIndex(newID);
-                switch (valProp.propertyType)
-                {
-                    case SerializedPropertyType.Integer:
-                        valProp.intValue = 0;
-                        break;
-                    case SerializedPropertyType.Boolean:
-                        valProp.boolValue = false;
-                        break;
-                    case SerializedPropertyType.Float:
-                        valProp.floatValue = 0f;
-                        break;
-                    case SerializedPropertyType.String:
-                        valProp.stringValue = string.Empty;
-                        break;
-                    case SerializedPropertyType.Enum:
-                        valProp.intValue = 0;
-                        break;
-                    case SerializedPropertyType.ObjectReference:
-                        valProp.objectReferenceValue = null;
-                        break;
-                    case SerializedPropertyType.ManagedReference:
-                        try { valProp.managedReferenceValue = Activator.CreateInstance(typeof(TV)); }
-                        catch { valProp.managedReferenceValue = null; }
-                        break;
-                    default:
-                        // Try managed reference as fallback
-                        try { valProp.managedReferenceValue = Activator.CreateInstance(typeof(TV)); } catch { }
-                        break;
-                }
+                valProp.Reset();
 
                 property.serializedObject.ApplyModifiedProperties();
 
                 CreateItemElement(newID);
-                Select(items[newID]);
+                Selection.Select(newID);
                 NewItemInput.style.display = DisplayStyle.None;
+                header.UpdateCounter(true);
+                CallUpdateColors();
             }
-            #endregion
-            */
+
+            public override void CreatePropertySlot(out int newID)
+            {
+                if (KeysProperty == null || ValuesProperty == null) throw new ArgumentNullException();
+                newID = Selection.NewItemID;
+                KeysProperty.InsertArrayElementAtIndex(newID);
+                ValuesProperty.InsertArrayElementAtIndex(newID);
+            }
+
             public override void DeletePropertySlotAt(int index)
             {
                 int prevKeysCount = KeysProperty.arraySize;
@@ -148,6 +113,7 @@ namespace SLS.ListUtilities.Editor
                         ValuesProperty.DeleteArrayElementAtIndex(index);
                 }
 
+                header.UpdateCounter(false);
                 header.UpdateExpanded(false);
                 property.serializedObject.ApplyModifiedProperties();
             }
@@ -165,7 +131,11 @@ namespace SLS.ListUtilities.Editor
                     foreach (ItemDrawer<TK, TV> el in items) collectionBackground.Remove(el);
                     items.Clear();
                 }
-                CurrentSize = 0;
+
+                KeysProperty.arraySize = 0;
+                ValuesProperty.arraySize = 0;
+                header.UpdateExpanded(false);
+
                 property.serializedObject.ApplyModifiedProperties();
                 BuildItems();
             }
@@ -201,8 +171,6 @@ namespace SLS.ListUtilities.Editor
                 FinishBind();
             }
 
-            public SerializedProperty NameProp
-            { get; protected set; }
             public SerializedProperty KeyProp { get; protected set; }
             public VisualElement KeyField { get; protected set; }
             public SerializedProperty ValueProp { get; protected set; }
@@ -221,52 +189,7 @@ namespace SLS.ListUtilities.Editor
                 }
                 };
 
-                if (KeyField != null) KeyField.Unbind();
-                KeyField =
-                    typeof(TK) == typeof(string) ? new TextField().AddTo(content, k =>
-                    {
-                        k.label = "";
-                        k.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                        k.style.top = 0;
-                        k.SetValueWithoutNotify(KeyProp.stringValue);
-                        k.BindProperty(KeyProp);
-                        k.isDelayed = true;
-                    })
-                    : typeof(TK) == typeof(int) ? new IntegerField().AddTo(content, k =>
-                    {
-                        k.label = "";
-                        k.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                        k.style.top = 0;
-                        k.SetValueWithoutNotify(KeyProp.intValue);
-                        k.BindProperty(KeyProp);
-                        k.isDelayed = true;
-                    })
-                    : typeof(TK) == typeof(float) ? new FloatField().AddTo(content, k =>
-                    {
-                        k.label = "";
-                        k.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                        k.style.top = 0;
-                        k.SetValueWithoutNotify(KeyProp.floatValue);
-                        k.BindProperty(KeyProp);
-                        k.isDelayed = true;
-                    })
-                    : typeof(TK) == typeof(double) ? new DoubleField().AddTo(content, k =>
-                    {
-                        k.label = "";
-                        k.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                        k.style.top = 0;
-                        k.SetValueWithoutNotify(KeyProp.doubleValue);
-                        k.BindProperty(KeyProp);
-                        k.isDelayed = true;
-                    })
-                    : new PropertyField(KeyProp, "").AddTo(content, k =>
-                    {
-                        k.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
-                    });
-
-                KeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
-
-
+                // Create the value field first so we can inspect whether it draws as a foldout
                 ValueField?.Unbind();
                 ValueField = new PropertyField(ValueProp, "").AddTo(content, v =>
                 {
@@ -274,6 +197,100 @@ namespace SLS.ListUtilities.Editor
                     v.style.marginRight = 2;
                     v.style.flexGrow = 1f;
                 });
+
+                // Prepare KeyField but do not add it to the main content until we know layout
+                if (KeyField != null) KeyField.Unbind();
+                VisualElement createdKeyField;
+                if (typeof(TK) == typeof(string)) createdKeyField = new TextField();
+                else if (typeof(TK) == typeof(int)) createdKeyField = new IntegerField();
+                else if (typeof(TK) == typeof(float)) createdKeyField = new FloatField();
+                else if (typeof(TK) == typeof(double)) createdKeyField = new DoubleField();
+                else createdKeyField = new PropertyField(KeyProp, "");
+
+                // Configure KeyField common properties
+                if (createdKeyField is TextField t)
+                {
+                    t.label = "";
+                    t.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    t.style.top = 0;
+                    t.SetValueWithoutNotify(KeyProp.stringValue);
+                    t.BindProperty(KeyProp);
+                    t.isDelayed = true;
+                }
+                else if (createdKeyField is IntegerField i)
+                {
+                    i.label = "";
+                    i.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    i.style.top = 0;
+                    i.SetValueWithoutNotify(KeyProp.intValue);
+                    i.BindProperty(KeyProp);
+                    i.isDelayed = true;
+                }
+                else if (createdKeyField is FloatField f)
+                {
+                    f.label = "";
+                    f.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    f.style.top = 0;
+                    f.SetValueWithoutNotify(KeyProp.floatValue);
+                    f.BindProperty(KeyProp);
+                    f.isDelayed = true;
+                }
+                else if (createdKeyField is DoubleField d)
+                {
+                    d.label = "";
+                    d.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                    d.style.top = 0;
+                    d.SetValueWithoutNotify(KeyProp.doubleValue);
+                    d.BindProperty(KeyProp);
+                    d.isDelayed = true;
+                }
+                else if (createdKeyField is PropertyField pf)
+                {
+                    pf.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+                }
+
+                createdKeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
+                KeyField = createdKeyField;
+
+                // If the value field contains a Foldout, place the key field into the foldout header next to the label
+                VisualElement top = ValueField?.Q<PropertyField>() as VisualElement
+                    ?? ValueField?.Q<Foldout>() as VisualElement ?? null;
+                if (top != null)
+                {
+                    top.DelayedBuild(() =>
+                    {
+                        // Make foldout take the full width of the item
+                        top.style.flexBasis = new Length(100, LengthUnit.Percent);
+                        top.style.flexGrow = 1f;
+                        top.style.marginLeft = 8;
+
+                        // Try to find the toggle/label container and insert the key field there
+                        var toggle = top.Q<Toggle>(null, Foldout.toggleUssClassName);
+                        var label = toggle?.Q<Label>(null, "unity-label");
+                        var insertParent = label?.parent ?? (VisualElement)toggle ?? top;
+
+                        // Add key field to the header area
+                        insertParent.Add(KeyField);
+
+                        // Adjust layout so label stays left and key field to the right
+                        if (label != null)
+                        {
+                            label.text = label.text.Replace("Element ", "");
+                            label.style.flexGrow = 0;
+                            label.ShrinkToTextWidth();
+                        }
+                        KeyField.style.flexGrow = 1f;
+                        KeyField.style.alignSelf = Align.FlexEnd;
+                    });
+                }
+                else
+                {
+                    // Default layout: key on left, value on right
+                    KeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
+                    content.Add(KeyField);
+                    // ValueField already added
+                }
+
                 return content;
             }
 
@@ -351,9 +368,10 @@ namespace SLS.ListUtilities.Editor
                 LookupTable = literal;
 
                 BuildBasicElements();
-                if (BindImmediately) BindProperty(rootProperty);
                 NewItemInput = new(PostItemNaming);
-                this.Add(NewItemInput);
+                collectionBackground.Add(NewItemInput);
+
+                if (BindImmediately) BindProperty(rootProperty);
             }
             new public void BindProperty(SerializedProperty input)
             {
@@ -365,22 +383,11 @@ namespace SLS.ListUtilities.Editor
                 FinishBind();
             }
 
-            public override int CurrentSize
-            {
-                get => ValuesProperty != null ? ValuesProperty.arraySize
+            public override int CurrentSize => ValuesProperty != null ? ValuesProperty.arraySize
                     : KeysProperty != null ? KeysProperty.arraySize
                     : NamesProperty != null ? NamesProperty.arraySize
                     : 0;
-                set
-                {
-                    if (NamesProperty is null || KeysProperty is null || ValuesProperty is null) return;
-                    bool isBigger = value > NamesProperty.arraySize;
-                    NamesProperty.arraySize = value;
-                    KeysProperty.arraySize = value;
-                    ValuesProperty.arraySize = value;
-                    header.UpdateExpanded(isBigger);
-                }
-            }
+
             public override bool allowCounterEdit => false;
 
             public ILookupTable LookupTable { get; private set; }
@@ -395,10 +402,7 @@ namespace SLS.ListUtilities.Editor
             }
 
             #region Add Systems
-            protected override void AddButtonPressed()
-            {
-                NewItemInput.Show();
-            }
+            protected override void AddButtonPressed() => NewItemInput.Show();
             private InsertKeyPopup<string> NewItemInput;
             void PostItemNaming(string value)
             {
@@ -408,42 +412,22 @@ namespace SLS.ListUtilities.Editor
                 NamesProperty.GetArrayElementAtIndex(newID).stringValue = value;
                 KeysProperty.GetArrayElementAtIndex(newID).intValue = value.Hash();
                 SerializedProperty valProp = ValuesProperty.GetArrayElementAtIndex(newID);
-                switch (valProp.propertyType)
-                {
-                    case SerializedPropertyType.Integer:
-                        valProp.intValue = 0;
-                        break;
-                    case SerializedPropertyType.Boolean:
-                        valProp.boolValue = false;
-                        break;
-                    case SerializedPropertyType.Float:
-                        valProp.floatValue = 0f;
-                        break;
-                    case SerializedPropertyType.String:
-                        valProp.stringValue = string.Empty;
-                        break;
-                    case SerializedPropertyType.Enum:
-                        valProp.intValue = 0;
-                        break;
-                    case SerializedPropertyType.ObjectReference:
-                        valProp.objectReferenceValue = null;
-                        break;
-                    case SerializedPropertyType.ManagedReference:
-                        try { valProp.managedReferenceValue = Activator.CreateInstance(typeof(T)); }
-                        catch { valProp.managedReferenceValue = null; }
-                        break;
-                    default:
-                        // Try managed reference as fallback
-                        try { valProp.managedReferenceValue = Activator.CreateInstance(typeof(T)); } catch { }
-                        break;
-                }
+                valProp.Reset();
 
                 property.serializedObject.ApplyModifiedProperties();
 
                 CreateItemElement(newID);
-                Select(items[newID]);
+                Selection.Select(newID);
                 NewItemInput.style.display = DisplayStyle.None;
                 header.UpdateCounter(true);
+            }
+            public override void CreatePropertySlot(out int newID)
+            {
+                if (KeysProperty == null || ValuesProperty == null) throw new ArgumentNullException();
+                newID = Selection.NewItemID;
+                NamesProperty.InsertArrayElementAtIndex(newID);
+                KeysProperty.InsertArrayElementAtIndex(newID);
+                ValuesProperty.InsertArrayElementAtIndex(newID);
             }
             #endregion
             public override void DeletePropertySlotAt(int index)
@@ -495,7 +479,13 @@ namespace SLS.ListUtilities.Editor
                     foreach (ItemDrawer<T> el in items) collectionBackground.Remove(el);
                     items.Clear();
                 }
-                CurrentSize = 0;
+                if (NamesProperty is null || KeysProperty is null || ValuesProperty is null) return;
+
+                NamesProperty.arraySize = 0;
+                KeysProperty.arraySize = 0;
+                ValuesProperty.arraySize = 0;
+                header.UpdateExpanded(false);
+
                 property.serializedObject.ApplyModifiedProperties();
                 BuildItems();
             }
@@ -532,11 +522,9 @@ namespace SLS.ListUtilities.Editor
                 FinishBind();
             }
 
-            public SerializedProperty NameProp
-            { get; protected set; }
+            public SerializedProperty NameProp { get; protected set; }
             public TextField NameField { get; protected set; }
             public SerializedProperty KeyProp { get; protected set; }
-            public IntegerField KeyField { get; protected set; }
             public SerializedProperty ValueProp { get; protected set; }
             public PropertyField ValueField { get; protected set; }
 
@@ -547,57 +535,94 @@ namespace SLS.ListUtilities.Editor
                 content = new VisualElement()
                 {
                     style =
-                {
-                    flexDirection = FlexDirection.Row,
-                    flexGrow = 1f
-                }
+                    {
+                        flexDirection = FlexDirection.Row,
+                        flexGrow = 1f
+                    }
                 };
 
-                NameField?.Unbind();
-                NameField = new TextField().AddTo(content, k =>
-                {
-                    k.style.flexBasis = new Length(30, LengthUnit.Percent);
-                    k.label = "";
-                    k.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                    k.style.top = 0;
-                    k.SetValueWithoutNotify(NameProp.stringValue);
-                    k.BindProperty(NameProp);
-                    k.isDelayed = true;
-                });
-                KeyField?.Unbind();
-                KeyField = new IntegerField().AddTo(content, k =>
-                {
-                    k.style.display = DisplayStyle.None;
-                    k.label = "";
-                    k.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                    k.style.top = 0;
-                    k.SetValueWithoutNotify(KeyProp.intValue);
-                    k.BindProperty(KeyProp);
-                    k.isDelayed = true;
-                });
+                // Create the value field first so we can inspect whether it draws as a foldout
                 ValueField?.Unbind();
                 ValueField = new PropertyField(ValueProp, "").AddTo(content, v =>
                 {
                     v.style.flexBasis = new Length(70, LengthUnit.Percent);
                     v.style.marginRight = 2;
                     v.style.flexGrow = 1f;
+
+                    // Prepare KeyField but do not add it to the main content until we know layout
+                    NameField?.Unbind();
+                    NameField = new TextField("")
+                    {
+                        label = "",
+                        style =
+                    {
+                        maxHeight = EditorGUIUtility.singleLineHeight,
+                        top = 0,
+                        flexBasis = new Length(30, LengthUnit.Percent),
+                    },
+                        isDelayed = true
+                    };
+                    NameField.SetValueWithoutNotify(NameProp.stringValue);
+                    NameField.BindProperty(NameProp);
+
+
+                    // If the value field contains a Foldout, place the key field into the foldout header next to the label
+                    VisualElement top = v?.Q<PropertyField>() as VisualElement
+                        ?? v?.Q<Foldout>() as VisualElement ?? null;
+                    if (top != null)
+                    {
+                        top.DelayedBuild(() =>
+                        {
+                            // Make foldout take the full width of the item
+                            top.style.flexBasis = new Length(100, LengthUnit.Percent);
+                            top.style.flexGrow = 1f;
+                            top.style.marginLeft = 8;
+
+                            // Try to find the toggle/label container and insert the key field there
+                            var toggle = top.Q<Toggle>(null, Foldout.toggleUssClassName);
+                            var label = toggle?.Q<Label>(null, "unity-label");
+                            var insertParent = label?.parent ?? (VisualElement)toggle ?? top;
+
+                            // Add key field to the header area
+                            insertParent.Add(NameField);
+
+                            // Adjust layout so label stays left and key field to the right
+                            if (label != null)
+                            {
+                                label.text = label.text.Replace("Element ", "");
+                                label.style.flexGrow = 0;
+                                label.ShrinkToTextWidth();
+                            }
+                            NameField.style.flexGrow = 1f;
+                            NameField.style.alignSelf = Align.FlexEnd;
+                        });
+                    }
+                    else
+                    {
+                        // Default layout: key on left, value on right
+                        NameField.style.flexBasis = new Length(30, LengthUnit.Percent);
+                        content.Add(NameField);
+                        // ValueField already added
+                    }
+
                 });
+
                 return content;
             }
 
             protected override void PostContent()
             {
-                NameField.SetValueWithoutNotify(NameProp.stringValue);
-                KeyField.SetValueWithoutNotify(KeyProp.intValue);
+                NameField.tooltip = $"Key: {KeyProp.intValue}";
+                NameField.RegisterValueChangedCallback(ev =>
+                {
+                    KeyProp.intValue = ev.newValue.Hash();
+                    NameField.tooltip = $"Key: {KeyProp.intValue}";
+                    parent.CallUpdateColors();
+                });
 
                 ValueField.BindProperty(ValueProp);
 
                 ContextMenuTarget = NameField;
-                NameField.RegisterValueChangedCallback(ev =>
-                {
-                    KeyField.value = NameField.value.Hash();
-                    parent.CallUpdateColors();
-                });
             }
 
             protected override void ContextMenu(ContextualMenuPopulateEvent evt)
@@ -626,9 +651,116 @@ namespace SLS.ListUtilities.Editor
                     list.Add(new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus));
             }
 
-
-
         }
 
+
     }
+
+    public class InsertKeyPopup<T> : EnterDataMenu
+    {
+        public InsertKeyPopup(Action<T> postAction) : base(null, true)
+        {
+            this.postAction = postAction;
+            style.flexDirection = FlexDirection.Row;
+            this.Display(false);
+
+            Func<dynamic> get = null;
+
+            // Build the appropriate field for type T and wire change callbacks to invoke the post action
+            Field = typeof(T) == typeof(string) ? new TextField().AddTo(this, f =>
+            {
+                TextField = f;
+                f.label = "Insert Key:";
+                f.isDelayed = true;
+                f.style.flexGrow = 1f;
+                PrepAction = () => f.SetValueWithoutNotify(""); //Set to default on Show
+                get = () => f.text;
+
+            }) : typeof(UnityEngine.Object).IsAssignableFrom(typeof(T)) ? new ObjectField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.style.flexGrow = 1f;
+                PrepAction = () => f.SetValueWithoutNotify(null); //Set to default on Show
+                get = () => f.value;
+
+            }) : typeof(T) == typeof(int) ? new IntegerField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.isDelayed = true;
+                f.style.flexGrow = 1f;
+                PrepAction = () => f.SetValueWithoutNotify(0);
+                get = () => f.value;
+
+            }) : typeof(T) == typeof(double) ? new FloatField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.isDelayed = true;
+                f.style.flexGrow = 1f;
+                PrepAction = () => f.SetValueWithoutNotify(1f);
+                get = () => f.value;
+
+            }) : typeof(T) == typeof(Color) ? new ColorField().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.style.flexGrow = 1f;
+                PrepAction = () => f.SetValueWithoutNotify(Color.white);
+                get = () => f.value;
+
+            }) : typeof(T).IsEnum ? new EnumField(default(T) as System.Enum).AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.style.flexGrow = 1f;
+                PrepAction = () => f.SetValueWithoutNotify(default(T) as System.Enum);
+                get = () => f.value;
+
+            }) : new PopupField<T>().AddTo(this, f =>
+            {
+                f.label = "Insert Key:";
+                f.style.flexGrow = 1f;
+                T def = f.value;
+                PrepAction = () => f.SetValueWithoutNotify(def);
+                get = () => f.value;
+            });
+
+            // Provide a finish button similar to EnterDataMenu
+            FinishButton = new Button(Invoke).AddTo(this);
+            FinishButton.style.width = 20;
+            FinishButton.text = "+";
+            FinishButton.style.backgroundColor = new Color(.5f, .75f, .5f);
+
+            // helper to invoke the generic post action with some resilience to type mismatches
+            void Invoke()
+            {
+                if (this.postAction == null) return;
+                try
+                {
+                    this.postAction(get.Invoke());
+                }
+                catch
+                {
+                    try
+                    {
+                        var converted = Convert.ChangeType(get.Invoke(), typeof(T));
+                        this.postAction((T)converted);
+                    }
+                    catch { }
+                }
+                this.Display(false);
+                Blur();
+            }
+        }
+
+        VisualElement Field;
+        Action<T> postAction;
+        Action PrepAction;
+
+        public override void Show()
+        {
+            PrepAction?.Invoke();
+            if (!parent.IsDisplay()) parent.Display(true);
+            this.Display(!this.IsDisplay());
+            Field?.Focus();
+        }
+    }
+
 }

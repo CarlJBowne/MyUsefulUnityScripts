@@ -142,7 +142,7 @@ namespace SLS.StateMachineH
 
             StatesSetup = true;
 
-            if(makeDirty) ApplySetupChanges();
+            if (makeDirty) ApplySetupChanges();
         }
 
         /// <summary>  
@@ -192,9 +192,17 @@ namespace SLS.StateMachineH
 
             transitionCursorDest = nextState;
 
+            if (CurrentState != null && CurrentState.TryGetComponent(out StateTransitions transitions)) 
+                for (int i = 0; i < transitions.transitions.Count; i++)
+                    if (transitions.transitions[i].TargetState == nextState)
+                    {
+                        transitions.FireTransition(i);
+                        return;
+                    }
+
             try
             {
-                if(CurrentState != null && CurrentState.Parent == nextState.Parent)
+                if (CurrentState != null && CurrentState.Parent == nextState.Parent)
                 {
                     CurrentState.DoExit(nextState);
                     EnterState(nextState);
@@ -251,10 +259,10 @@ namespace SLS.StateMachineH
                 AfterStateTransition?.Invoke();
                 //Cleanup
             }
-             
+
             void EnterState(State target)
             {
-                if(target.Parent != null && target != null) target.Parent.CurrentChild = target;
+                if (target.Parent != null && target != null) target.Parent.CurrentChild = target;
                 target.DoEnter(CurrentState);
             }
         }

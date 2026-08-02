@@ -25,7 +25,15 @@ using SLS.EditorUtilities.Editor;
 
 public class Test : MonoBehaviour
 {
-    public TypeSerialized<UnityEngine.Object> ty;
+    public DictionaryS<string, Yeet> dict = new();
+    public HashedListS<Yeet> hash = new();
+}
+
+[System.Serializable]
+public class Yeet
+{
+    public int test1;
+    public bool test2;
 }
 
 [System.Serializable]

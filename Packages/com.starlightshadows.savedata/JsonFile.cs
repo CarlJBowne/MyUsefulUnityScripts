@@ -179,5 +179,7 @@ namespace Utilities.JSON
         }
 
         public bool FileExists => Directory.Exists(path) && File.Exists(FullPath);
+
+        public JToken this[string i] => Data?[i];
     }
 }
