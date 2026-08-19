@@ -278,6 +278,25 @@ namespace SLS.ListUtilities
     }
 
     /// <summary>
+    /// The intended operation when cloning a Dictionary
+    /// </summary>
+    public enum DictionaryCloneOp
+    {
+        /// <summary>
+        /// Simply transfer the Values from one dictionary to another, ignoring Keys not included in the target dictionary.
+        /// </summary>
+        Transfer,
+        /// <summary>
+        /// Transfer the Values from one dictionary to another, adding any missing Keys to the target dictionary.
+        /// </summary>
+        TransferAndAdd,
+        /// <summary>
+        /// Clears the target dictionary and replaces it entirely with the Keys and Values from the source dictionary.
+        /// </summary>
+        ReplaceEntirely
+    }
+
+    /// <summary>
     /// An interface for Dictionary types that provides a means of Checking/Removing what values have a duplicate KEY.
     /// </summary>
     public interface ILookupTable

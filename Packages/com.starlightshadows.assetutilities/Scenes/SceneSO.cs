@@ -19,6 +19,9 @@ public class SceneSO : ScriptableObject
 
     [field: NonSerialized] public SceneState CurrentState { get; protected set; } = SceneState.Unloaded;
     [field: NonSerialized] public SceneState DesiredState { get; protected set; } = SceneState.Unloaded;
+    public bool Loaded => CurrentState == SceneState.Loaded;
+    public UnityEngine.SceneManagement.Scene LoadedStruct { get; private set; }
+    public GameObject[] LoadedRootGameObjects { get; protected set; }
 
     public void Load()
     {
@@ -48,6 +51,7 @@ public class SceneSO : ScriptableObject
     public virtual IEnumerator LoadRoutine()
     {
         if (CurrentState is SceneState.Loaded or SceneState.Loading) yield break;
+        OnBeginLoad();
         DesiredState = SceneState.Loaded;
         if (CurrentState is SceneState.Unloaded)
         {
@@ -73,7 +77,7 @@ public class SceneSO : ScriptableObject
     }
 
     // Immediate variants: block until finished (halts game logic while waiting).
-    public void LoadImmediate()
+    public virtual void LoadImmediate()
     {
         if (CurrentState is SceneState.Loaded or SceneState.Loading) return;
         DesiredState = SceneState.Loaded;
@@ -86,7 +90,7 @@ public class SceneSO : ScriptableObject
         }
     }
 
-    public void UnloadImmediate()
+    public virtual void UnloadImmediate()
     {
         if (!Additive) return;
         if (CurrentState is SceneState.Unloaded or SceneState.Unloading) return;
@@ -104,6 +108,7 @@ public class SceneSO : ScriptableObject
     private void FinishLoad(AsyncOperation op)
     {
         LoadedStruct = SceneManager.GetSceneByName(Scene.sceneName);
+        LoadedRootGameObjects = LoadedStruct.GetRootGameObjects();
         OnFinishLoad();
         OnLoad?.Invoke();
         if (DesiredState is SceneState.Loaded)
@@ -116,6 +121,7 @@ public class SceneSO : ScriptableObject
     private void FinishUnload(AsyncOperation op)
     {
         LoadedStruct = default;
+        LoadedRootGameObjects = null;
         OnFinishUnload();
         OnUnLoad?.Invoke();
         if (DesiredState is SceneState.Unloaded)
@@ -128,6 +134,9 @@ public class SceneSO : ScriptableObject
 
     protected virtual void OnFinishLoad() { }
     protected virtual void OnFinishUnload() { }
+    protected virtual void OnBeginLoad() { }
+    protected virtual void OnBeginUnload() { }
+    protected virtual bool LoadFinishCondition() => true;
 
     public Action OnLoad;
     public Action OnUnLoad;
@@ -139,6 +148,4 @@ public class SceneSO : ScriptableObject
         return result;
     }
 
-    public bool Loaded => CurrentState == SceneState.Loaded;
-    public UnityEngine.SceneManagement.Scene LoadedStruct { get; private set; }
 }

@@ -18,6 +18,16 @@ public static class Xtensions_Unity_Core
 #endif
         objectSceneIsLoaded = M.gameObject.scene.isLoaded;
     }
+    public static void GetExecutionDetails(this ScriptableObject S, out bool gameIsEditor, out bool gameIsPlaying)
+    {
+#if UNITY_EDITOR
+        gameIsEditor = true;
+        gameIsPlaying = EditorApplication.isPlayingOrWillChangePlaymode;
+#else
+        gameIsEditor = false;
+        gameIsPlaying = true;
+#endif
+    }
 
     public static void LateAwake(this MonoBehaviour m, Delegate result)
     {

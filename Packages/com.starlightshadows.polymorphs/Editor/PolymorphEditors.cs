@@ -21,21 +21,36 @@ public class PolymorphEditors
     {
         GenericMenu menu = new();
 
-
+        
         Type[] types = GetSubtypes(baseType);
-        if (types.Length == 0)
+        if (types.Length != 0)
         {
-            menu.AddItem(new GUIContent("Add"), false, () => { result?.Invoke(baseType); });
-        }
-        else
-        {
+            DoType(baseType);
             foreach (Type t in types)
             {
                 if (t == baseType) continue;
-                menu.AddItem(new GUIContent(t.Name), false, () => { result?.Invoke(t); });
+                Add(t);
             }
-
         }
+        else menu.AddItem(new GUIContent("Add"), false, () => { result?.Invoke(baseType); });
+        void DoType(Type t)
+        {
+            if (t.IsAbstract) return;
+            if (!t.ContainsGenericParameters) Add(t);
+            else
+            {
+                PropertyInfo ValidTypesProperty = t.GetProperty("ValidTypes", BindingFlags.NonPublic | BindingFlags.Static);
+                if (ValidTypesProperty == null) return;
+                Type[] validTypes = ValidTypesProperty.GetValue(t, null) as Type[];
+                for (int i = 0; i < validTypes.Length; i++)
+                {
+                    Type subtype = t;
+                    subtype.GenericTypeArguments[0] = validTypes[i];
+                    Add(subtype);
+                }
+            }
+        }
+        void Add(Type t) => menu.AddItem(new GUIContent(t.Name), false, () => { result?.Invoke(t); });
 
         if (showNullOption) menu.AddItem(new GUIContent("Nullify"), false, () => { result?.Invoke(null); });
 

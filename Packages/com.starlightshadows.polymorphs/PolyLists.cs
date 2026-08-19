@@ -368,9 +368,6 @@ public abstract partial class Polymorph
         }
 
         public bool ContainsName(string i) => SerializedNames.Contains(i);
-        public bool Contains(string i, bool NAMESPECIFICALLY = false) => !NAMESPECIFICALLY
-            ? ContainsName(i)
-            : ContainsKey(i.Hash());
 
         public int IndexOfName(string i) => SerializedNames.IndexOf(i);
         public int IndexOf(string i) => IndexOfName(i);
@@ -380,6 +377,22 @@ public abstract partial class Polymorph
         public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
         public string NameFromIndex(int i) => SerializedNames[i];
+
+        public void Clone(Polymorph.Dictionary<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
+        {
+            if (source == null) return;
+            if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
+            if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
+            for (int i = 0; i < source.Count; i++)
+                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.serializedNames[i]] = source.serializedValues[i];
+        }
+
+        public void ForEach(Action<string, int, T> act)
+        {
+            for (int i = 0; i < Count; i++)
+                act(NameFromIndex(i), KeyFromIndex(i), ValueFromIndex(i));
+        }
 
     }
 

@@ -30,51 +30,46 @@ namespace Utilities.JSON
             }
         }
 
-        public JsonFile.LoadResult LoadFromFile(ref string resultToken, string defaultToken)
+        public JsonFile.FileState LoadFromFile()
         {
-            PreCheck();
-            if (!RootFile.FileExists) return JsonFile.LoadResult.FileNotFound;
+            if (CheckStateReturn(out JsonFile.FileState preCheckState)) return preCheckState;
+            if (!RootFile.FileExists) return JsonFile.FileState.FileNotFound;
             for (int i = 0; i < SecondaryFiles.Length; i++)
                 if (!SecondaryFiles[i].FileExists)
-                    return JsonFile.LoadResult.FileNotFound;
+                    return JsonFile.FileState.FileNotFound;
 
-            JsonFile.LoadResult rootFileLoadResult = RootFile.LoadFromFile();
-            if (rootFileLoadResult != JsonFile.LoadResult.Success) return rootFileLoadResult;
+            JsonFile.FileState rootFileLoadResult = RootFile.LoadFromFile();
+            if (rootFileLoadResult != JsonFile.FileState.Valid) return rootFileLoadResult;
 
             var fileVersionBehavior = FileVersionBehavior();
-            if (fileVersionBehavior != JsonFile.LoadResult.Success) return fileVersionBehavior;
+            if (fileVersionBehavior != JsonFile.FileState.Valid) return fileVersionBehavior;
 
             for (int i = 0; i < SecondaryFiles.Length; i++)
             {
-                JsonFile.LoadResult iFileResult = SecondaryFiles[i].LoadFromFile();
-                if (iFileResult != JsonFile.LoadResult.Success) return iFileResult;
+                JsonFile.FileState iFileResult = SecondaryFiles[i].LoadFromFile();
+                if (iFileResult != JsonFile.FileState.Valid) return iFileResult;
             }
 
-            JToken token = JToken.Parse(defaultToken);
-            JsonFile.LoadResult result = ReadData();
-            if (result != JsonFile.LoadResult.Success) return result;
-            resultToken = token.ToString();
-
-            return result;
+            return ReadData();
         }
 
-        public virtual JsonFile.LoadResult FileVersionBehavior()
+        public virtual JsonFile.FileState FileVersionBehavior()
         {
             //if ((string)RootFile.Data["FileVersion"] != targetFileVersion)
             //{
             //    UnityEngine.Debug.LogWarning($"Save file version mismatch. Expected {targetFileVersion}, found {(string)RootFile.Data/["FileVersion"]}. /Attempting to load anyway.");
             //}
-            return JsonFile.LoadResult.Success;
+            return JsonFile.FileState.Valid;
         }
 
-        protected abstract JsonFile.LoadResult ReadData();
+        protected abstract JsonFile.FileState ReadData();
 
 
         public JsonFile.FileState SaveToFile()
         {
-            PreCheck();
+            if (CheckStateReturn(out JsonFile.FileState preCheckState)) return preCheckState;
 
-            JsonFile.FileState writeResult = WriteData();
+                JsonFile.FileState writeResult = WriteData();
             if (writeResult != JsonFile.FileState.Valid) return writeResult;
 
             JsonFile.FileState resultState;
@@ -94,23 +89,29 @@ namespace Utilities.JSON
 
         public JsonFile.FileState DeleteFile()
         {
-            PreCheck();
+            if (CheckStateReturn(out JsonFile.FileState preCheckState)) return preCheckState;
             RootFile.DeleteFile();
             for (int i = 0; i < SecondaryFiles.Length; i++) SecondaryFiles[i].DeleteFile();
-            return JsonFile.FileState.Null;
+            return JsonFile.FileState.FileEmpty;
         }
 
-        public float GetCompletionPercentage()
+        public JsonFile.FileState State
         {
-            PreCheck();
-            int totalCollectibles = 1; // Replace with actual total collectible count later
-            if (totalCollectibles == 0) return 100f;
-            int collected = 0;
-
-            return (collected / (float)totalCollectibles) * 100f;
+            get
+            {
+                if (RootFile.State != JsonFile.FileState.Valid) return RootFile.State;
+                for (int i = 0; i < SecondaryFiles.Length; i++)
+                    if (SecondaryFiles[i].State != JsonFile.FileState.Valid)
+                        return SecondaryFiles[i].State;
+                return RootFile.State;
+            }
         }
 
-        public virtual JsonFile.FileState PreCheck() => JsonFile.FileState.Valid;
+        protected bool CheckStateReturn(out JsonFile.FileState result)
+        {
+            result = RootFile.State;
+            return result != JsonFile.FileState.Valid;
+        }
 
         public static JToken PruneDefaults(JToken current, JToken defaults)
         {

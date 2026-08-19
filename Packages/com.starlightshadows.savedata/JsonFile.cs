@@ -40,9 +40,9 @@ namespace Utilities.JSON
         /// Checks the state of the JSON file based on its content and path validity.
         /// </summary>
         public FileState State => Data == null
-                                    ? FileState.Null
+                                    ? FileState.FileEmpty
                                     : string.IsNullOrEmpty(path) || string.IsNullOrEmpty(filename)
-                                        ? FileState.NoPath
+                                        ? FileState.PathNotSetup
                                         : FileState.Valid;
 
         /// <summary>
@@ -61,21 +61,21 @@ namespace Utilities.JSON
         /// <summary>
         /// Loads Json Data from the File specified by this JsonFile's path and filename.
         /// </summary>
-        /// <returns>A <see cref="LoadResult"/> indicating the result of the load operation.</returns>
-        public LoadResult LoadFromFile()
+        /// <returns>A <see cref="FileState"/> indicating the result of the load operation.</returns>
+        public FileState LoadFromFile()
         {
-            if (State == FileState.NoPath || !Directory.Exists(path)) return LoadResult.DirectoryNotFound;
-            if (!File.Exists(FullPath)) return LoadResult.FileNotFound;
+            if (State == FileState.PathNotSetup || !Directory.Exists(path)) return FileState.FileNotFound;
+            if (!File.Exists(FullPath)) return FileState.FileNotFound;
 
             using StreamReader load = File.OpenText(FullPath);
             string fileContent = load.ReadToEnd();
 
-            if (string.IsNullOrWhiteSpace(fileContent)) return LoadResult.FileEmpty;
+            if (string.IsNullOrWhiteSpace(fileContent)) return FileState.FileEmpty;
 
             try { Data = JObject.Parse(fileContent); }
-            catch (JsonReaderException) { return LoadResult.FileCorrupted; }
+            catch (JsonReaderException) { return FileState.Error; }
 
-            return LoadResult.Success;
+            return FileState.Valid;
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace Utilities.JSON
         /// </summary>
         public void DeleteFile()
         {
-            if (State == FileState.NoPath || !Directory.Exists(path)) return;
+            if (State == FileState.PathNotSetup || !Directory.Exists(path)) return;
             if (!File.Exists(FullPath)) return;
             File.Delete(FullPath);
             Data = null;
@@ -130,52 +130,22 @@ namespace Utilities.JSON
             /// The file is valid and ready for operations.
             /// </summary>
             Valid,
-
             /// <summary>
             /// The file content is null.
             /// </summary>
-            Null,
-
-            /// <summary>
-            /// The file path or filename is invalid.
-            /// </summary>
-            NoPath,
-
-            /// <summary>
-            /// Some other error occurred.
-            /// </summary>
-            Error
-        }
-
-        /// <summary>
-        /// Represents the result of a load operation from a file.
-        /// </summary>
-        public enum LoadResult
-        {
-            /// <summary>
-            /// The file was successfully loaded.
-            /// </summary>
-            Success,
-
+            FileEmpty,
             /// <summary>
             /// The file was not found at the specified path.
             /// </summary>
             FileNotFound,
-
             /// <summary>
-            /// The directory containing the file was not found.
+            /// The file path or filename is invalid.
             /// </summary>
-            DirectoryNotFound,
-
+            PathNotSetup,
             /// <summary>
-            /// The file is empty.
+            /// Some other error occurred.
             /// </summary>
-            FileEmpty,
-
-            /// <summary>
-            /// The file content is corrupted and could not be parsed.
-            /// </summary>
-            FileCorrupted
+            Error
         }
 
         public bool FileExists => Directory.Exists(path) && File.Exists(FullPath);

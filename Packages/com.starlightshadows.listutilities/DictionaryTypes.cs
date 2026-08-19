@@ -18,6 +18,16 @@ namespace SLS.ListUtilities
         [SerializeField] protected List<TK> serializedKeys = new();
         protected override List<TV> SerializedValues => serializedValues;
         [SerializeField] protected List<TV> serializedValues = new();
+
+        public void Clone(DictionaryS<TK, TV> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
+        {
+            if (source == null) return;
+            if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
+            if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
+            for (int i = 0; i < source.Count; i++)
+                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.serializedKeys[i]] = source.serializedValues[i];
+        }
     }
     /// <summary>
     /// A Serializable Dictionary that uses <see cref="SerializeReference"/> on the Values.
@@ -32,6 +42,15 @@ namespace SLS.ListUtilities
         protected override List<TV> SerializedValues => serializedValues;
         [SerializeField, SerializeReference] protected List<TV> serializedValues = new();
 
+        public void Clone(DictionarySReference<TK, TV> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
+        {
+            if (source == null) return;
+            if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
+            if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
+            for (int i = 0; i < source.Count; i++)
+                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.serializedKeys[i]] = source.serializedValues[i];
+        }
     }
 
     /// <summary>
@@ -155,6 +174,16 @@ namespace SLS.ListUtilities
         public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
         public string NameFromIndex(int i) => SerializedNames[i];
+
+        public void Clone(HashedListS<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
+        {
+            if (source == null) return;
+            if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
+            if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
+            for (int i = 0; i < source.Count; i++)
+                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.serializedNames[i]] = source.serializedValues[i];
+        }
     }
 
     /// <summary>
@@ -278,5 +307,16 @@ namespace SLS.ListUtilities
         public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
         public string NameFromIndex(int i) => SerializedNames[i];
+
+
+        public void Clone(HashedListSReference<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
+        {
+            if (source == null) return;
+            if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
+            if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
+            for (int i = 0; i < source.Count; i++)
+                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.serializedNames[i]] = source.serializedValues[i];
+        }
     }
 }

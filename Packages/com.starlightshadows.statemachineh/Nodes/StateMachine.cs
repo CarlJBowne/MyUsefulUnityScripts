@@ -298,6 +298,6 @@ namespace SLS.StateMachineH
         /// </summary>
         /// <param name="signal">The input signal. Accepts just a string.</param>
         /// <returns></returns>
-        public bool SendSignal(Signals.Signal signal) => SignalManager != null && SignalManager.FireSignal(signal);
+        public bool Signal(Signals.Signal signal) => SignalManager != null && SignalManager.FireSignal(signal);
     }
 }
