@@ -2,7 +2,8 @@
     "name": "SLS.EditorUtilities.Editor",
     "rootNamespace": "SLS.EditorUtilities.Editor",
     "references": [
-        "SLS.EditorUtilities"
+        "SLS.EditorUtilities",
+        "SLS.GeneralUtilities"
     ],
     "includePlatforms": [
         "Editor"

@@ -22,7 +22,7 @@ namespace SLS.StateMachineH
             SetBool,
             SetFloat,
             SetInt,
-            Null,
+            Null = -1,
         }
         public Type type;
         public string NameID;

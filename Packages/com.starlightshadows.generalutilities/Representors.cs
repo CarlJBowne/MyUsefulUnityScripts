@@ -45,7 +45,7 @@ public struct Placement
         rotationData = Quaternion.identity;
     }
 
-    public Placement Static => Transform == null ? this : new(Transform, true);
+    public readonly Placement Static => Transform == null ? this : new(Transform, true);
 
     public static implicit operator Placement(Transform transform) => new(transform);
     public static implicit operator Placement(Vector3 position) => new(position);

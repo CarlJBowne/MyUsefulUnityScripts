@@ -2,7 +2,7 @@
 using System.IO;
 using Files = System.IO.File;
 
-namespace SLS.SaveFileCore
+namespace SLS.GeneralUtilities
 {
     public class File
     {
@@ -37,7 +37,8 @@ namespace SLS.SaveFileCore
 
     public class TextFile : File
     {
-        public TextFile(string path, string filename) : base(path, filename, ".txt") { }
+        public TextFile(string path, string filename, string extension = null) 
+            : base(path, filename, extension ?? ".txt") { }
 
         /// <summary>
         /// Loads Json Data from the File specified by this JsonFile's path and filename.

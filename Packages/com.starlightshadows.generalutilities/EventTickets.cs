@@ -54,7 +54,7 @@ namespace SLS.GeneralUtilities.EventTickets
         protected EventTicket() { }
 
         /// <summary>
-        /// Creates an <see cref="EventTicket"/> for simple parameterless <see cref="Action"/> publishers.
+        /// Creates an <see cref="EventTicket"/> for simple parameterless <see cref="System.Action"/> publishers.
         /// </summary>
         /// <param name="publisher">Publisher delegate captured for add/remove operations.</param>
         /// <param name="subscriber">Subscriber to add or remove from the publisher.</param>

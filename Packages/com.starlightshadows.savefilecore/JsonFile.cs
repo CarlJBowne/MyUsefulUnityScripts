@@ -2,6 +2,7 @@
 using System.IO;
 using Newtonsoft.Json.Linq;
 using Files = System.IO.File;
+using SLS.GeneralUtilities;
 
 namespace SLS.SaveFileCore
 {
@@ -11,11 +12,7 @@ namespace SLS.SaveFileCore
     public class JsonFile : TextFile
     {
         public JsonFile(string path, string filename) : base(path, filename) { }
-        public override string extension
-        {
-            get => ".json";
-            set { }
-        }
+        public override string extension { get => ".json"; set { } }
 
         /// <summary>
         /// Loads Json Data from the File specified by this JsonFile's path and filename.
