@@ -237,6 +237,13 @@ public static class XtensionsVector2
         return v;
     }
 
+    public static Vector2 Abs(this Vector2 v)
+    {
+        Vector2 result = v;
+        v.x = Mathf.Abs(v.x);
+        v.y = Mathf.Abs(v.y);
+        return result;
+    }
     public static Vector2 Sign(this Vector2 v)
     {
         Vector2 result = v;

@@ -267,4 +267,15 @@ public static class Xtensions_Types
                     && (i != Top || !excludeSelf)
                     ).ToArray();
     }
+
+    public static Type FindGenericAncestor(this Type start, int maxSteps = 5)
+    {
+        int i = 0;
+        do
+        {
+            if (start.IsGenericType) return start;
+            start = start.BaseType;
+        } while (i++ < maxSteps && start != null);
+        return null;
+    }
 }

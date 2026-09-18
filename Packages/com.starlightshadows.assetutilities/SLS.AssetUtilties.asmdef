@@ -4,7 +4,8 @@
     "references": [
         "SLS.Singletons",
         "SLS.TimeUtilities",
-        "SLS.ListUtilities"
+        "SLS.ListUtilities",
+        "SLS.EditorUtilities.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

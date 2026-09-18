@@ -23,29 +23,26 @@ namespace SLS.ListUtilities
         protected abstract List<TV> SerializedValues { get; }
 
 
-        public IReadOnlyList<TK> Keys => new List<TK>(SerializedKeys);
-        public IReadOnlyList<TV> Values => new List<TV>(SerializedValues);
-        public IReadOnlyList<KeyValuePair<TK, TV>> KeyValuePairs
+        public virtual IReadOnlyList<TK> Keys => SerializedKeys;
+        public virtual IReadOnlyList<TV> Values => SerializedValues;
+        public virtual IReadOnlyList<KeyValuePair<TK, TV>> KeyValuePairs()
         {
-            get
+            List<TK> keys = new();
+            List<KeyValuePair<TK, TV>> result = new();
+            for (int i = 0; i < SerializedKeys.Count; i++)
             {
-                List<TK> keys = new();
-                List<KeyValuePair<TK, TV>> result = new();
-                for (int i = 0; i < SerializedKeys.Count; i++)
+                if (!keys.Contains(SerializedKeys[i]))
                 {
-                    if (!keys.Contains(SerializedKeys[i]))
-                    {
-                        result.Add(new(SerializedKeys[i], SerializedValues[i]));
-                        keys.Add(SerializedKeys[i]);
-                    }
+                    result.Add(new(SerializedKeys[i], SerializedValues[i]));
+                    keys.Add(SerializedKeys[i]);
                 }
-                return result;
             }
+            return result;
         }
 
-        public TV Get(TK key) => SerializedKeys.Contains(key) ? SerializedValues[SerializedKeys.IndexOf(key)] : default;
+        public virtual TV Get(TK key) => SerializedKeys.Contains(key) ? SerializedValues[SerializedKeys.IndexOf(key)] : default;
 
-        public bool TryGet(TK key, out TV result)
+        public virtual bool TryGet(TK key, out TV result)
         {
             result = default;
             if (!SerializedKeys.Contains(key)) return false;
@@ -53,7 +50,7 @@ namespace SLS.ListUtilities
             return true;
         }
 
-        public TV this[TK key]
+        public virtual TV this[TK key]
         {
             get => Get(key);
             set
@@ -65,8 +62,8 @@ namespace SLS.ListUtilities
             }
         }
 
-        public int Count => SerializedValues.Count;
-        public bool IsReadOnly { get; protected set; }
+        public virtual int Count => SerializedValues.Count;
+        public virtual bool IsReadOnly { get; protected set; }
 
         public virtual void Add(TK key, TV value)
         {
@@ -75,15 +72,15 @@ namespace SLS.ListUtilities
             SerializedKeys.Add(key);
             SerializedValues.Add(value);
         }
-        public void Add(KeyValuePair<TK, TV> item) => Add(item.Key, item.Value);
+        public virtual void Add(KeyValuePair<TK, TV> item) => Add(item.Key, item.Value);
         protected virtual void OnAddKeyAndValue() { }
 
-        public void Remove(TK key)
+        public virtual void Remove(TK key)
         {
             if (IsReadOnly || !SerializedKeys.Contains(key)) return;
             RemoveAt(IndexOf(key));
         }
-        public void Remove(TV val)
+        public virtual void Remove(TV val)
         {
             if (IsReadOnly || !SerializedValues.Contains(val)) return;
             RemoveAt(IndexOf(val));
@@ -114,10 +111,7 @@ namespace SLS.ListUtilities
 
         public Dictionary<TK, TV> ToNativeDictionary() => SerializedKeys.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
 
-        public TK KeyFromIndex(int i) => SerializedKeys[i];
-        public TV ValueFromIndex(int i) => SerializedValues[i];
-
-        public List<bool> Duplicates()
+        public virtual List<bool> Duplicates()
         {
             List<TK> firstOccurences = new();
             List<bool> DuplicateValues = Enumerable.Repeat(false, SerializedKeys.Count).ToList();
@@ -135,7 +129,7 @@ namespace SLS.ListUtilities
             }
             return DuplicateValues;
         }
-        public void RemoveDuplicates()
+        public virtual void RemoveDuplicates()
         {
             List<TK> firstOccurences = new();
             for (int i = 0; i < SerializedKeys.Count; i++)
@@ -149,6 +143,8 @@ namespace SLS.ListUtilities
                 }
             }
         }
+
+        public static implicit operator int(SDictionaryAbstract<TK, TV> dict) => dict.Count;
 
         #region Interface
         ICollection IDictionary.Keys => Keys as ICollection;
@@ -171,7 +167,7 @@ namespace SLS.ListUtilities
 
         void IDictionary.Add(object key, object value) => Add((TK)key, (TV)value);
         bool IDictionary.Contains(object key) => ContainsKey((TK)key);
-        IDictionaryEnumerator IDictionary.GetEnumerator() => new DictionaryEnumeratorAdapter(KeyValuePairs);
+        IDictionaryEnumerator IDictionary.GetEnumerator() => new DictionaryEnumeratorAdapter(KeyValuePairs());
         void IDictionary.Remove(object key) => Remove((TK)key);
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<KeyValuePair<TK, TV>>)this).GetEnumerator();
         bool IDictionary<TK, TV>.Remove(TK key)
@@ -187,7 +183,7 @@ namespace SLS.ListUtilities
             if (arrayIndex < 0 || arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
             if (array.Length - arrayIndex < Count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
             int i = arrayIndex;
-            foreach (var kv in KeyValuePairs)
+            foreach (var kv in KeyValuePairs())
                 array[i++] = kv;
         }
         bool ICollection<KeyValuePair<TK, TV>>.Remove(KeyValuePair<TK, TV> item)
@@ -196,7 +192,7 @@ namespace SLS.ListUtilities
             Remove(item.Key);
             return true;
         }
-        IEnumerator<KeyValuePair<TK, TV>> IEnumerable<KeyValuePair<TK, TV>>.GetEnumerator() => KeyValuePairs.GetEnumerator();
+        IEnumerator<KeyValuePair<TK, TV>> IEnumerable<KeyValuePair<TK, TV>>.GetEnumerator() => KeyValuePairs().GetEnumerator();
         public void CopyTo(Array array, int index)
         {
             if (array == null) throw new ArgumentNullException(nameof(array));
@@ -207,7 +203,7 @@ namespace SLS.ListUtilities
             if (array is DictionaryEntry[] deArray)
             {
                 int i = index;
-                foreach (var kv in KeyValuePairs)
+                foreach (var kv in KeyValuePairs())
                 {
                     deArray[i++] = new DictionaryEntry(kv.Key, kv.Value);
                 }
@@ -223,7 +219,7 @@ namespace SLS.ListUtilities
             if (array is object[] objArray)
             {
                 int i = index;
-                foreach (var kv in KeyValuePairs)
+                foreach (var kv in KeyValuePairs())
                     objArray[i++] = kv;
                 return;
             }

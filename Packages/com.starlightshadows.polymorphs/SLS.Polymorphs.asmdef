@@ -2,7 +2,8 @@
     "name": "SLS.Polymorphs",
     "rootNamespace": "SLS.Polymorphs",
     "references": [
-        "SLS.ListUtilities"
+        "SLS.ListUtilities",
+        "SLS.GeneralUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

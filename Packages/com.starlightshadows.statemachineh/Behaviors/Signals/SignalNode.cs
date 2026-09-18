@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using SLS.ListUtilities;
+using System.Linq;
 using SLS.EditorUtilities.ComponentHeaders;
 using SLS.StateMachineH.Timelines;
 
@@ -43,19 +44,17 @@ namespace SLS.StateMachineH.Signals
         /// Attempts to retrieve an event associated with the specified signal name.
         /// </summary>
         public bool TryGet(string name, out EVENT Result, bool USENAME = false) =>
-            !USENAME ? signals.TryGet(name.Hash(), out Result)
-            : signals.TryGet(name, out Result);
+            signals.TryGet(name, out Result);
 
         /// <summary>
         /// Returns whether this Signal Node contains an event with the specified name.
         /// </summary>
-        public bool ContainsName(string name, bool USENAME = false) =>
-            !USENAME ? signals.ContainsKey(name.Hash())
-            : signals.ContainsName(name);
+        public bool ContainsKey(string name, bool USENAME = false) =>
+            signals.ContainsKey(name);
         /// <summary>
-        /// Returns whether this Signal Node contains an event with the specified name.
+        /// Returns whether this Signal Node contains an event with the specified hash key.
         /// </summary>
-        public bool ContainsKey(int key) => signals.ContainsKey(key);
+        public bool ContainsHash(int key) => signals.Hash.Contains(key);
 
         /// <summary>
         /// Removes the event with the specified name.
@@ -66,11 +65,17 @@ namespace SLS.StateMachineH.Signals
         /// Removes the event with the specified name.
         /// </summary>
         /// <param name="name"></param>
-        public void Remove(int ID) => signals.Remove(ID);
+        public void Remove(int ID)
+        {
+            // remove by hash if present
+            var hashes = signals.Hash;
+            int idx = System.Array.IndexOf(hashes.ToArray(), ID);
+            if (idx >= 0) signals.RemoveAt(idx);
+        }
 
         public bool FireEvent(string signalName)
         {
-            if (signals.ContainsKey(signalName.Hash()))
+            if (signals.ContainsKey(signalName))
             {
                 signals[signalName]?.Invoke();
                 return true;
@@ -79,18 +84,20 @@ namespace SLS.StateMachineH.Signals
         }
         public bool FireEvent(int hash)
         {
-            if (signals.ContainsKey(hash))
+            var hashes = signals.Hash;
+            int idx = System.Array.IndexOf(hashes.ToArray(), hash);
+            if (idx >= 0)
             {
-                signals[hash]?.Invoke();
+                signals.Values[idx]?.Invoke();
                 return true;
             }
             else return false;
         }
-        public bool FireEventIndex(int id)
+        public bool FireEventIndex(int i)
         {
-            if (signals.Count > id && id >= 0)
+            if (signals > i && i >= 0)
             {
-                signals.ValueFromIndex(id)?.Invoke();
+                signals.Values[i]?.Invoke();
                 return true;
             }
             else return false;

@@ -1,6 +1,6 @@
 {
-  "name": "com.starlightshadows.savesystem",
+  "name": "com.starlightshadows.savefilecore",
   "version": "1.0.0",
-  "displayName": "SLS - Save System",
+  "displayName": "SLS - Save File Core",
   "description": "A robust library on which to base your game's Save Data system.\nURL:\nCreate a class with a subclass inheriting from SaveStream to start.\nhttps://github.com/CarlJBowne/MyUsefulUnityScripts.git?path=/Packages/com.starlightshadows.savesystem"
 }

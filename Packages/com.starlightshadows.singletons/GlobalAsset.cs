@@ -36,15 +36,21 @@ namespace SLS.Singletons
         /// <returns>True if an instance is present; otherwise false.</returns>
         public static bool TryGet(out T instance) => S.TryGet(out instance);
 
+        public bool Initialized { get; private set; }
 
         /// <summary>
         /// Unity OnEnable callback override - registers this ScriptableObject as the singleton instance.
         /// </summary>
         public sealed override void OnEnable()
         {
+            if (Initialized) return;
             Singleton.OperationMessage res = S.Register(this as T);
             if (res != Singleton.OperationMessage.Success) return;
+#if UNITY_EDITOR
+            Debug.Log($"INITIALIZING : {this.name}...");
+#endif
             OnInit();
+            Initialized = true;
         }
 
         /// <summary>
@@ -52,9 +58,11 @@ namespace SLS.Singletons
         /// </summary>
         private void OnDisable()
         {
+            if (!Initialized) return;
             Singleton.OperationMessage res = S.Deregister(this as T);
             if (res != Singleton.OperationMessage.Success) return;
             OnDeInit();
+            Initialized = false;
         }
 
         public virtual void OnInit() { }

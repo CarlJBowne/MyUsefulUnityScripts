@@ -1,9 +1,10 @@
 {
-    "name": "SLS.SaveData",
-    "rootNamespace": "SLS.SaveData",
+    "name": "SLS.SaveFileCore",
+    "rootNamespace": "SLS.SaveFileCore",
     "references": [
-        "GUID:a769e02df78665d46a5cdcae4de975d9",
-        "GUID:02906483d39839a48a2cbdb42d4bac8e"
+        "SLS.GeneralUtilities",
+        "SLS.Polymorphs",
+        "SLS.ListUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

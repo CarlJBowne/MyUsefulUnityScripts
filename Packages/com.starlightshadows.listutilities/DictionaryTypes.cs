@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace SLS.ListUtilities
 {
@@ -24,7 +25,7 @@ namespace SLS.ListUtilities
             if (source == null) return;
             if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
             if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
-            for (int i = 0; i < source.Count; i++)
+            for (int i = 0; i < source; i++)
                 if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
                     this[source.serializedKeys[i]] = source.serializedValues[i];
         }
@@ -47,7 +48,7 @@ namespace SLS.ListUtilities
             if (source == null) return;
             if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
             if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
-            for (int i = 0; i < source.Count; i++)
+            for (int i = 0; i < source; i++)
                 if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
                     this[source.serializedKeys[i]] = source.serializedValues[i];
         }
@@ -58,131 +59,187 @@ namespace SLS.ListUtilities
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [Serializable]
-    public class HashedListS<T> : SDictionaryAbstract<int, T>
+    public class HashedListS<T> : SDictionaryAbstract<string, T>
     {
-        [SerializeField] List<string> SerializedNames => serializedNames;
-        [SerializeField] protected List<string> serializedNames = new();
+        [SerializeField, FormerlySerializedAs("serializedKeys")] List<int> serializedHashes;
+        [SerializeField, FormerlySerializedAs("serializedNames")] List<string> serializedKeys;
+        [SerializeField] List<T> serializedValues;
 
-        protected override List<int> SerializedKeys => serializedKeys;
-        [SerializeField] protected List<int> serializedKeys = new();
+        protected override List<string> SerializedKeys => serializedKeys;
         protected override List<T> SerializedValues => serializedValues;
-        [SerializeField] protected List<T> serializedValues = new();
+        protected virtual List<int> SerializedHashes => serializedHashes;
 
-        public IReadOnlyList<string> Names => new List<string>(SerializedNames);
+        public IReadOnlyList<int> Hashes => SerializedHashes;
 
-        public T Get(string name, bool USENAME = false)
+
+        public T Get(string name, bool DoHash = false)
         {
-            if (!USENAME)
+            if (!DoHash)
             {
-                int hash = name.Hash();
-                return SerializedKeys.Contains(hash) ? SerializedValues[SerializedKeys.IndexOf(hash)] : default;
+                return ContainsKey(name)
+                    ? SerializedValues[SerializedKeys.IndexOf(name)]
+                    : default;
             }
             else
             {
-                return SerializedNames.Contains(name) ? SerializedValues[SerializedNames.IndexOf(name)] : default;
+                int hash = name.Hash();
+                return SerializedHashes.Contains(hash)
+                    ? SerializedValues[SerializedHashes.IndexOf(hash)]
+                    : default;
             }
         }
 
-        public bool TryGet(string name, out T result, bool USENAME = false)
+        public bool TryGet(string name, out T result, bool DoHash = false)
         {
             result = default;
-            if (!USENAME)
+            if (!DoHash)
             {
-                int hash = name.Hash();
-                if (!SerializedKeys.Contains(hash)) return false;
-                result = SerializedValues[SerializedKeys.IndexOf(hash)];
-                return true;
+                if (ContainsKey(name))
+                {
+                    result = SerializedValues[SerializedKeys.IndexOf(name)];
+                    return true;
+                }
+                else return false;
             }
             else
             {
-                if (!SerializedNames.Contains(name)) return false;
-                result = SerializedValues[SerializedNames.IndexOf(name)];
-                return true;
+                int hash = name.Hash();
+                if (ContainsHash(hash))
+                {
+                    result = SerializedValues[SerializedHashes.IndexOf(hash)];
+                    return true;
+                }
+                else return false;
             }
         }
 
-        public T this[string name]
+        new public T this[string name]
         {
             get => Get(name);
             set
             {
                 if (IsReadOnly) return;
-                int hash = name.Hash();
-                if (SerializedKeys.Contains(hash))
-                    SerializedValues[SerializedKeys.IndexOf(hash)] = value;
+                if (SerializedKeys.Contains(name))
+                    SerializedValues[SerializedKeys.IndexOf(name)] = value;
                 else
                 {
-                    SerializedNames.Add(name);
-                    SerializedKeys.Add(hash);
+                    SerializedKeys.Add(name);
+                    // keep hash list in sync
+                    serializedHashes.Add(name.Hash());
                     SerializedValues.Add(value);
                 }
             }
         }
 
-        public void Add(string name, T value)
+        public T Get(int hash)
+        {
+            return SerializedHashes.Contains(hash)
+                    ? SerializedValues[SerializedHashes.IndexOf(hash)]
+                    : default;
+        }
+
+        public bool TryGet(int hash, out T result)
+        {
+            result = default;
+            if (ContainsHash(hash))
+            {
+                result = SerializedValues[SerializedHashes.IndexOf(hash)];
+                return true;
+            }
+            else return false;
+        }
+
+        public T this[int hash]
+        {
+            get => Get(hash);
+            set
+            {
+                if (IsReadOnly) return;
+                if (SerializedHashes.Contains(hash))
+                    SerializedValues[SerializedHashes.IndexOf(hash)] = value;
+                else
+                {
+                    SerializedKeys.Add("HASHED_ONLY_ITEM");
+                    // keep hash list in sync
+                    serializedHashes.Add(hash);
+                    SerializedValues.Add(value);
+                }
+            }
+        }
+
+
+        public override void Add(string name, T value)
         {
             if (IsReadOnly) return;
-            int hash = name.Hash();
-            if (SerializedKeys.Contains(hash)) return;
-            SerializedNames.Add(name);
-            SerializedKeys.Add(hash);
+            if (SerializedKeys.Contains(name)) return;
+            SerializedKeys.Add(name);
+            SerializedHashes.Add(name.Hash());
             SerializedValues.Add(value);
         }
         protected override void OnAddKeyAndValue()
         {
-            SerializedNames.Add(SerializedKeys[^1].ToString());
+            SerializedHashes.Add(SerializedKeys[^1].Hash());
         }
         public void Add(T value)
         {
             if (IsReadOnly) return;
             Guid G = Guid.NewGuid();
-            SerializedKeys.Add(G.ToString().Hash());
-            SerializedNames.Add(G.ToString());
+            SerializedKeys.Add(G.ToString());
+            SerializedHashes.Add(G.ToString().Hash());
             SerializedValues.Add(value);
         }
-        public void Add(KeyValuePair<string, T> item) => Add(item.Key, item.Value);
+        public override void Add(KeyValuePair<string, T> item) => Add(item.Key, item.Value);
 
-        public void Remove(string name)
+        public override void Remove(string name)
         {
-            if (IsReadOnly || !SerializedNames.Contains(name)) return;
+            if (IsReadOnly || !SerializedKeys.Contains(name)) return;
             RemoveAt(IndexOf(name));
         }
         public override void RemoveAt(int i)
         {
             if (IsReadOnly || i < 0 || i >= SerializedValues.Count) return;
-            SerializedNames.RemoveAt(i);
             SerializedKeys.RemoveAt(i);
+            SerializedHashes.RemoveAt(i);
             SerializedValues.RemoveAt(i);
         }
         public override void Clear()
         {
-            SerializedNames.Clear();
             SerializedKeys.Clear();
+            SerializedHashes.Clear();
             SerializedValues.Clear();
         }
 
-        public bool ContainsName(string i) => SerializedNames.Contains(i);
-        public bool Contains(string i, bool NAMESPECIFICALLY = false) => !NAMESPECIFICALLY
-            ? ContainsName(i)
-            : ContainsKey(i.Hash());
 
-        public int IndexOfName(string i) => SerializedNames.IndexOf(i);
-        public int IndexOf(string i) => IndexOfName(i);
+        public bool ContainsHash(int i) => SerializedHashes.Contains(i);
+        public bool Contains(int i) => ContainsHash(i);
 
-        public Dictionary<string, T> ToNameDictionary() => SerializedNames.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
-        public Dictionary<int, T> ToKeyDictionary() => ToNativeDictionary();
-        public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
+        public int IndexOfHash(int i) => SerializedHashes.IndexOf(i);
+        public int IndexOf(int i) => IndexOfHash(i);
 
-        public string NameFromIndex(int i) => SerializedNames[i];
+        public Dictionary<string, T> ToNameDictionary() => SerializedKeys.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
+        public Dictionary<string, T> ToKeyDictionary() => ToNativeDictionary();
+        public Dictionary<string, int> ToHashDictionary() => SerializedKeys.Zip(serializedHashes, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
+        // Access to secondary integer hashes
+        public IReadOnlyList<int> Hash => serializedHashes;
+        public int HashOf(string name) => !SerializedKeys.Contains(name)
+            ? name.Hash()
+            : SerializedHashes[SerializedKeys.IndexOf(name)];
+        public bool TryGetHash(string name, out int hash)
+        {
+            hash = default;
+            if (!SerializedKeys.Contains(name)) return false;
+            hash = serializedHashes[SerializedKeys.IndexOf(name)];
+            return true;
+        }
         public void Clone(HashedListS<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
         {
             if (source == null) return;
             if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
             if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
-            for (int i = 0; i < source.Count; i++)
-                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
-                    this[source.serializedNames[i]] = source.serializedValues[i];
+            for (int i = 0; i < source; i++)
+                if (SerializedHashes.Contains(source.SerializedHashes[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.SerializedKeys[i]] = source.SerializedValues[i];
         }
     }
 
@@ -191,132 +248,187 @@ namespace SLS.ListUtilities
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [Serializable]
-    public class HashedListSReference<T> : SDictionaryAbstract<int, T>
+    public class HashedListSReference<T> : SDictionaryAbstract<string, T>
     {
-        [SerializeField] List<string> SerializedNames => serializedNames;
-        [SerializeField] protected List<string> serializedNames = new();
+        [SerializeField, FormerlySerializedAs("serializedNames")] List<string> serializedKeys;
+        [SerializeField, FormerlySerializedAs("serializedKeys")] List<int> serializedHashes;
+        [SerializeField, SerializeReference] List<T> serializedValues;
 
-        protected override List<int> SerializedKeys => serializedKeys;
-        [SerializeField] protected List<int> serializedKeys = new();
+        protected override List<string> SerializedKeys => serializedKeys;
         protected override List<T> SerializedValues => serializedValues;
-        [SerializeField, SerializeReference] protected List<T> serializedValues = new();
+        protected virtual List<int> SerializedHashes => serializedHashes;
 
-        public IReadOnlyList<string> Names => new List<string>(SerializedNames);
+        public IReadOnlyList<int> Hashes => SerializedHashes;
 
-        public T Get(string name, bool USENAME = false)
+
+        public T Get(string name, bool DoHash = false)
         {
-            if (!USENAME)
+            if (!DoHash)
             {
-                int hash = name.Hash();
-                return SerializedKeys.Contains(hash) ? SerializedValues[SerializedKeys.IndexOf(hash)] : default;
+                return ContainsKey(name)
+                    ? SerializedValues[SerializedKeys.IndexOf(name)]
+                    : default;
             }
             else
             {
-                return SerializedNames.Contains(name) ? SerializedValues[SerializedNames.IndexOf(name)] : default;
+                int hash = name.Hash();
+                return SerializedHashes.Contains(hash)
+                    ? SerializedValues[SerializedHashes.IndexOf(hash)]
+                    : default;
             }
         }
 
-        public bool TryGet(string name, out T result, bool USENAME = false)
+        public bool TryGet(string name, out T result, bool DoHash = false)
         {
             result = default;
-            if (!USENAME)
+            if (!DoHash)
             {
-                int hash = name.Hash();
-                if (!SerializedKeys.Contains(hash)) return false;
-                result = SerializedValues[SerializedKeys.IndexOf(hash)];
-                return true;
+                if (ContainsKey(name))
+                {
+                    result = SerializedValues[SerializedKeys.IndexOf(name)];
+                    return true;
+                }
+                else return false;
             }
             else
             {
-                if (!SerializedNames.Contains(name)) return false;
-                result = SerializedValues[SerializedNames.IndexOf(name)];
-                return true;
+                int hash = name.Hash();
+                if (ContainsHash(hash))
+                {
+                    result = SerializedValues[SerializedHashes.IndexOf(hash)];
+                    return true;
+                }
+                else return false;
             }
         }
 
-        public T this[string name]
+        new public T this[string name]
         {
             get => Get(name);
             set
             {
                 if (IsReadOnly) return;
-                int hash = name.Hash();
-                if (SerializedKeys.Contains(hash))
-                    SerializedValues[SerializedKeys.IndexOf(hash)] = value;
+                if (SerializedKeys.Contains(name))
+                    SerializedValues[SerializedKeys.IndexOf(name)] = value;
                 else
                 {
-                    SerializedNames.Add(name);
-                    SerializedKeys.Add(hash);
+                    SerializedKeys.Add(name);
+                    // keep hash list in sync
+                    serializedHashes.Add(name.Hash());
                     SerializedValues.Add(value);
                 }
             }
         }
 
-        public void Add(string name, T value)
+        public T Get(int hash)
+        {
+            return SerializedHashes.Contains(hash)
+                    ? SerializedValues[SerializedHashes.IndexOf(hash)]
+                    : default;
+        }
+
+        public bool TryGet(int hash, out T result)
+        {
+            result = default;
+            if (ContainsHash(hash))
+            {
+                result = SerializedValues[SerializedHashes.IndexOf(hash)];
+                return true;
+            }
+            else return false;
+        }
+
+        public T this[int hash]
+        {
+            get => Get(hash);
+            set
+            {
+                if (IsReadOnly) return;
+                if (SerializedHashes.Contains(hash))
+                    SerializedValues[SerializedHashes.IndexOf(hash)] = value;
+                else
+                {
+                    SerializedKeys.Add("HASHED_ONLY_ITEM");
+                    // keep hash list in sync
+                    serializedHashes.Add(hash);
+                    SerializedValues.Add(value);
+                }
+            }
+        }
+
+
+        public override void Add(string name, T value)
         {
             if (IsReadOnly) return;
-            int hash = name.Hash();
-            if (SerializedKeys.Contains(hash)) return;
-            SerializedNames.Add(name);
-            SerializedKeys.Add(hash);
+            if (SerializedKeys.Contains(name)) return;
+            SerializedKeys.Add(name);
+            SerializedHashes.Add(name.Hash());
             SerializedValues.Add(value);
         }
         protected override void OnAddKeyAndValue()
         {
-            SerializedNames.Add(SerializedKeys[^1].ToString());
+            SerializedHashes.Add(SerializedKeys[^1].Hash());
         }
         public void Add(T value)
         {
             if (IsReadOnly) return;
             Guid G = Guid.NewGuid();
-            SerializedKeys.Add(G.ToString().Hash());
-            SerializedNames.Add(G.ToString());
+            SerializedKeys.Add(G.ToString());
+            SerializedHashes.Add(G.ToString().Hash());
             SerializedValues.Add(value);
         }
-        public void Add(KeyValuePair<string, T> item) => Add(item.Key, item.Value);
+        public override void Add(KeyValuePair<string, T> item) => Add(item.Key, item.Value);
 
-        public void Remove(string name)
+        public override void Remove(string name)
         {
-            if (IsReadOnly || !SerializedNames.Contains(name)) return;
+            if (IsReadOnly || !SerializedKeys.Contains(name)) return;
             RemoveAt(IndexOf(name));
         }
         public override void RemoveAt(int i)
         {
             if (IsReadOnly || i < 0 || i >= SerializedValues.Count) return;
-            SerializedNames.RemoveAt(i);
             SerializedKeys.RemoveAt(i);
+            SerializedHashes.RemoveAt(i);
             SerializedValues.RemoveAt(i);
         }
         public override void Clear()
         {
-            SerializedNames.Clear();
             SerializedKeys.Clear();
+            SerializedHashes.Clear();
             SerializedValues.Clear();
         }
 
-        public bool ContainsName(string i) => SerializedNames.Contains(i);
-        public bool Contains(string i, bool NAMESPECIFICALLY = false) => !NAMESPECIFICALLY
-            ? ContainsName(i)
-            : ContainsKey(i.Hash());
 
-        public int IndexOfName(string i) => SerializedNames.IndexOf(i);
-        public int IndexOf(string i) => IndexOfName(i);
+        public bool ContainsHash(int i) => SerializedHashes.Contains(i);
+        public bool Contains(int i) => ContainsHash(i);
 
-        public Dictionary<string, T> ToNameDictionary() => SerializedNames.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
-        public Dictionary<int, T> ToKeyDictionary() => ToNativeDictionary();
-        public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
+        public int IndexOfHash(int i) => SerializedHashes.IndexOf(i);
+        public int IndexOf(int i) => IndexOfHash(i);
 
-        public string NameFromIndex(int i) => SerializedNames[i];
+        public Dictionary<string, T> ToNameDictionary() => SerializedKeys.Zip(SerializedValues, (n, v) => new { n, v }).ToDictionary(x => x.n, x => x.v);
+        public Dictionary<string, T> ToKeyDictionary() => ToNativeDictionary();
+        public Dictionary<string, int> ToHashDictionary() => SerializedKeys.Zip(serializedHashes, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
-
+        // Access to secondary integer hashes
+        public IReadOnlyList<int> Hash => serializedHashes;
+        public int HashOf(string name) => !SerializedKeys.Contains(name)
+            ? name.Hash()
+            : SerializedHashes[SerializedKeys.IndexOf(name)];
+        public bool TryGetHash(string name, out int hash)
+        {
+            hash = default;
+            if (!SerializedKeys.Contains(name)) return false;
+            hash = serializedHashes[SerializedKeys.IndexOf(name)];
+            return true;
+        }
         public void Clone(HashedListSReference<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
         {
             if (source == null) return;
             if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
             if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
-            for (int i = 0; i < source.Count; i++)
-                if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
-                    this[source.serializedNames[i]] = source.serializedValues[i];
+            for (int i = 0; i < source; i++)
+                if (SerializedHashes.Contains(source.SerializedHashes[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.SerializedKeys[i]] = source.SerializedValues[i];
         }
     }
 }

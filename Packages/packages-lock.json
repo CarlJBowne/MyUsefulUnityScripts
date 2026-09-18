@@ -79,8 +79,8 @@
       "source": "embedded",
       "dependencies": {}
     },
-    "com.starlightshadows.savesystem": {
-      "version": "file:com.starlightshadows.savedata",
+    "com.starlightshadows.savefilecore": {
+      "version": "file:com.starlightshadows.savefilecore",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}

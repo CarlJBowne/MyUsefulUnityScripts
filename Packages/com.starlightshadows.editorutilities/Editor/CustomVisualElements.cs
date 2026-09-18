@@ -7,12 +7,13 @@ using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine.UIElements;
 using UnityEngine;
+using UnityEditor.UIElements;
 
 namespace SLS.EditorUtilities.Editor
 {
-    public class FoldoutPlus : Foldout
+    public class CustomFoldout : Foldout
     {
-        public FoldoutPlus()
+        public CustomFoldout()
         {
             header = this.GetChild(0) as Toggle;
 
@@ -71,67 +72,67 @@ namespace SLS.EditorUtilities.Editor
             arrowButton = header.GetDescendent(0, 0);
             label = header.GetDescendent(0, 1) as Label;
         }
-    }
 
-    public class FoldoutArrow : Button
-    {
-        public FoldoutArrow(Action<bool> clickEvent = null, bool initialValue = false) : base()
+        public class FoldoutArrow : Button
         {
-            this.clickEvent = clickEvent;
+            public FoldoutArrow(Action<bool> clickEvent = null, bool initialValue = false) : base()
+            {
+                this.clickEvent = clickEvent;
 
-            clicked += () => { Expanded = !isExpanded; };
+                clicked += () => { Expanded = !isExpanded; };
 
-            style.color = new StyleColor(Color.gray4);
-            style.width = 18;
-            style.height = 16;
-            style.unityTextAlign = TextAnchor.MiddleCenter;
+                style.color = new StyleColor(Color.gray4);
+                style.width = 18;
+                style.height = 16;
+                style.unityTextAlign = TextAnchor.MiddleCenter;
 
-            style.backgroundColor = new StyleColor(Color.clear);
-            style.Border(0, color: Color.clear).Radius(0).Padding(0).Margins(0);
+                style.backgroundColor = new StyleColor(Color.clear);
+                style.Border(0, color: Color.clear).Radius(0).Padding(0).Margins(0);
 
-            SetValueWithoutNotify(initialValue);
+                SetValueWithoutNotify(initialValue);
 
-            this.style.color = DefaultColor;
-            new ElementHighlight(this, SelectedColor).Select();
-        }
+                this.style.color = DefaultColor;
+                new ElementHighlight(this, SelectedColor).Select();
+            }
 
-        public bool Expanded
-        {
-            get => isExpanded;
-            set
+            public bool Expanded
+            {
+                get => isExpanded;
+                set
+                {
+                    isExpanded = value;
+                    base.text = value ? "▼" : "▶";
+                    clickEvent?.Invoke(isExpanded);
+                }
+            }
+            public bool Expandable
+            {
+                get => isExpandable;
+                set
+                {
+                    this.SetEnabled(value);
+                    this.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
+                    if (!value) Expanded = false;
+                }
+
+            }
+            private bool isExpanded = true;
+            private bool isExpandable = true;
+            private Action<bool> clickEvent;
+            new private VisualElement text = null;
+
+            public static Color DefaultColor { get; private set; } = .408f.Gray();
+            public static Color SelectedColor { get; private set; } = new(.282f, .439f, .835f);
+
+            public void SetValueWithoutNotify(bool value)
             {
                 isExpanded = value;
                 base.text = value ? "▼" : "▶";
-                clickEvent?.Invoke(isExpanded);
-            }
-        }
-        public bool Expandable
-        {
-            get => isExpandable;
-            set
-            {
-                this.SetEnabled(value);
-                this.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
-                if (!value) Expanded = false;
             }
 
-        }
-        private bool isExpanded = true;
-        private bool isExpandable = true;
-        private Action<bool> clickEvent;
-        new private VisualElement text = null;
-
-        public static Color DefaultColor { get; private set; } = .408f.Gray();
-        public static Color SelectedColor { get; private set; } = new(.282f, .439f, .835f);
-
-        public void SetValueWithoutNotify(bool value)
-        {
-            isExpanded = value;
-            base.text = value ? "▼" : "▶";
         }
 
     }
-
 
     public class CachedElement<T> : object where T : VisualElement
     {

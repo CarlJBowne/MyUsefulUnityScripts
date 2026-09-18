@@ -3,6 +3,8 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using System.Reflection;
+
 #if UNITY_EDITOR
 using UnityEditor.UIElements;
 #endif
@@ -12,20 +14,43 @@ public abstract partial class Polymorph
 {
 
 
-    public static Type[] GetSubtypes(Type baseType)
+    public static Type[] GetSubtypes(Type baseType, bool excludeSelf = true//, bool buildGenericPossibilities = false
+        )
     {
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a =>
+        Type[] initialList = baseType.GetAllInheritors(false, false, false);
+        System.Collections.Generic.List<Type> finaList = new();
+
+        for (int i = 0; i < initialList.Length; i++)
+        {
+            Type t = initialList[i];
+            if (t == baseType && excludeSelf) continue;
+            if (!t.IsGenericType)
             {
-                try { return a.GetTypes(); }
-                catch { return Type.EmptyTypes; }
-            })
-            .Where(t =>
-                !t.IsAbstract &&
-                // For interfaces, include implementers; for classes, include strict subclasses only.
-                t.IsSubclassOf(baseType) && (t.IsPublic || t.IsNestedPublic || t.IsNestedFamORAssem || t.IsNestedFamily)
-            )
-            .ToArray();
+                if (t.IsAbstract) continue;
+                finaList.Add(t);
+            }
+            //else if(buildGenericPossibilities)
+            //{
+            //    if (t.GetCustomAttribute(typeof(ValidTypesAttribute)) is not ValidTypesAttribute attr || attr.Types == null) continue;
+            //
+            //    for (int i2 = 0; i2 < attr.Types.Length; i2++)
+            //    {
+            //        Type arg = attr.Types[i2];
+            //        Type genType;
+            //        try { genType = t.MakeGenericType(arg); }
+            //        catch (ArgumentException)
+            //        {
+            //            // invalid type arg for this generic definition
+            //            continue;
+            //        }
+            //
+            //        if (genType.IsAbstract) continue;
+            //        finaList.Add(genType);
+            //    }
+            //}
+        }
+
+        return finaList.ToArray();
     }
 
 #if UNITY_EDITOR
@@ -52,4 +77,12 @@ public abstract partial class Polymorph
         }
     }
 #endif
+
+    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    public sealed class ValidTypesAttribute : Attribute
+    {
+        public Type[] Types { get; }
+
+        public ValidTypesAttribute(params Type[] types) => Types = types;
+    }
 }

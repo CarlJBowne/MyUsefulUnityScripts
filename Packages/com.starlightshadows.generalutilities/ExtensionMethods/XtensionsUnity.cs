@@ -333,6 +333,16 @@ public static class Xtensions_Unity_Transform
 
 public static class Xtensions_UnityColliders
 {
+    public static Vector3 Center(this Collider C) => C switch
+    {
+        BoxCollider bc => C.transform.position + bc.center,
+        CapsuleCollider cc => C.transform.position + cc.center,
+        SphereCollider sc => C.transform.position + sc.center,
+        MeshCollider mc => C.transform.position + mc.bounds.center,
+        TerrainCollider tc => C.transform.position + tc.bounds.center,
+        _ => C.bounds.center
+    };
+
     public static void DrawWireClone(this Collider C, Color color, Vector3? position = null, Vector3? rotation = null)
     {
 #if UNITY_EDITOR

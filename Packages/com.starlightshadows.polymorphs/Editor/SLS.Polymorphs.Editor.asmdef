@@ -5,7 +5,8 @@
         "SLS.Polymorphs",
         "SLS.ListUtilities.Editor",
         "SLS.EditorUtilities.Editor",
-        "SLS.ListUtilities"
+        "SLS.ListUtilities",
+        "SLS.GeneralUtilities"
     ],
     "includePlatforms": [
         "Editor"

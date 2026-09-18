@@ -4,7 +4,7 @@ using System.Text;
 using SLS.GeneralUtilities.EventTickets;
 using UnityEngine;
 
-namespace SLS.GeneralUtilities.StatObjects
+namespace SLS.GeneralUtilities.Syncables
 {
     /// <summary>
     /// A serializable wrapper around a value of type <typeparamref name="T"/> that exposes change events
@@ -12,8 +12,10 @@ namespace SLS.GeneralUtilities.StatObjects
     /// </summary>
     /// <typeparam name="T">A value type that implements <see cref="IEquatable{T}"/>.</typeparam>
     [System.Serializable]
-    public class StatObject<T> where T : struct, IEquatable<T>
+    public class Syncable<T> where T : struct, IEquatable<T>
     {
+        public Syncable(T init = default) => _value = init;
+
         /// <summary>
         /// Backing field for the <see cref="Value"/> property. Serialized by Unity.
         /// </summary>
@@ -63,17 +65,17 @@ namespace SLS.GeneralUtilities.StatObjects
         /// Implicit conversion to the wrapped value type for convenience.
         /// </summary>
         /// <param name="s">The stat object to convert.</param>
-        public static implicit operator T(StatObject<T> s) => s is null ? default : s.Value;
+        public static implicit operator T(Syncable<T> s) => s is null ? default : s.Value;
 
         /// <summary>
         /// Equality operator comparing the stat object's value to a raw value.
         /// </summary>
-        public static bool operator ==(StatObject<T> l, T r) => l is not null && l.Value.Equals(r);
+        public static bool operator ==(Syncable<T> l, T r) => l is not null && l.Value.Equals(r);
 
         /// <summary>
         /// Inequality operator comparing the stat object's value to a raw value.
         /// </summary>
-        public static bool operator !=(StatObject<T> l, T r) => !(l == r);
+        public static bool operator !=(Syncable<T> l, T r) => !(l == r);
 
         /// <summary>
         /// Determines whether the current object is equal to another object or value of type <typeparamref name="T"/>.
@@ -95,16 +97,16 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Pseudo-assignment operator that sets the stat object's value to the provided value and returns the object.
         /// </summary>
-        public static StatObject<T> operator &(StatObject<T> l, T r)
+        public static Syncable<T> operator &(Syncable<T> l, T r)
         {
             l.Value = r;
             return l;
         }
 
         /// <summary>
-        /// Pseudo-assignment operator that copies the value from another <see cref="StatObject{T}"/>.
+        /// Pseudo-assignment operator that copies the value from another <see cref="Syncable{T}"/>.
         /// </summary>
-        public static StatObject<T> operator &(StatObject<T> l, StatObject<T> r)
+        public static Syncable<T> operator &(Syncable<T> l, Syncable<T> r)
         {
             l.Value = r.Value;
             return l;
@@ -124,8 +126,15 @@ namespace SLS.GeneralUtilities.StatObjects
     /// and utilities for subscribing to value changes. Includes Maximum and Minimum clamps
     /// </summary>
     /// <typeparam name="T">A value type that implements <see cref="IEquatable{T}"/> and <see cref="IComparable{T}"/>.</typeparam>
-    public class StatObjectClamped<T> : StatObject<T> where T : struct, IEquatable<T>, IComparable<T>
+    public class SyncableClamped<T> : Syncable<T> where T : struct, IEquatable<T>, IComparable<T>
     {
+        public SyncableClamped(T init = default, T minInit = default, T maxInit = default)
+        {
+            _value = init;
+            _min = minInit;
+            _max = maxInit;
+        }
+
         /// <summary>
         /// Backing field for the <see cref="Max"/> property. Serialized by Unity.
         /// </summary>
@@ -262,34 +271,34 @@ namespace SLS.GeneralUtilities.StatObjects
     /// <summary>
     /// A serializable wrapper for an integer value that exposes change events and utilities for subscribing to value changes. 
     /// </summary>
-    public class IntStat : StatObject<int>
+    public class IntSyncable : Syncable<int>
     {
-        /// <summary> Adds the int on the right to the value of the <see cref="IntStat"/> on the left. </summary>
-        public static IntStat operator +(IntStat l, int r)
+        /// <summary> Adds the int on the right to the value of the <see cref="IntSyncable"/> on the left. </summary>
+        public static IntSyncable operator +(IntSyncable l, int r)
         {
             l.Value += r;
             return l;
         }
-        /// <summary> Subtracts the int on the right from the value of the <see cref="IntStat"/> on the left. </summary>
-        public static IntStat operator -(IntStat l, int r)
+        /// <summary> Subtracts the int on the right from the value of the <see cref="IntSyncable"/> on the left. </summary>
+        public static IntSyncable operator -(IntSyncable l, int r)
         {
             l.Value -= r;
             return l;
         }
-        /// <summary> Multiplies the value of the <see cref="IntStat"/> on the left by the int on the right </summary>
-        public static IntStat operator *(IntStat l, int r)
+        /// <summary> Multiplies the value of the <see cref="IntSyncable"/> on the left by the int on the right </summary>
+        public static IntSyncable operator *(IntSyncable l, int r)
         {
             l.Value *= r;
             return l;
         }
-        /// <summary> Divides the value of the <see cref="IntStat"/> on the left by the int on the right </summary>
-        public static IntStat operator /(IntStat l, int r)
+        /// <summary> Divides the value of the <see cref="IntSyncable"/> on the left by the int on the right </summary>
+        public static IntSyncable operator /(IntSyncable l, int r)
         {
             l.Value /= r;
             return l;
         }
-        /// <summary> Returns the remainder the value of the <see cref="IntStat"/> on the left by the int on the right </summary>
-        public static IntStat operator %(IntStat l, int r)
+        /// <summary> Returns the remainder the value of the <see cref="IntSyncable"/> on the left by the int on the right </summary>
+        public static IntSyncable operator %(IntSyncable l, int r)
         {
             l.Value %= r;
             return l;
@@ -298,7 +307,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the value on the right to the value.
         /// </summary>
-        public static IntStat operator &(IntStat l, int r)
+        public static IntSyncable operator &(IntSyncable l, int r)
         {
             l.Value = r;
             return l;
@@ -306,7 +315,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the object on the right's value to the value.
         /// </summary>
-        public static IntStat operator &(IntStat l, IntStat r)
+        public static IntSyncable operator &(IntSyncable l, IntSyncable r)
         {
             l.Value = r.Value;
             return l;
@@ -315,34 +324,34 @@ namespace SLS.GeneralUtilities.StatObjects
     /// <summary>
     /// A serializable wrapper for an integer value that exposes change events and utilities for subscribing to value changes. Includes Maximum and Minimum clamps.
     /// </summary>
-    public class IntStatClamped : StatObjectClamped<int>
+    public class IntSyncableClamped : SyncableClamped<int>
     {
-        /// <summary> Adds the int on the right to the value of the <see cref="IntStat"/> on the left. </summary>
-        public static IntStatClamped operator +(IntStatClamped l, int r)
+        /// <summary> Adds the int on the right to the value of the <see cref="IntSyncable"/> on the left. </summary>
+        public static IntSyncableClamped operator +(IntSyncableClamped l, int r)
         {
             l.Value += r;
             return l;
         }
-        /// <summary> Subtracts the int on the right from the value of the <see cref="IntStat"/> on the left. </summary>
-        public static IntStatClamped operator -(IntStatClamped l, int r)
+        /// <summary> Subtracts the int on the right from the value of the <see cref="IntSyncable"/> on the left. </summary>
+        public static IntSyncableClamped operator -(IntSyncableClamped l, int r)
         {
             l.Value -= r;
             return l;
         }
-        /// <summary> Multiplies the value of the <see cref="IntStat"/> on the left by the int on the right </summary>
-        public static IntStatClamped operator *(IntStatClamped l, int r)
+        /// <summary> Multiplies the value of the <see cref="IntSyncable"/> on the left by the int on the right </summary>
+        public static IntSyncableClamped operator *(IntSyncableClamped l, int r)
         {
             l.Value *= r;
             return l;
         }
-        /// <summary> Divides the value of the <see cref="IntStat"/> on the left by the int on the right </summary>
-        public static IntStatClamped operator /(IntStatClamped l, int r)
+        /// <summary> Divides the value of the <see cref="IntSyncable"/> on the left by the int on the right </summary>
+        public static IntSyncableClamped operator /(IntSyncableClamped l, int r)
         {
             l.Value /= r;
             return l;
         }
-        /// <summary> Returns the remainder the value of the <see cref="IntStat"/> on the left by the int on the right </summary>
-        public static IntStatClamped operator %(IntStatClamped l, int r)
+        /// <summary> Returns the remainder the value of the <see cref="IntSyncable"/> on the left by the int on the right </summary>
+        public static IntSyncableClamped operator %(IntSyncableClamped l, int r)
         {
             l.Value %= r;
             return l;
@@ -351,7 +360,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the value on the right to the value.
         /// </summary>
-        public static IntStatClamped operator &(IntStatClamped l, int r)
+        public static IntSyncableClamped operator &(IntSyncableClamped l, int r)
         {
             l.Value = r;
             return l;
@@ -359,7 +368,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the object on the right's value to the value.
         /// </summary>
-        public static IntStatClamped operator &(IntStatClamped l, IntStat r)
+        public static IntSyncableClamped operator &(IntSyncableClamped l, IntSyncable r)
         {
             l.Value = r.Value;
             return l;
@@ -368,34 +377,34 @@ namespace SLS.GeneralUtilities.StatObjects
     /// <summary>
     /// A serializable wrapper for a float value that exposes change events and utilities for subscribing to value changes. 
     /// </summary>
-    public class FloatStat : StatObject<float>
+    public class FloatSyncable : Syncable<float>
     {
-        /// <summary> Adds the float on the right to the value of the <see cref="FloatStat"/> on the left. </summary>
-        public static FloatStat operator +(FloatStat l, float r)
+        /// <summary> Adds the float on the right to the value of the <see cref="FloatSyncable"/> on the left. </summary>
+        public static FloatSyncable operator +(FloatSyncable l, float r)
         {
             l.Value += r;
             return l;
         }
-        /// <summary> Subtracts the float on the right from the value of the <see cref="IntStat"/> on the left. </summary>
-        public static FloatStat operator -(FloatStat l, float r)
+        /// <summary> Subtracts the float on the right from the value of the <see cref="IntSyncable"/> on the left. </summary>
+        public static FloatSyncable operator -(FloatSyncable l, float r)
         {
             l.Value -= r;
             return l;
         }
-        /// <summary> Multiplies the value of the <see cref="IntStat"/> on the left by the float on the right </summary>
-        public static FloatStat operator *(FloatStat l, float r)
+        /// <summary> Multiplies the value of the <see cref="IntSyncable"/> on the left by the float on the right </summary>
+        public static FloatSyncable operator *(FloatSyncable l, float r)
         {
             l.Value *= r;
             return l;
         }
-        /// <summary> Divides the value of the <see cref="IntStat"/> on the left by the float on the right </summary>
-        public static FloatStat operator /(FloatStat l, float r)
+        /// <summary> Divides the value of the <see cref="IntSyncable"/> on the left by the float on the right </summary>
+        public static FloatSyncable operator /(FloatSyncable l, float r)
         {
             l.Value /= r;
             return l;
         }
-        /// <summary> Returns the remainder the value of the <see cref="IntStat"/> on the left by the float on the right </summary>
-        public static FloatStat operator %(FloatStat l, float r)
+        /// <summary> Returns the remainder the value of the <see cref="IntSyncable"/> on the left by the float on the right </summary>
+        public static FloatSyncable operator %(FloatSyncable l, float r)
         {
             l.Value %= r;
             return l;
@@ -404,7 +413,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the value on the right to the value.
         /// </summary>
-        public static FloatStat operator &(FloatStat l, float r)
+        public static FloatSyncable operator &(FloatSyncable l, float r)
         {
             l.Value = r;
             return l;
@@ -412,7 +421,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the object on the right's value to the value.
         /// </summary>
-        public static FloatStat operator &(FloatStat l, FloatStat r)
+        public static FloatSyncable operator &(FloatSyncable l, FloatSyncable r)
         {
             l.Value = r.Value;
             return l;
@@ -421,34 +430,36 @@ namespace SLS.GeneralUtilities.StatObjects
     /// <summary>
     /// A serializable wrapper for a float value that exposes change events and utilities for subscribing to value changes. Includes Maximum and Minimum clamps.
     /// </summary>
-    public class FloatStatClamped : StatObjectClamped<float>
+    public class FloatSyncableClamped : SyncableClamped<float>
     {
-        /// <summary> Adds the float on the right to the value of the <see cref="FloatStat"/> on the left. </summary>
-        public static FloatStatClamped operator +(FloatStatClamped l, float r)
+        public FloatSyncableClamped(float value = 0, float min = 0, float max = 1) : base(value, min, max) { }
+
+        /// <summary> Adds the float on the right to the value of the <see cref="FloatSyncable"/> on the left. </summary>
+        public static FloatSyncableClamped operator +(FloatSyncableClamped l, float r)
         {
             l.Value += r;
             return l;
         }
-        /// <summary> Subtracts the float on the right from the value of the <see cref="IntStat"/> on the left. </summary>
-        public static FloatStatClamped operator -(FloatStatClamped l, float r)
+        /// <summary> Subtracts the float on the right from the value of the <see cref="IntSyncable"/> on the left. </summary>
+        public static FloatSyncableClamped operator -(FloatSyncableClamped l, float r)
         {
             l.Value -= r;
             return l;
         }
-        /// <summary> Multiplies the value of the <see cref="IntStat"/> on the left by the float on the right </summary>
-        public static FloatStatClamped operator *(FloatStatClamped l, float r)
+        /// <summary> Multiplies the value of the <see cref="IntSyncable"/> on the left by the float on the right </summary>
+        public static FloatSyncableClamped operator *(FloatSyncableClamped l, float r)
         {
             l.Value *= r;
             return l;
         }
-        /// <summary> Divides the value of the <see cref="IntStat"/> on the left by the float on the right </summary>
-        public static FloatStatClamped operator /(FloatStatClamped l, float r)
+        /// <summary> Divides the value of the <see cref="IntSyncable"/> on the left by the float on the right </summary>
+        public static FloatSyncableClamped operator /(FloatSyncableClamped l, float r)
         {
             l.Value /= r;
             return l;
         }
-        /// <summary> Returns the remainder the value of the <see cref="IntStat"/> on the left by the float on the right </summary>
-        public static FloatStatClamped operator %(FloatStatClamped l, float r)
+        /// <summary> Returns the remainder the value of the <see cref="IntSyncable"/> on the left by the float on the right </summary>
+        public static FloatSyncableClamped operator %(FloatSyncableClamped l, float r)
         {
             l.Value %= r;
             return l;
@@ -457,7 +468,7 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the value on the right to the value.
         /// </summary>
-        public static FloatStatClamped operator &(FloatStatClamped l, float r)
+        public static FloatSyncableClamped operator &(FloatSyncableClamped l, float r)
         {
             l.Value = r;
             return l;
@@ -465,10 +476,19 @@ namespace SLS.GeneralUtilities.StatObjects
         /// <summary>
         /// Psudeo Assignment operator. Assigns the object on the right's value to the value.
         /// </summary>
-        public static FloatStatClamped operator &(FloatStatClamped l, FloatStatClamped r)
+        public static FloatSyncableClamped operator &(FloatSyncableClamped l, FloatSyncableClamped r)
         {
             l.Value = r.Value;
             return l;
+        }
+
+        public void SetupSlider(UnityEngine.UI.Slider slider)
+        {
+            slider.minValue = Min;
+            slider.maxValue = Max;
+            slider.value = Value;
+            CallOnValueChanged(Value);
+            slider.onValueChanged.AddListener(SetValue);
         }
     }
 

@@ -41,7 +41,7 @@ namespace SLS.StateMachineH.Signals
 
             while (!signalFired && i >= 0)
             {
-                if (NodeStack[i].ContainsKey(key))
+                if (NodeStack[i].ContainsHash(key))
                 {
                     NodeStack[i].FireEvent(key);
                     signalFired = true;

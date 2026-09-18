@@ -10,7 +10,7 @@ using CTX = UnityEngine.InputSystem.InputAction.CallbackContext;
 namespace SLS.GeneralUtilities.EventTickets
 {
     /// <summary>
-    /// Represents a subscription ticket that can be placed in a list and used to subscribe and unsubscribe subscribers from various publishers in an easy & consistent manner.
+    /// Represents a subscription ticket that can be placed in a list and used to subscribe and unsubscribe subscribers from various publishers in an easy and consistent manner.
     /// <br/> This class specifically contains all the static helper methods for creating EventTickets from various types of events. Though Extension methods are also provided for most types found on the publishing event.
     /// </summary>
     public class EventTicket
@@ -241,13 +241,20 @@ namespace SLS.GeneralUtilities.EventTickets
     {
         /// <summary> Subscribe all Event Tickets in this list to their target publisher. </summary>
         public static void SubscribeAll(this List<EventTicket> list)
-        { for (int i = 0; i < list.Count; i++) list[i].Subscribe(); }
+        {
+            if (list == null) return;
+            for (int i = 0; i < list.Count; i++) list[i].Subscribe(); 
+        }
         /// <summary> UnSubscribes all Event Tickets in this list from their target publisher </summary>
         public static void UnSubscribeAll(this List<EventTicket> list)
-        { for (int i = 0; i < list.Count; i++) list[i].UnSubscribe(); }
+        {
+            if (list == null) return;
+            for (int i = 0; i < list.Count; i++) list[i].UnSubscribe(); 
+        }
         /// <summary> Unsubscribes all Event Tickets in this list from their target publisher and then clears the list. </summary>
         public static void DestroyAll(this List<EventTicket> list)
         {
+            if (list == null) return;
             for (int i = 0; i < list.Count; i++) list[i].UnSubscribe();
             list.Clear();
         }

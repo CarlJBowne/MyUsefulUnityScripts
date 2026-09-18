@@ -693,8 +693,7 @@ namespace SLS.ListUtilities.Editor
 
             try
             {
-                property.MoveArrayElement(i, newIndex);
-                property.serializedObject.ApplyModifiedProperties();
+                ReorderItem(i, newIndex);
             }
             catch
             {
@@ -711,6 +710,13 @@ namespace SLS.ListUtilities.Editor
             //    + new Vector2(7,7);
             //User32.SetCursorPos((int)pos.x, (int)pos.y);
         }
+        protected virtual void ReorderItem(int i, int newIndex)
+        {
+            property.MoveArrayElement(i, newIndex);
+            property.serializedObject.ApplyModifiedProperties();
+
+        }
+
 
         #region Context Menu
 
@@ -1236,7 +1242,7 @@ namespace SLS.ListUtilities.Editor
 
         public virtual void Show()
         {
-            if(!parent.IsDisplay()) parent.Display(true);
+            if (!parent.IsDisplay()) parent.Display(true);
             this.Display(!this.IsDisplay());
             TextField.Focus();
         }
@@ -1265,5 +1271,4 @@ namespace SLS.ListUtilities.Editor
     {
         public SuperListItem(SuperList<T> parentList, int Index) : base(parentList, Index) { }
     }
-
 }

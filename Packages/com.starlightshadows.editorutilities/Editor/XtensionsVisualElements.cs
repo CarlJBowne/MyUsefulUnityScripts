@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -154,13 +156,16 @@ namespace SLS.EditorUtilities.Editor
             return V;
         }
 
-        public static void ShrinkToTextWidth(this Label l)
+        public static void ShrinkToTextWidth(this Label l, float? grow = null)
         {
+            l.style.flexShrink = 1;
+            if (grow.HasValue) l.style.flexGrow = grow.Value;
+            DO();
             void DO()
             {
                 float width = EditorStyles.label.CalcSize(new(l.text)).x + 2;
-                if (width < l.style.width.value.value)
-                    l.style.width = width;
+                if (width < l.style.minWidth.value.value)
+                    l.style.minWidth = width;
             }
             l.RegisterValueChangedCallback(_ => DO());
         }
@@ -189,6 +194,83 @@ namespace SLS.EditorUtilities.Editor
                 newEvt.target = To;
                 To.panel.visualTree.SendEvent(evt);
             }, trickleDown);
+        }
+
+        public static void SetupHeader(this Foldout f, out VisualElement header)
+        {
+            try
+            {
+                Label label = f.Q<Label>(className: Foldout.textUssClassName);
+                header = label.parent;
+                label.ShrinkToTextWidth();
+                label.parent.style.flexDirection = FlexDirection.Row;
+            }
+            catch (Exception) { header = null; }
+
+        }
+
+        public static Foldout InstantFoldout(this SerializedProperty prop, string targetMainProperty = null, bool autoPopulate = false)
+        {
+            Foldout foldout = new()
+            {
+                text = prop.displayName
+            };
+            foldout.BindProperty(prop);
+            foldout.SetupHeader(out VisualElement header);
+
+            if (targetMainProperty != null)
+            {
+                header.Add(new PropertyField(prop.FindPropertyRelative(targetMainProperty))
+                {
+                    style =
+                    {
+                        marginTop = 0,
+                        marginBottom = 0,
+                    }
+                });
+            }
+
+            if (!autoPopulate) return foldout;
+
+            SerializedProperty pointer = prop.Copy();
+            if (!pointer.NextVisible(true)) return foldout;
+
+            do if (pointer.name != targetMainProperty) foldout.Add(new PropertyField(pointer));
+            while (pointer.NextVisible(false));
+
+            return foldout;
+        }
+
+        public static List<SerializedProperty> AllVisibleProperties(this SerializedProperty prop)
+        {
+            SerializedProperty pointer = prop.Copy();
+            if (!pointer.NextVisible(true)) return null;
+
+            List<SerializedProperty> result = new();
+            do result.Add(pointer.Copy());
+            while (pointer.NextVisible(false));
+
+            return result;
+        }
+        public static void PopulateWithProperties
+            (this SerializedProperty p, VisualElement v, params string[] ignores)
+        {
+            SerializedProperty pointer = p.Copy();
+            if (!pointer.NextVisible(true)) return;
+
+            do if (ignores == null || !ignores.Contains(pointer.name))
+                v.Add(new PropertyField(pointer));
+            while (pointer.NextVisible(false));
+        }
+        public static void PopulateWithProperties
+            (this VisualElement v, SerializedProperty p, params string[] ignores)
+        {
+            SerializedProperty pointer = p.Copy();
+            if (!pointer.NextVisible(true)) return;
+
+            do if (ignores == null || !ignores.Contains(pointer.name))
+                v.Add(new PropertyField(pointer));
+            while (pointer.NextVisible(false));
         }
     }
 

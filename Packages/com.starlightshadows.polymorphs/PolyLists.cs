@@ -376,14 +376,13 @@ public abstract partial class Polymorph
         public Dictionary<int, T> ToKeyDictionary() => ToNativeDictionary();
         public Dictionary<string, int> ToHashDictionary() => SerializedNames.Zip(SerializedKeys, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
-        public string NameFromIndex(int i) => SerializedNames[i];
 
         public void Clone(Polymorph.Dictionary<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
         {
             if (source == null) return;
             if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
             if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
-            for (int i = 0; i < source.Count; i++)
+            for (int i = 0; i < source; i++)
                 if (serializedKeys.Contains(source.serializedKeys[i]) || op is not DictionaryCloneOp.Transfer)
                     this[source.serializedNames[i]] = source.serializedValues[i];
         }
@@ -391,7 +390,7 @@ public abstract partial class Polymorph
         public void ForEach(Action<string, int, T> act)
         {
             for (int i = 0; i < Count; i++)
-                act(NameFromIndex(i), KeyFromIndex(i), ValueFromIndex(i));
+                act(Names[i], Keys[i], Values[i]);
         }
 
     }

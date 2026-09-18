@@ -189,6 +189,63 @@ namespace SLS.ListUtilities.Editor
                 }
                 };
 
+                // Prepare KeyField but do not add it to the main content until we know layout
+                {
+                    if (KeyField != null) KeyField.Unbind();
+                    VisualElement createdKeyField;
+                    if (typeof(TK) == typeof(string)) createdKeyField = new TextField();
+                    else if (typeof(TK) == typeof(int)) createdKeyField = new IntegerField();
+                    else if (typeof(TK) == typeof(float)) createdKeyField = new FloatField();
+                    else if (typeof(TK) == typeof(double)) createdKeyField = new DoubleField();
+                    else createdKeyField = new PropertyField(KeyProp, "");
+
+                    // Configure KeyField common properties
+                    if (createdKeyField is TextField t)
+                    {
+                        t.label = "";
+                        t.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                        t.style.top = 0;
+                        t.SetValueWithoutNotify(KeyProp.stringValue);
+                        t.BindProperty(KeyProp);
+                        t.isDelayed = true;
+                    }
+                    else if (createdKeyField is IntegerField i)
+                    {
+                        i.label = "";
+                        i.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                        i.style.top = 0;
+                        i.SetValueWithoutNotify(KeyProp.intValue);
+                        i.BindProperty(KeyProp);
+                        i.isDelayed = true;
+                    }
+                    else if (createdKeyField is FloatField f)
+                    {
+                        f.label = "";
+                        f.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                        f.style.top = 0;
+                        f.SetValueWithoutNotify(KeyProp.floatValue);
+                        f.BindProperty(KeyProp);
+                        f.isDelayed = true;
+                    }
+                    else if (createdKeyField is DoubleField d)
+                    {
+                        d.label = "";
+                        d.style.maxHeight = EditorGUIUtility.singleLineHeight;
+                        d.style.top = 0;
+                        d.SetValueWithoutNotify(KeyProp.doubleValue);
+                        d.BindProperty(KeyProp);
+                        d.isDelayed = true;
+                    }
+                    else if (createdKeyField is PropertyField pf)
+                    {
+                        pf.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
+                    }
+
+                    createdKeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
+                    KeyField = createdKeyField;
+                }
+
+
                 // Create the value field first so we can inspect whether it draws as a foldout
                 ValueField?.Unbind();
                 ValueField = new PropertyField(ValueProp, "").AddTo(content, v =>
@@ -198,63 +255,9 @@ namespace SLS.ListUtilities.Editor
                     v.style.flexGrow = 1f;
                 });
 
-                // Prepare KeyField but do not add it to the main content until we know layout
-                if (KeyField != null) KeyField.Unbind();
-                VisualElement createdKeyField;
-                if (typeof(TK) == typeof(string)) createdKeyField = new TextField();
-                else if (typeof(TK) == typeof(int)) createdKeyField = new IntegerField();
-                else if (typeof(TK) == typeof(float)) createdKeyField = new FloatField();
-                else if (typeof(TK) == typeof(double)) createdKeyField = new DoubleField();
-                else createdKeyField = new PropertyField(KeyProp, "");
-
-                // Configure KeyField common properties
-                if (createdKeyField is TextField t)
-                {
-                    t.label = "";
-                    t.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                    t.style.top = 0;
-                    t.SetValueWithoutNotify(KeyProp.stringValue);
-                    t.BindProperty(KeyProp);
-                    t.isDelayed = true;
-                }
-                else if (createdKeyField is IntegerField i)
-                {
-                    i.label = "";
-                    i.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                    i.style.top = 0;
-                    i.SetValueWithoutNotify(KeyProp.intValue);
-                    i.BindProperty(KeyProp);
-                    i.isDelayed = true;
-                }
-                else if (createdKeyField is FloatField f)
-                {
-                    f.label = "";
-                    f.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                    f.style.top = 0;
-                    f.SetValueWithoutNotify(KeyProp.floatValue);
-                    f.BindProperty(KeyProp);
-                    f.isDelayed = true;
-                }
-                else if (createdKeyField is DoubleField d)
-                {
-                    d.label = "";
-                    d.style.maxHeight = EditorGUIUtility.singleLineHeight;
-                    d.style.top = 0;
-                    d.SetValueWithoutNotify(KeyProp.doubleValue);
-                    d.BindProperty(KeyProp);
-                    d.isDelayed = true;
-                }
-                else if (createdKeyField is PropertyField pf)
-                {
-                    pf.RegisterCallback<ContextualMenuPopulateEvent>(ContextMenu, TrickleDown.TrickleDown);
-                }
-
-                createdKeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
-                KeyField = createdKeyField;
-
                 // If the value field contains a Foldout, place the key field into the foldout header next to the label
-                VisualElement top = ValueField?.Q<PropertyField>() as VisualElement
-                    ?? ValueField?.Q<Foldout>() as VisualElement ?? null;
+
+                VisualElement top = ValueField?.Q<Foldout>(className: "unity-foldout--depth-0");
                 if (top != null)
                 {
                     top.DelayedBuild(() =>
@@ -285,9 +288,11 @@ namespace SLS.ListUtilities.Editor
                 }
                 else
                 {
+                    content.Remove(ValueField);
                     // Default layout: key on left, value on right
                     KeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
                     content.Add(KeyField);
+                    content.Add(ValueField);
                     // ValueField already added
                 }
 
@@ -376,23 +381,23 @@ namespace SLS.ListUtilities.Editor
             new public void BindProperty(SerializedProperty input)
             {
                 property = input;
-                NamesProperty = property.FindPropertyRelative("serializedNames");
                 KeysProperty = property.FindPropertyRelative("serializedKeys");
+                HashesProperty = property.FindPropertyRelative("serializedHashes");
                 ValuesProperty = property.FindPropertyRelative("serializedValues");
                 header.Bind(input);
                 FinishBind();
             }
 
             public override int CurrentSize => ValuesProperty != null ? ValuesProperty.arraySize
+                    : HashesProperty != null ? HashesProperty.arraySize
                     : KeysProperty != null ? KeysProperty.arraySize
-                    : NamesProperty != null ? NamesProperty.arraySize
                     : 0;
 
             public override bool allowCounterEdit => false;
 
             public ILookupTable LookupTable { get; private set; }
-            public SerializedProperty NamesProperty { get; private set; }
             public SerializedProperty KeysProperty { get; private set; }
+            public SerializedProperty HashesProperty { get; private set; }
             public SerializedProperty ValuesProperty { get; private set; }
 
             public override void BuildItems()
@@ -409,8 +414,8 @@ namespace SLS.ListUtilities.Editor
                 if (string.IsNullOrEmpty(value)) return;
                 CreatePropertySlot(out int newID);
 
-                NamesProperty.GetArrayElementAtIndex(newID).stringValue = value;
-                KeysProperty.GetArrayElementAtIndex(newID).intValue = value.Hash();
+                KeysProperty.GetArrayElementAtIndex(newID).stringValue = value;
+                HashesProperty.GetArrayElementAtIndex(newID).intValue = value.Hash();
                 SerializedProperty valProp = ValuesProperty.GetArrayElementAtIndex(newID);
                 valProp.Reset();
 
@@ -423,36 +428,36 @@ namespace SLS.ListUtilities.Editor
             }
             public override void CreatePropertySlot(out int newID)
             {
-                if (KeysProperty == null || ValuesProperty == null) throw new ArgumentNullException();
+                if (HashesProperty == null || ValuesProperty == null) throw new ArgumentNullException();
                 newID = Selection.NewItemID;
-                NamesProperty.InsertArrayElementAtIndex(newID);
                 KeysProperty.InsertArrayElementAtIndex(newID);
+                HashesProperty.InsertArrayElementAtIndex(newID);
                 ValuesProperty.InsertArrayElementAtIndex(newID);
             }
             #endregion
             public override void DeletePropertySlotAt(int index)
             {
-                int prevNamesCount = NamesProperty.arraySize;
-                int prevKeysCount = KeysProperty.arraySize;
+                int prevNamesCount = KeysProperty.arraySize;
+                int prevKeysCount = HashesProperty.arraySize;
                 int prevValuesCount = ValuesProperty.arraySize;
 
-                NamesProperty.DeleteArrayElementAtIndex(index);
                 KeysProperty.DeleteArrayElementAtIndex(index);
+                HashesProperty.DeleteArrayElementAtIndex(index);
                 ValuesProperty.DeleteArrayElementAtIndex(index);
 
                 // If the array still has an element at this index and it's an object reference that is null,
                 // delete it again to fully remove the slot.
-                if (prevNamesCount == NamesProperty.arraySize)
-                {
-                    SerializedProperty maybeElem = NamesProperty.GetArrayElementAtIndex(index);
-                    if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
-                        NamesProperty.DeleteArrayElementAtIndex(index);
-                }
-                if (prevKeysCount == KeysProperty.arraySize)
+                if (prevNamesCount == KeysProperty.arraySize)
                 {
                     SerializedProperty maybeElem = KeysProperty.GetArrayElementAtIndex(index);
                     if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
                         KeysProperty.DeleteArrayElementAtIndex(index);
+                }
+                if (prevKeysCount == HashesProperty.arraySize)
+                {
+                    SerializedProperty maybeElem = HashesProperty.GetArrayElementAtIndex(index);
+                    if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
+                        HashesProperty.DeleteArrayElementAtIndex(index);
                 }
                 if (prevValuesCount == ValuesProperty.arraySize)
                 {
@@ -479,10 +484,10 @@ namespace SLS.ListUtilities.Editor
                     foreach (ItemDrawer<T> el in items) collectionBackground.Remove(el);
                     items.Clear();
                 }
-                if (NamesProperty is null || KeysProperty is null || ValuesProperty is null) return;
+                if (KeysProperty is null || HashesProperty is null || ValuesProperty is null) return;
 
-                NamesProperty.arraySize = 0;
                 KeysProperty.arraySize = 0;
+                HashesProperty.arraySize = 0;
                 ValuesProperty.arraySize = 0;
                 header.UpdateExpanded(false);
 
@@ -516,15 +521,15 @@ namespace SLS.ListUtilities.Editor
 
             protected override void BindProperty()
             {
-                this.NameProp = parent.NamesProperty.GetArrayElementAtIndex(Index);
                 this.KeyProp = parent.KeysProperty.GetArrayElementAtIndex(Index);
+                this.HashProp = parent.HashesProperty.GetArrayElementAtIndex(Index);
                 this.ValueProp = parent.ValuesProperty.GetArrayElementAtIndex(Index);
                 FinishBind();
             }
 
-            public SerializedProperty NameProp { get; protected set; }
-            public TextField NameField { get; protected set; }
             public SerializedProperty KeyProp { get; protected set; }
+            public TextField KeyField { get; protected set; }
+            public SerializedProperty HashProp { get; protected set; }
             public SerializedProperty ValueProp { get; protected set; }
             public PropertyField ValueField { get; protected set; }
 
@@ -535,23 +540,16 @@ namespace SLS.ListUtilities.Editor
                 content = new VisualElement()
                 {
                     style =
-                    {
-                        flexDirection = FlexDirection.Row,
-                        flexGrow = 1f
-                    }
+                {
+                    flexDirection = FlexDirection.Row,
+                    flexGrow = 1f
+                }
                 };
 
-                // Create the value field first so we can inspect whether it draws as a foldout
-                ValueField?.Unbind();
-                ValueField = new PropertyField(ValueProp, "").AddTo(content, v =>
+                // Prepare KeyField but do not add it to the main content until we know layout
                 {
-                    v.style.flexBasis = new Length(70, LengthUnit.Percent);
-                    v.style.marginRight = 2;
-                    v.style.flexGrow = 1f;
-
-                    // Prepare KeyField but do not add it to the main content until we know layout
-                    NameField?.Unbind();
-                    NameField = new TextField("")
+                    KeyField?.Unbind();
+                    KeyField = new TextField("")
                     {
                         label = "",
                         style =
@@ -562,67 +560,77 @@ namespace SLS.ListUtilities.Editor
                     },
                         isDelayed = true
                     };
-                    NameField.SetValueWithoutNotify(NameProp.stringValue);
-                    NameField.BindProperty(NameProp);
+                    KeyField.SetValueWithoutNotify(KeyProp.stringValue);
+                    KeyField.BindProperty(KeyProp);
+                }
 
 
-                    // If the value field contains a Foldout, place the key field into the foldout header next to the label
-                    VisualElement top = v?.Q<PropertyField>() as VisualElement
-                        ?? v?.Q<Foldout>() as VisualElement ?? null;
-                    if (top != null)
-                    {
-                        top.DelayedBuild(() =>
-                        {
-                            // Make foldout take the full width of the item
-                            top.style.flexBasis = new Length(100, LengthUnit.Percent);
-                            top.style.flexGrow = 1f;
-                            top.style.marginLeft = 8;
-
-                            // Try to find the toggle/label container and insert the key field there
-                            var toggle = top.Q<Toggle>(null, Foldout.toggleUssClassName);
-                            var label = toggle?.Q<Label>(null, "unity-label");
-                            var insertParent = label?.parent ?? (VisualElement)toggle ?? top;
-
-                            // Add key field to the header area
-                            insertParent.Add(NameField);
-
-                            // Adjust layout so label stays left and key field to the right
-                            if (label != null)
-                            {
-                                label.text = label.text.Replace("Element ", "");
-                                label.style.flexGrow = 0;
-                                label.ShrinkToTextWidth();
-                            }
-                            NameField.style.flexGrow = 1f;
-                            NameField.style.alignSelf = Align.FlexEnd;
-                        });
-                    }
-                    else
-                    {
-                        // Default layout: key on left, value on right
-                        NameField.style.flexBasis = new Length(30, LengthUnit.Percent);
-                        content.Add(NameField);
-                        // ValueField already added
-                    }
-
+                // Create the value field first so we can inspect whether it draws as a foldout
+                ValueField?.Unbind();
+                ValueField = new PropertyField(ValueProp, "").AddTo(content, v =>
+                {
+                    v.style.flexBasis = new Length(70, LengthUnit.Percent);
+                    v.style.marginRight = 2;
+                    v.style.flexGrow = 1f;
                 });
+
+                // If the value field contains a Foldout, place the key field into the foldout header next to the label
+
+                VisualElement top = ValueField?.Q<Foldout>(className: "unity-foldout--depth-0");
+                if (top != null)
+                {
+                    top.DelayedBuild(() =>
+                    {
+                        // Make foldout take the full width of the item
+                        top.style.flexBasis = new Length(100, LengthUnit.Percent);
+                        top.style.flexGrow = 1f;
+                        top.style.marginLeft = 8;
+
+                        // Try to find the toggle/label container and insert the key field there
+                        var toggle = top.Q<Toggle>(null, Foldout.toggleUssClassName);
+                        var label = toggle?.Q<Label>(null, "unity-label");
+                        var insertParent = label?.parent ?? (VisualElement)toggle ?? top;
+
+                        // Add key field to the header area
+                        insertParent.Add(KeyField);
+
+                        // Adjust layout so label stays left and key field to the right
+                        if (label != null)
+                        {
+                            label.text = label.text.Replace("Element ", "");
+                            label.style.flexGrow = 0;
+                            label.ShrinkToTextWidth();
+                        }
+                        KeyField.style.flexGrow = 1f;
+                        KeyField.style.alignSelf = Align.FlexEnd;
+                    });
+                }
+                else
+                {
+                    content.Remove(ValueField);
+                    // Default layout: key on left, value on right
+                    KeyField.style.flexBasis = new Length(30, LengthUnit.Percent);
+                    content.Add(KeyField);
+                    content.Add(ValueField);
+                    // ValueField already added
+                }
 
                 return content;
             }
 
             protected override void PostContent()
             {
-                NameField.tooltip = $"Key: {KeyProp.intValue}";
-                NameField.RegisterValueChangedCallback(ev =>
+                KeyField.tooltip = $"Hash: {HashProp.intValue}";
+                KeyField.RegisterValueChangedCallback(ev =>
                 {
-                    KeyProp.intValue = ev.newValue.Hash();
-                    NameField.tooltip = $"Key: {KeyProp.intValue}";
+                    HashProp.intValue = ev.newValue.Hash();
+                    KeyField.tooltip = $"Hash: {HashProp.intValue}";
                     parent.CallUpdateColors();
                 });
 
                 ValueField.BindProperty(ValueProp);
 
-                ContextMenuTarget = NameField;
+                ContextMenuTarget = KeyField;
             }
 
             protected override void ContextMenu(ContextualMenuPopulateEvent evt)

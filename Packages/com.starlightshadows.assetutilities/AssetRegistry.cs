@@ -23,8 +23,8 @@ public class AssetRegistry : SLS.Singletons.GlobalAsset<AssetRegistry>
         NamedAssets = namedSOs.ToNativeDictionary();
         Dictionary<string, SceneSO> scenes = namedSceneAssets.ToNativeDictionary();
         for (int i = 0; i < namedScenes.Count; i++)
-            if (!scenes.ContainsKey(namedScenes.KeyFromIndex(i)))
-                scenes.Add(namedScenes.KeyFromIndex(i), SceneSO.CreateRuntime(namedScenes.ValueFromIndex(i)));
+            if (!scenes.ContainsKey(namedScenes.Keys[i]))
+                scenes.Add(namedScenes.Keys[i], SceneSO.CreateRuntime(namedScenes.Values[i]));
 
     }
 
