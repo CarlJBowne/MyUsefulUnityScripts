@@ -1,17 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-using EditorAttributes;
-using UnityEngine.UIElements;
-using Utilities;
-using SLS.StateMachineH;
-using SLS.StateMachineH.Utils;
 using SLS.ListUtilities;
-using SLS.SaveData;
 using System.Diagnostics;
-using SLS.ListUtilities.Editor;
 
 
 
@@ -24,9 +15,6 @@ using SLS.ListUtilities.Editor;
 
 
 #if UNITY_EDITOR
-using UnityEditor.UIElements;
-using UnityEditor;
-using SLS.EditorUtilities.Editor;
 #endif
 
 public class Test : MonoBehaviour

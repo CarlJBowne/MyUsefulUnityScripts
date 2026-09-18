@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using NUnit.Framework;
-using SLS.StateMachineH.Editor;
-using SLS.StateMachineH.Timelines;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;

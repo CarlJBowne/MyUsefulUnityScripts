@@ -10,13 +10,13 @@
   <Project Path="EditorAttributes.csproj" />
   <Project Path="SLS.Physics.3D.csproj" />
   <Project Path="SLS.Packaging.csproj" />
-  <Project Path="SLS.SaveData.csproj" />
   <Project Path="SLS.AssetUtilties.csproj" />
   <Project Path="AYellowpaper.SerializeInterfaces.Editor.csproj" />
   <Project Path="SLS.StateMachineH.csproj" />
   <Project Path="Kybernetik.UltEvents.csproj" />
   <Project Path="SLS.EditorUtilities.Editor.csproj" />
   <Project Path="SLS.EditorUtilities.csproj" />
+  <Project Path="SLS.SaveFileCore.csproj" />
   <Project Path="SLS.TimeUtilities.csproj" />
   <Project Path="SLS.StateMachineH.Editor.csproj" />
   <Project Path="SLS.GameStateMachine.csproj" />

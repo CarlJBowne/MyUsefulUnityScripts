@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using SLS.EditorUtilities.ComponentHeaders;
 using UnityEditor;
 using UnityEngine;

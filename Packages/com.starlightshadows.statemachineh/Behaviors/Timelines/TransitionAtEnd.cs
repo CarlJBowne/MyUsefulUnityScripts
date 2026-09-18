@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using UnityEngine;
-
-namespace SLS.StateMachineH.Timelines
+﻿namespace SLS.StateMachineH.Timelines
 {
     public class TransitionAtEnd : StateTimeline
     {

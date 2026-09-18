@@ -1,6 +1,5 @@
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using SLS.GeneralUtilities.EventTickets;
@@ -10,7 +9,6 @@ using SLS.ListUtilities;
 
 
 #if UNITY_EDITOR
-using UnityEditor;
 #endif
 
 namespace SLS.SaveFileCore

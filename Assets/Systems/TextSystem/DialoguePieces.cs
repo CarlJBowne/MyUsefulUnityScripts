@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using Newtonsoft.Json.Linq;
-using UnityEngine;
 
 public abstract class DialoguePiece
 {

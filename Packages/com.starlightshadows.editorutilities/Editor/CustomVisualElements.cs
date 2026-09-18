@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections;
-using System.Linq;
-using System.Reflection;
-using Unity.VisualScripting;
 using UnityEditor;
-using UnityEditor.Rendering;
 using UnityEngine.UIElements;
 using UnityEngine;
-using UnityEditor.UIElements;
 
 namespace SLS.EditorUtilities.Editor
 {

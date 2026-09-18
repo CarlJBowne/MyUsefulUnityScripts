@@ -5,7 +5,6 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using SLS.Singletons;
-using SLS.ObjectUtilities.Projectiles;
 
 namespace SLS.ObjectUtilities
 {

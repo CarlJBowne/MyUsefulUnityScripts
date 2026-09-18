@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using SLS.ListUtilities;
 using UnityEngine;
 
 #if ULT_EVENTS
-using EVENT = UltEvents.UltEvent;
 #else
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif

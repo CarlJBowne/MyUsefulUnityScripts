@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
 
 #if UNITY_EDITOR
 using UnityEditor;

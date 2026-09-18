@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 using System.Collections;
 
 
 #if UNITY_EDITOR
-using UnityEditor;
 #endif
 
 /// <summary>

@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Rendering;
 
 namespace SLS.Physics3D
 {

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using NUnit.Framework;
 using SLS.EditorUtilities.Editor;
 using SLS.ListUtilities;
 using SLS.ListUtilities.Editor;

@@ -1,8 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
-
 namespace SLS.StateMachineH.V5
 {
     /// <summary>  

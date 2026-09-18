@@ -1,13 +1,7 @@
-using EditorAttributes;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using System.Linq;
 
 #if UNITY_EDITOR
-using UnityEditor;
 #endif
 
 /// <summary>

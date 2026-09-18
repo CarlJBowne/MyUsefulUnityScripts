@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using SLS.ListUtilities;
-using SLS.Singletons;
 using UnityEngine;
 
 [DefaultExecutionOrder(-160)]

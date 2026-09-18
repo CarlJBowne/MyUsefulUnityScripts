@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using DG.Tweening.Plugins.Core.PathCore;
 using Newtonsoft.Json.Linq;
 
 namespace SLS.SaveFileCore

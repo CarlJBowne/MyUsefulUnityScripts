@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using SLS.EditorUtilities.ComponentHeaders;
+﻿using SLS.EditorUtilities.ComponentHeaders;
 using UnityEngine;
 
 namespace SLS.StateMachineH

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using SLS.EditorUtilities.ComponentHeaders;
+﻿using SLS.EditorUtilities.ComponentHeaders;
 using UnityEngine;
 
 namespace SLS.StateMachineH.Timelines
