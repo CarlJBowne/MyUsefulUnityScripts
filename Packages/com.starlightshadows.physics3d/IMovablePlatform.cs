@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,10 +6,10 @@ namespace SLS.Physics3D
 {
     public interface IMovablePlatform
     {
-        public List<PhysicsBody> bodies { get; }
+        public List<MovingBody> bodies { get; }
 
-        public void AddBody(PhysicsBody body) => bodies.Add(body);
-        public void RemoveBody(PhysicsBody body) => bodies.Remove(body);
+        public void AddBody(MovingBody body) => bodies.Add(body);
+        public void RemoveBody(MovingBody body) => bodies.Remove(body);
 
         protected static void DoMove(IMovablePlatform This, Vector3 offset)
         {

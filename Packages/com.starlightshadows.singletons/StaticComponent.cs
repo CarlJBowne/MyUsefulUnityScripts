@@ -1,3 +1,4 @@
+using SLS.Singletons;
 using UnityEngine;
 
 /// <summary>

@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using SLS.Singletons;
+using SLS.ObjectUtilities.Projectiles;
 
 namespace SLS.ObjectUtilities
 {
@@ -16,7 +17,6 @@ namespace SLS.ObjectUtilities
         static GlobalPool instance;
 
         public static bool initialized { private set; get; }
-        public static Transform poolParent;
 
         static Dictionary<string, ObjectPool> dictionary_string = new();
         static Dictionary<Spawnable, ObjectPool> dictionary_prefab = new();
@@ -26,16 +26,12 @@ namespace SLS.ObjectUtilities
         public ObjectPool basicEnemyBullet;
         public static ObjectPool BasicEnemyBullet;
 
-        public void Initialize()
+        public void Initialize(Transform defaultPool)
         {
             if (initialized && Active) return;
             if (!Application.isPlaying) return;
 
-            if(poolParent != null)
-            {
-                ObjectPool.DefaultPoolParent = poolParent;
-                UnityEngine.Object.DontDestroyOnLoad(ObjectPool.DefaultPoolParent);
-            }
+            ObjectPool.DefaultPoolParent = defaultPool;
 
             InitPoolGlobally(basicEnemyBullet);
             BasicEnemyBullet = basicEnemyBullet;
@@ -52,7 +48,7 @@ namespace SLS.ObjectUtilities
             for (int i = 0; i < serializedPools.Count; i++) serializedPools[i].Update(Time.deltaTime);
         }
 
-        public override void OnDeInit()
+        public override void OnDeload()
         {
             initialized = false;
             UpdateProxy.OnUpdate -= Update;

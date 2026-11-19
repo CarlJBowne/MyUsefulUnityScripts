@@ -1,11 +1,15 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Collections;
+using System;
+using System.Reflection;
 
 
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-using SLS.EditorUtilities.Editor;
+using SLS.EditorUtilities;
 #endif
 
 [System.Serializable]
@@ -13,15 +17,27 @@ public class SceneReference : ISerializationCallbackReceiver
 {
 
     [field: SerializeField] public string sceneName { get; private set; }
+    public bool additive;
 
     public static implicit operator SceneReference(string s) => new(s);
     public static implicit operator string(SceneReference R) => R.sceneName;
     public static implicit operator bool(SceneReference R) =>
         !string.IsNullOrEmpty(R.sceneName) && R.sceneName != null && R.sceneName != "";
+    public static implicit operator LoadSceneMode(SceneReference R) => 
+        R.additive ? LoadSceneMode.Additive : LoadSceneMode.Single;
 
 
-    public SceneReference(string sceneName) => this.sceneName = sceneName;
+    public SceneReference(string sceneName, bool additive = false)
+    {
+        this.sceneName = sceneName;
+        this.additive = additive;
+    }
 
+    public void LoadScene() => SceneManager.LoadScene(this, this);
+    [System.Obsolete]
+    public void UnloadScene() => SceneManager.UnloadScene(this);
+    public AsyncOperation LoadSceneAsync() => SceneManager.LoadSceneAsync(this, this);
+    public AsyncOperation UnloadSceneAsync() => SceneManager.UnloadSceneAsync(this);
 
     public void OnBeforeSerialize()
     {
@@ -30,6 +46,11 @@ public class SceneReference : ISerializationCallbackReceiver
 #endif
     }
     public void OnAfterDeserialize() { }
+
+    public class Additive : SceneReference
+    {
+        public Additive(string sceneName, bool additive = true) : base(sceneName, additive) { }
+    }
 
 #if UNITY_EDITOR
 
@@ -71,7 +92,7 @@ public class SceneReference : ISerializationCallbackReceiver
         }
     }
 
-    [CustomPropertyDrawer(typeof(SceneReference))]
+    [CustomPropertyDrawer(typeof(SceneReference), true)]
     public class SceneReferenceDrawer : PropertyDrawer
     {
         // Immediate-mode fallback kept minimal for compatibility.
@@ -221,6 +242,7 @@ public class SceneReference : ISerializationCallbackReceiver
             };
 
             foldout.Add(sceneNameField);
+            foldout.Add(new PropertyField(property.FindPropertyRelative(nameof(additive))));
             foldout.Add(tooltipLabel);
 
             // Helper to refresh visuals and serialized values (no reflection)

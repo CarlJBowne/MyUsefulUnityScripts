@@ -1,0 +1,25 @@
+{
+    "name": "SLS.StateMachineUltimate",
+    "rootNamespace": "SLS.StateMachineUltimate",
+    "references": [
+        "Kybernetik.UltEvents",
+        "SLS.ListUtilities",
+        "SLS.EditorUtilities",
+        "SLS.GeneralUtilities"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.kybernetik.ultevents",
+            "expression": "",
+            "define": "ULT_EVENTS"
+        }
+    ],
+    "noEngineReferences": false
+}

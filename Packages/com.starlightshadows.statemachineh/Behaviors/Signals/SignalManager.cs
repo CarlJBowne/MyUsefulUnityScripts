@@ -1,13 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using SLS.ListUtilities;
 using UnityEngine;
 
 #if ULT_EVENTS
+using EVENT = UltEvents.UltEvent;
 #else
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
-namespace SLS.StateMachineH.Signals
+namespace SLS.StateMachineUltimate.Signals
 {
     /// <summary>  
     /// Manages signals within a hierarchical state machine.  

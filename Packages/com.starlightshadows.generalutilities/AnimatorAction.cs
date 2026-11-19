@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 #endif
 
-namespace SLS.StateMachineH
+namespace SLS.StateMachineUltimate
 {
     [System.Serializable]
     public class AnimatorAction
@@ -22,7 +22,7 @@ namespace SLS.StateMachineH
             SetBool,
             SetFloat,
             SetInt,
-            Null = -1,
+            Null,
         }
         public Type type;
         public string NameID;

@@ -4,7 +4,8 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using SLS.EditorUtilities.Editor;
+using SLS.ListUtilities;
+using SLS.EditorUtilities;
 
 namespace SLS.ListUtilities.Editor
 {
@@ -43,6 +44,7 @@ namespace SLS.ListUtilities.Editor
                 property = input;
                 KeysProperty = property.FindPropertyRelative("serializedKeys");
                 ValuesProperty = property.FindPropertyRelative("serializedValues");
+                AssertProperties(property, KeysProperty, ValuesProperty);
                 header.Bind(input);
                 FinishBind();
             }
@@ -167,6 +169,7 @@ namespace SLS.ListUtilities.Editor
             {
                 this.KeyProp = parent.KeysProperty.GetArrayElementAtIndex(Index);
                 this.ValueProp = parent.ValuesProperty.GetArrayElementAtIndex(Index);
+                AssertProperties(property, KeyProp, ValueProp);
                 FinishBind();
             }
 
@@ -256,20 +259,19 @@ namespace SLS.ListUtilities.Editor
 
                 // If the value field contains a Foldout, place the key field into the foldout header next to the label
 
-                VisualElement top = ValueField?.Q<Foldout>(className: "unity-foldout--depth-0");
-                if (top != null)
+                if (ValueField.IsFoldout(out Foldout foldout))
                 {
-                    top.DelayedBuild(() =>
+                    foldout.DelayedBuild(() =>
                     {
                         // Make foldout take the full width of the item
-                        top.style.flexBasis = new Length(100, LengthUnit.Percent);
-                        top.style.flexGrow = 1f;
-                        top.style.marginLeft = 8;
+                        foldout.style.flexBasis = new Length(100, LengthUnit.Percent);
+                        foldout.style.flexGrow = 1f;
+                        foldout.style.marginLeft = 8;
 
                         // Try to find the toggle/label container and insert the key field there
-                        var toggle = top.Q<Toggle>(null, Foldout.toggleUssClassName);
+                        var toggle = foldout.Q<Toggle>(null, Foldout.toggleUssClassName);
                         var label = toggle?.Q<Label>(null, "unity-label");
-                        var insertParent = label?.parent ?? (VisualElement)toggle ?? top;
+                        var insertParent = label?.parent ?? (VisualElement)toggle ?? foldout;
 
                         // Add key field to the header area
                         insertParent.Add(KeyField);
@@ -383,6 +385,7 @@ namespace SLS.ListUtilities.Editor
                 KeysProperty = property.FindPropertyRelative("serializedKeys");
                 HashesProperty = property.FindPropertyRelative("serializedHashes");
                 ValuesProperty = property.FindPropertyRelative("serializedValues");
+                AssertProperties(property, KeysProperty, HashesProperty, ValuesProperty);
                 header.Bind(input);
                 FinishBind();
             }
@@ -523,6 +526,7 @@ namespace SLS.ListUtilities.Editor
                 this.KeyProp = parent.KeysProperty.GetArrayElementAtIndex(Index);
                 this.HashProp = parent.HashesProperty.GetArrayElementAtIndex(Index);
                 this.ValueProp = parent.ValuesProperty.GetArrayElementAtIndex(Index);
+                AssertProperties(KeyProp, HashProp, ValueProp);
                 FinishBind();
             }
 
@@ -575,20 +579,19 @@ namespace SLS.ListUtilities.Editor
 
                 // If the value field contains a Foldout, place the key field into the foldout header next to the label
 
-                VisualElement top = ValueField?.Q<Foldout>(className: "unity-foldout--depth-0");
-                if (top != null)
+                if (ValueField.IsFoldout(out Foldout foldout))
                 {
-                    top.DelayedBuild(() =>
+                    foldout.DelayedBuild(() =>
                     {
                         // Make foldout take the full width of the item
-                        top.style.flexBasis = new Length(100, LengthUnit.Percent);
-                        top.style.flexGrow = 1f;
-                        top.style.marginLeft = 8;
+                        foldout.style.flexBasis = new Length(100, LengthUnit.Percent);
+                        foldout.style.flexGrow = 1f;
+                        foldout.style.marginLeft = 8;
 
                         // Try to find the toggle/label container and insert the key field there
-                        var toggle = top.Q<Toggle>(null, Foldout.toggleUssClassName);
+                        var toggle = foldout.Q<Toggle>(null, Foldout.toggleUssClassName);
                         var label = toggle?.Q<Label>(null, "unity-label");
-                        var insertParent = label?.parent ?? (VisualElement)toggle ?? top;
+                        var insertParent = label?.parent ?? (VisualElement)toggle ?? foldout;
 
                         // Add key field to the header area
                         insertParent.Add(KeyField);
@@ -603,6 +606,7 @@ namespace SLS.ListUtilities.Editor
                         KeyField.style.flexGrow = 1f;
                         KeyField.style.alignSelf = Align.FlexEnd;
                     });
+
                 }
                 else
                 {

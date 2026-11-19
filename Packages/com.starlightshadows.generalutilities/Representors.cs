@@ -1,4 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using UnityEngine;
 
 public struct Placement
 {
@@ -45,7 +50,7 @@ public struct Placement
         rotationData = Quaternion.identity;
     }
 
-    public readonly Placement Static => Transform == null ? this : new(Transform, true);
+    public Placement Static => Transform == null ? this : new(Transform, true);
 
     public static implicit operator Placement(Transform transform) => new(transform);
     public static implicit operator Placement(Vector3 position) => new(position);

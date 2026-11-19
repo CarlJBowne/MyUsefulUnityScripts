@@ -14,9 +14,9 @@ public class DialogueProfile
 
     public void Focus() => Current = this;
     public static DialogueProfile Current { get; protected set; }
-    public static DialogueProfile Default;
-    public static DialogueProfile Narrator;
-    public static DialogueProfile Unknown;
+    public static DialogueProfile Default { get; protected set; }
+    public static DialogueProfile Narrator { get; protected set; }
+    public static DialogueProfile Unknown { get; protected set; }
     public static Dictionary<string, DialogueProfile> Profiles;
     public static void Init(DialogueGlobalData globalInput)
     {
@@ -98,7 +98,7 @@ public class DialogueProfile
                         : S is "?" or "???" or "Unknown" or "unknown"
                         ? Unknown.voiceClip
 
-                        : S is "Narrate" or "Narrator" or "Narration" or "n" or "narrate" or "narration" or "narrator"
+                        : S is "Narrate" or "Narrator" or "Narration" or "narrate" or "narration" or "narrator"
                         ? Narrator.voiceClip
 
                         : null;

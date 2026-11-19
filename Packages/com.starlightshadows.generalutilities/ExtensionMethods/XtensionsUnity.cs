@@ -127,7 +127,7 @@ public static class Xtensions_Unity_Core
         return com;
     }
 
-    public static Vector2 GetUp(this PlatformEffector2D P) => P.transform.up.Rotated(P.rotationalOffset, Direction.back);
+    public static Vector2 GetUp(this PlatformEffector2D P) => P.transform.up.Rotated(P.rotationalOffset, Directions.back);
 
     public static void EndGame(this UnityEngine.Object o)
     {

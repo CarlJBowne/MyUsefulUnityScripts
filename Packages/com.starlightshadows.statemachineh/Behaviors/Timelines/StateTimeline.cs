@@ -1,7 +1,9 @@
-﻿using SLS.EditorUtilities.ComponentHeaders;
+﻿using System;
+using System.Collections.Generic;
+using SLS.EditorUtilities.ComponentHeaders;
 using UnityEngine;
 
-namespace SLS.StateMachineH.Timelines
+namespace SLS.StateMachineUltimate.Timelines
 {
     /// <summary>
     /// A <see cref="StateBehavior"/> for Behaviors that are meant to operate differently over a set time.

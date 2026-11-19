@@ -135,7 +135,7 @@ public static class XtensionsVector3
     public static bool IsNan(this Vector3 value) => float.IsNaN(value.x) || float.IsNaN(value.y) || float.IsNaN(value.z);
 }
 
-public static class Direction
+public static class Directions
 {
     public static Vector3 up = new(0, 1, 0);
     public static Vector3 down = new(0, -1, 0);

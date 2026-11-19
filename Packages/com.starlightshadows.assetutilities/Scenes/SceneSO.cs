@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,7 +8,6 @@ using UnityEngine.SceneManagement;
 public class SceneSO : ScriptableObject
 {
     [field: SerializeField] public SceneReference Scene { get; protected set; }
-    [field: SerializeField] public bool Additive { get; protected set; } = true;
 
     public enum SceneState
     {
@@ -29,14 +29,14 @@ public class SceneSO : ScriptableObject
         DesiredState = SceneState.Loaded;
         if (CurrentState is SceneState.Unloaded)
         {
-            var op = SceneManager.LoadSceneAsync(Scene, Additive ? LoadSceneMode.Additive : LoadSceneMode.Single);
+            var op = Scene.LoadSceneAsync();
             op.completed += FinishLoad;
             CurrentState = SceneState.Loading;
         }
     }
     public void Unload()
     {
-        if (!Additive) return;
+        if (!Scene.additive) return;
         if (CurrentState is SceneState.Unloaded or SceneState.Unloading) return;
         DesiredState = SceneState.Unloaded;
         if (CurrentState is SceneState.Loaded)
@@ -55,7 +55,7 @@ public class SceneSO : ScriptableObject
         DesiredState = SceneState.Loaded;
         if (CurrentState is SceneState.Unloaded)
         {
-            var op = SceneManager.LoadSceneAsync(Scene, Additive ? LoadSceneMode.Additive : LoadSceneMode.Single);
+            var op = Scene.LoadSceneAsync();
             op.completed += FinishLoad;
             CurrentState = SceneState.Loading;
             while (!op.isDone) yield return null;
@@ -64,7 +64,7 @@ public class SceneSO : ScriptableObject
 
     public virtual IEnumerator UnloadRoutine()
     {
-        if (!Additive) yield break;
+        if (!Scene.additive) yield break;
         if (CurrentState is SceneState.Unloaded or SceneState.Unloading) yield break;
         DesiredState = SceneState.Unloaded;
         if (CurrentState is SceneState.Loaded)
@@ -84,7 +84,7 @@ public class SceneSO : ScriptableObject
         if (CurrentState is SceneState.Unloaded)
         {
             // Synchronous load (will block until complete)
-            SceneManager.LoadScene(Scene, Additive ? LoadSceneMode.Additive : LoadSceneMode.Single);
+            Scene.LoadScene();
 
             FinishLoad(null);
         }
@@ -92,7 +92,7 @@ public class SceneSO : ScriptableObject
 
     public virtual void UnloadImmediate()
     {
-        if (!Additive) return;
+        if (!Scene.additive) return;
         if (CurrentState is SceneState.Unloaded or SceneState.Unloading) return;
         DesiredState = SceneState.Unloaded;
         if (CurrentState is SceneState.Loaded)
@@ -148,4 +148,14 @@ public class SceneSO : ScriptableObject
         return result;
     }
 
+#if UNITY_EDITOR
+    [UnityEditor.Callbacks.OnOpenAsset]
+    static internal bool DblClick(int instanceID, int line)
+    {
+        UnityEngine.Object x = EditorUtility.InstanceIDToObject(instanceID);
+        if (x is not SceneSO scene) return false;
+        UnityEditor.SceneManagement.EditorSceneManager.LoadScene(scene.Scene);
+            return true;
+    }
+#endif
 }

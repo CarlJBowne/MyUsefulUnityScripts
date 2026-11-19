@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
+using SLS.ListUtilities;
 using System.Linq;
 using SLS.EditorUtilities.ComponentHeaders;
+using SLS.StateMachineUltimate.Timelines;
 
 
 
@@ -12,7 +14,7 @@ using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
 
-namespace SLS.StateMachineH.Signals
+namespace SLS.StateMachineUltimate.Signals
 {
     /// <summary>  
     /// Represents a node in the <see cref="StateMachine"/> that can recieve signals and enact events.  

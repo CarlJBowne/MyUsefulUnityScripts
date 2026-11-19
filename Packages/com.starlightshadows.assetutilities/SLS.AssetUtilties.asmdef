@@ -5,7 +5,7 @@
         "SLS.Singletons",
         "SLS.TimeUtilities",
         "SLS.ListUtilities",
-        "SLS.EditorUtilities.Editor"
+        "SLS.EditorUtilities"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

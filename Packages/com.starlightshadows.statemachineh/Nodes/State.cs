@@ -1,9 +1,13 @@
+using System.Collections;
 using System.Collections.Generic;
-using SLS.StateMachineH.Timelines;
-using UnityEditor;
+using SLS.StateMachineUltimate.Timelines;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 
-namespace SLS.StateMachineH
+namespace SLS.StateMachineUltimate
 {
 
     /// <summary>  
@@ -42,7 +46,7 @@ namespace SLS.StateMachineH
         /// <summary>  
         /// The number of child <see cref="State"/>s.  
         /// </summary>  
-        [field: SerializeField] public int ChildCount { get; internal set; }
+public int ChildCount => Children.Count;
 
         /// <summary>  
         /// Indicates whether this <see cref="State"/> is currently active.  
@@ -113,7 +117,6 @@ namespace SLS.StateMachineH
                     children.Add(childS);
                     childS.Setup(machine, this, layer + 1, makeDirty);
                 }
-                ChildCount = childCount;
                 Children = children;
             }
             if (makeDirty) ApplySetupChanges();
@@ -207,7 +210,6 @@ namespace SLS.StateMachineH
             newObject.transform.SetParent(this is StateMachine SM ? SM.StateHolder : transform, false);
             State newNode = newObject.AddComponent<State>();
             Children.Add(newNode);
-            ChildCount++;
             newNode.Setup(Machine, this, Layer + 1, true);
 
 #if UNITY_EDITOR
@@ -262,19 +264,19 @@ namespace SLS.StateMachineH
 
             // 1) Apply added GameObjects (always applied by default)
 
-            var addedGOs = PrefabUtility.GetAddedGameObjects(gameObject);
-            for (int i = 0; i < addedGOs.Count; i++)
-            {
-                var item = addedGOs[i];
-                item?.Apply();
-            }
+            List<AddedGameObject> addedGOs = PrefabUtility.GetAddedGameObjects(gameObject);
+            for (int i = 0; i < addedGOs.Count; i++) addedGOs[i]?.Apply();
+            List<RemovedGameObject> removedGOs = PrefabUtility.GetRemovedGameObjects(gameObject);
+            for (int i = 0; i < removedGOs.Count; i++) removedGOs[i]?.Apply();
 
             SerializedObject SO = new(this);
 
             void ApplyPropertyOverride(string name, bool backingField, SerializedObject SO)
             {
-                PrefabUtility.ApplyPropertyOverride(SO.FindProperty(backingField ? $"<{name}>k__BackingField" : name), 
-                    path, InteractionMode.AutomatedAction);
+                if (SO == null || string.IsNullOrEmpty(name)) return;
+                SerializedProperty prop = SO.FindProperty(backingField ? $"<{name}>k__BackingField" : name);
+                if (prop == null) return;
+                PrefabUtility.ApplyPropertyOverride(prop, path, InteractionMode.AutomatedAction);
             }
 
             ApplyPropertyOverride(nameof(Behaviors), true, SO);
@@ -282,16 +284,19 @@ namespace SLS.StateMachineH
             ApplyPropertyOverride(nameof(Parent), true, SO);
             ApplyPropertyOverride(nameof(Layer), true, SO);
             ApplyPropertyOverride(nameof(Children), true, SO);
-            ApplyPropertyOverride(nameof(ChildCount), true, SO);
             ApplyPropertyOverride(nameof(Behaviors), true, SO);
             ApplyPropertyOverride(nameof(Behaviors), true, SO);
 
             for (int i = 0; i < Behaviors.Length; i++)
             {
-                SerializedObject behaviorSO = new(Behaviors[i]);
-                ApplyPropertyOverride(nameof(StateBehavior.State), true, behaviorSO);
-                if (Behaviors[i] is StateAnimator) ApplyPropertyOverride("animator", false, behaviorSO);
-                if (Behaviors[i] is StateTimeline) ApplyPropertyOverride("timeline", false, behaviorSO);
+                try
+                {
+                    SerializedObject behaviorSO = new(Behaviors[i]);
+                    if (behaviorSO == null) continue;
+                    ApplyPropertyOverride(nameof(StateBehavior.State), true, behaviorSO);
+                    if (Behaviors[i] is StateAnimator) ApplyPropertyOverride("animator", false, behaviorSO);
+                    if (Behaviors[i] is StateTimeline) ApplyPropertyOverride("timeline", false, behaviorSO);
+                } catch { }
             }
 
             /*

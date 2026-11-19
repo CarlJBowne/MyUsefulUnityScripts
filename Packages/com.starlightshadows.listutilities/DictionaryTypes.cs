@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -60,9 +61,9 @@ namespace SLS.ListUtilities
     [Serializable]
     public class HashedListS<T> : SDictionaryAbstract<string, T>
     {
-        [SerializeField, FormerlySerializedAs("serializedKeys")] List<int> serializedHashes;
-        [SerializeField, FormerlySerializedAs("serializedNames")] List<string> serializedKeys;
-        [SerializeField] List<T> serializedValues;
+        [SerializeField, FormerlySerializedAs("serializedKeys")] List<int> serializedHashes = new();
+        [SerializeField, FormerlySerializedAs("serializedNames")] List<string> serializedKeys = new();
+        [SerializeField] List<T> serializedValues = new();
 
         protected override List<string> SerializedKeys => serializedKeys;
         protected override List<T> SerializedValues => serializedValues;
@@ -249,9 +250,9 @@ namespace SLS.ListUtilities
     [Serializable]
     public class HashedListSReference<T> : SDictionaryAbstract<string, T>
     {
-        [SerializeField, FormerlySerializedAs("serializedNames")] List<string> serializedKeys;
-        [SerializeField, FormerlySerializedAs("serializedKeys")] List<int> serializedHashes;
-        [SerializeField, SerializeReference] List<T> serializedValues;
+        [SerializeField, FormerlySerializedAs("serializedNames")] List<string> serializedKeys = new();
+        [SerializeField, FormerlySerializedAs("serializedKeys")] List<int> serializedHashes = new();
+        [SerializeField, SerializeReference] List<T> serializedValues = new();
 
         protected override List<string> SerializedKeys => serializedKeys;
         protected override List<T> SerializedValues => serializedValues;
@@ -409,7 +410,6 @@ namespace SLS.ListUtilities
         public Dictionary<string, int> ToHashDictionary() => SerializedKeys.Zip(serializedHashes, (n, k) => new { n, k }).ToDictionary(x => x.n, x => x.k);
 
         // Access to secondary integer hashes
-        public IReadOnlyList<int> Hash => serializedHashes;
         public int HashOf(string name) => !SerializedKeys.Contains(name)
             ? name.Hash()
             : SerializedHashes[SerializedKeys.IndexOf(name)];

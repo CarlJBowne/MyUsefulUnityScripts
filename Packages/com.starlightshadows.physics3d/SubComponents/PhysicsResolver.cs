@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
+using Unity.VisualScripting;
 using System.Collections.Generic;
 
 #if UNITY_EDITOR
@@ -12,9 +13,9 @@ using UnityEditor.UIElements;
 namespace SLS.Physics3D
 {
     /// <summary>
-    /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="PhysicsBody"/>.
+    /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="MovingBody"/>.
     /// </summary>
-    [System.Serializable, RequireComponent(typeof(PhysicsBody))]
+    [System.Serializable, RequireComponent(typeof(MovingBody))]
     public abstract class PhysicsResolver : MonoBehaviour
     {
         #region Relations
@@ -22,7 +23,8 @@ namespace SLS.Physics3D
         /// <summary>
         /// The owning PhysicsBody instance. Available after <see cref="Init"/> is called.
         /// </summary>
-        [field: SerializeField] public PhysicsBody Body { get; private set; }
+        [field: SerializeField] public MovingBody Body { get; private set; }
+        [SerializeField] protected ICollisionHandler onCollision;
 
         /// <summary>
         /// Convenience properties that forward to the owning body. These provide quick
@@ -30,16 +32,16 @@ namespace SLS.Physics3D
         /// </summary>
         protected Vector3 Position => Body.Position;
         protected Velocity stepZeroVelocity => Body.Velocity;
-        protected GroundState Ground => Body.Ground;
-        protected AnchorPoint anchor => Body.Ground.anchor;
-        protected Direction direction => Body.Direction;
+        protected AnchorState Anchor => Body.Anchor;
+        protected AnchorPoint CurrentAnchor => Body.Anchor.AnchorPoint;
+        protected Direction Direction => Body.Direction;
         protected PhysicsResolver Next => Body.Resolver;
 
         #endregion
 
         public virtual void Reset()
         {
-            if (!TryGetComponent(out PhysicsBody pb))
+            if (!TryGetComponent(out MovingBody pb))
             { DestroyImmediate(this); return; }
             this.Body = pb;
         }
@@ -47,15 +49,35 @@ namespace SLS.Physics3D
         /// <summary>
         /// Lifecycle hooks and the main Move contract for resolvers.
         /// </summary>
-        public virtual void OnStart() { }
+        public virtual void OnStart()
+        {
+            if (Body == null) Body = GetComponent<MovingBody>();
+            if (Body == null)
+            {
+                Debug.LogError($"PhysicsResolver {name} could not find a MovingBody component on the same GameObject. Destroying self.");
+                DestroyImmediate(this);
+                return;
+            }
+            if (onCollision == null)
+            {
+                if (Body is ICollisionHandler handler) onCollision = handler;
+                else if (Body.TryGetComponent(out ICollisionHandler comp)) onCollision = comp;
+            }
+        }
         /// <summary>
-        /// Called when this resolver becomes the active resolver for a PhysicsBody.
+        /// Called when this resolver is attempting to become the active resolver for a PhysicsBody. <br/>
+        /// Must handle Situational Validation -> Alternative Testing -> Finalization and result setting. <br/>
+        /// End with base.<see cref="TryEnter"/> to finalize the selection if successful. <br/>
         /// </summary>
-        public virtual void Enter() { }
+        public virtual bool TryEnter(ref PhysicsResolver result)
+        {
+            result = this;
+            return true;
+        }
         /// <summary>
         /// Called when this resolver is no longer active for a PhysicsBody.
         /// </summary>
-        public virtual void Exit() { }
+        public virtual void OnExit() { }
         /// <summary>
         /// Called before the main resolver Move invocation for per-frame setup.
         /// </summary>
@@ -78,11 +100,14 @@ namespace SLS.Physics3D
             vel.sqrMagnitude < float.Epsilon || ++Body.Step >= Body.maxPhysicsSteps;
         public bool ContinueCheck(float hitDistance) =>
             hitDistance == -1 || ++Body.Step >= Body.maxPhysicsSteps;
+        public bool ContinueCheck() => ++Body.Step >= Body.maxPhysicsSteps;
 
-        public void ChooseNext() => Body.UpdateResolver();
-        public void ChooseNext(PhysicsResolver target) => Body.UpdateResolver(target);
+        public void ChooseNext(PhysicsResolver target) => Body.SelectResolver(target);
+
+        public void Select() => Body.SelectResolver(this);
 
         public static implicit operator bool(PhysicsResolver P) => P != null;
+        public bool active => Body.Resolver == this;
 
         protected void Print(Func<string> value)
         {
@@ -97,6 +122,10 @@ namespace SLS.Physics3D
         {
             this.hideFlags = HideFlags.HideInInspector;
         }
+
+        public abstract class GroundType : PhysicsResolver { }
+        public abstract class AirType : PhysicsResolver { }
+        public abstract class StickyType : PhysicsResolver { }
     }
 
 #if UNITY_EDITOR
@@ -118,6 +147,7 @@ namespace SLS.Physics3D
             foldout.BindProperty(property);
             foldout.SetValueWithoutNotify(false);
             root.Add(foldout);
+            foldout.value = false;
 
             var getButton = new Button(ButtonPress)
             {

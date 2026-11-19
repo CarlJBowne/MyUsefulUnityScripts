@@ -3,7 +3,7 @@
     "rootNamespace": "SLS.ListUtilities.Editor",
     "references": [
         "SLS.ListUtilities",
-        "SLS.EditorUtilities.Editor"
+        "SLS.EditorUtilities"
     ],
     "includePlatforms": [
         "Editor"

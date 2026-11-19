@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using SLS.EditorUtilities.ComponentHeaders;
-using SLS.StateMachineH;
-using SLS.StateMachineH.Timelines;
+using SLS.StateMachineUltimate;
+using SLS.StateMachineUltimate.Timelines;
 using UnityEngine;
 
 #if ULT_EVENTS

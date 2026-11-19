@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SLS.StateMachineH
+namespace SLS.StateMachineUltimate
 {
     /// <summary>
     /// A behavior that handles physics-related events for states within a <see cref="StateMachine"/>.

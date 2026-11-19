@@ -1,6 +1,11 @@
 using System;
+using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
+using System.Reflection;
+using System.Collections.Generic;
+
 
 #if UNITY_EDITOR
 using UnityEditor.UIElements;
@@ -11,44 +16,7 @@ public abstract partial class Polymorph
 {
 
 
-    public static Type[] GetSubtypes(Type baseType, bool excludeSelf = true//, bool buildGenericPossibilities = false
-        )
-    {
-        Type[] initialList = baseType.GetAllInheritors(false, false, false);
-        System.Collections.Generic.List<Type> finaList = new();
-
-        for (int i = 0; i < initialList.Length; i++)
-        {
-            Type t = initialList[i];
-            if (t == baseType && excludeSelf) continue;
-            if (!t.IsGenericType)
-            {
-                if (t.IsAbstract) continue;
-                finaList.Add(t);
-            }
-            //else if(buildGenericPossibilities)
-            //{
-            //    if (t.GetCustomAttribute(typeof(ValidTypesAttribute)) is not ValidTypesAttribute attr || attr.Types == null) continue;
-            //
-            //    for (int i2 = 0; i2 < attr.Types.Length; i2++)
-            //    {
-            //        Type arg = attr.Types[i2];
-            //        Type genType;
-            //        try { genType = t.MakeGenericType(arg); }
-            //        catch (ArgumentException)
-            //        {
-            //            // invalid type arg for this generic definition
-            //            continue;
-            //        }
-            //
-            //        if (genType.IsAbstract) continue;
-            //        finaList.Add(genType);
-            //    }
-            //}
-        }
-
-        return finaList.ToArray();
-    }
+    public static List<Type> GetSubtypes(Type baseType) => baseType.GetAllInheritors(true, false, !baseType.IsAbstract);
 
 #if UNITY_EDITOR
     public virtual void OverrideBody(VisualElement container, SerializedProperty property)
