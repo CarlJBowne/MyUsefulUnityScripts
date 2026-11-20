@@ -110,7 +110,10 @@ namespace SLS.ObjectUtilities
     public class InterfaceMonoList<T> : InterfaceList<T, MonoBehaviour> where T : class { }
     [Serializable]
     public class InterfaceAssetList<T> : InterfaceList<T, ScriptableObject> where T : class { }
+}
 
+namespace SLS.ObjectUtilities.Editor
+{
 #if UNITY_EDITOR
     [CustomPropertyDrawer(typeof(InterfaceObject<,>), true)]
     public class RefEditor : PropertyDrawer
@@ -246,7 +249,7 @@ namespace SLS.ObjectUtilities
             }
 
             IEnumerable<UnityEngine.Object> GetValidDraggedObjects() => DragAndDrop.objectReferences
-                .Where(candidate => candidate != null && 
+                .Where(candidate => candidate != null &&
                 (unityType.IsInstanceOfType(candidate) && interfaceType.IsInstanceOfType(candidate)) || (candidate is GameObject g && g.GetComponent(interfaceType) != null));
 
             SerializedProperty rootProperty;
@@ -502,7 +505,7 @@ namespace SLS.ObjectUtilities
             onSelected(candidate);
             editorWindow.Close();
         }
-    }  
+    }
 
 #endif
 }

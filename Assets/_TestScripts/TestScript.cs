@@ -3,6 +3,7 @@ using UnityEngine;
 
 public class TestScript : MonoBehaviour, ITestable
 {
+    public Color color;
     public InterfaceList<ITestable, MonoBehaviour> Int;
 }
 

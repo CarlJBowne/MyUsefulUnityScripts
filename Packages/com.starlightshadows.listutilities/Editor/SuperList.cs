@@ -1224,7 +1224,7 @@ namespace SLS.ListUtilities.Editor
                 selected ? invalid ? SelectionInvalidColor : SelectionColor
                 : invalid ? InvalidColor : Color.clear;
 
-        public static Color SelectionColor => ElementHighlight.ButtonClickedBack;
+        public static Color SelectionColor => EditorColors.ButtonClickedBack;
         public static Color InvalidColor = new(.44f, .24f, .24f);
         public static Color SelectionInvalidColor = new(.486f, .274f, .428f);
 

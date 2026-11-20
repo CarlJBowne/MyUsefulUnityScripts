@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UIElements;
+using static SLS.EditorUtilities.EditorColors;
 
 namespace SLS.EditorUtilities
 {
@@ -122,18 +123,6 @@ namespace SLS.EditorUtilities
         }
 
         Color RaiseColor(Color input, float r) => new(input.r + r, input.g + r, input.b + r);
-
-        public static float ButtonHoverBackRaise { get; private set; } = .404f - .345f;
-        public static Color ButtonClickedBack { get; private set; } = new(.275f, .376f, .486f);
-        public static Color ButtonSelectedOutline { get; private set; } = new(.482f, .682f, .980f);
-        public static Color ButtonBack { get; private set; } = .345f.Gray();
-        public static Color ButtonBorder { get; private set; } = .188f.Gray();
-        public static Color ButtonBorderBottom { get; private set; } = .141f.Gray();
-        public static Color ButtonText { get; private set; } = .933f.Gray();
-        public static Color Text { get; private set; } = .824f.Gray();
-        public static Color TextSelected { get; private set; } = new(.506f, .706f, 1);
-        public static Color FoldoutArrow { get; private set; } = .408f.Gray();
-        public static Color FoldoutArrowSelected { get; private set; } = new(.282f, .439f, .835f);
 
         public static void ButtonDefault(VisualElement target)
         {
