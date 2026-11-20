@@ -12,7 +12,6 @@
   <Project Path="SLS.Physics.3D.csproj" />
   <Project Path="SLS.Packaging.csproj" />
   <Project Path="SLS.AssetUtilties.csproj" />
-  <Project Path="AYellowpaper.SerializeInterfaces.Editor.csproj" />
   <Project Path="Kybernetik.UltEvents.csproj" />
   <Project Path="SLS.SaveFileCore.csproj" />
   <Project Path="SLS.TimeUtilities.csproj" />
@@ -21,7 +20,6 @@
   <Project Path="SLS.ObjectUtilities.csproj" />
   <Project Path="SLS.ListUtilities.Editor.csproj" />
   <Project Path="BetterHierarchyDemoScripts.csproj" />
-  <Project Path="AYellowpaper.SerializeInterfaces.csproj" />
   <Project Path="Deprecated.csproj" />
   <Project Path="SLS.Singletons.csproj" />
   <Project Path="SLS.MenuCore.csproj" />
