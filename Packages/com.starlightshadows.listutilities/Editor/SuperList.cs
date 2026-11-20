@@ -297,6 +297,19 @@ namespace SLS.ListUtilities.Editor
             header.Bind(listProperty);
             FinishBind();
         }
+        /// <summary>
+        /// Basic Binding functionality. Should be overridden by a new signature if necessary to process any data sources passed in in the derived constructor. <br/>
+        /// Derivation Guide: Establish necessary Data sources, then call header.Bind, then FinishBind().
+        /// </summary>
+        /// <param name="listProperty">SerializedProperty representing the array this list will display.</param>
+        public void BindProperty(SerializedProperty listProperty, string title)
+        {
+            property = listProperty;
+            AssertProperties(property);
+            this.Bind(property.serializedObject);
+            header.Bind(title, listProperty);
+            FinishBind();
+        }
 
         /// <summary>
         /// Finalize binding: build items and register undo/redo handlers.

@@ -1,8 +1,9 @@
+using SLS.ObjectUtilities;
 using UnityEngine;
 
-public class TestScript : MonoBehaviour
+public class TestScript : MonoBehaviour, ITestable
 {
-    [SceneField]
-    public string sceneName;
+    public InterfaceList<ITestable, MonoBehaviour> Int;
 }
 
+public interface ITestable { }

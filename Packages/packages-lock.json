@@ -12,6 +12,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.starlightshadows.appstatemachine": {
+      "version": "file:com.starlightshadows.appstatemachine",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.starlightshadows.assetutilities": {
       "version": "file:com.starlightshadows.assetutilities",
       "depth": 0,
@@ -24,12 +30,6 @@
     },
     "com.starlightshadows.editorutilities": {
       "version": "file:com.starlightshadows.editorutilities",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.starlightshadows.gamestatemachine": {
-      "version": "file:com.starlightshadows.gamestatemachine",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
@@ -61,12 +61,6 @@
         "com.unity.visualscripting": "1.8.0"
       }
     },
-    "com.starlightshadows.physics2d": {
-      "version": "file:com.starlightshadows.physics2d",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
     "com.starlightshadows.physics3d": {
       "version": "file:com.starlightshadows.physics3d",
       "depth": 0,
@@ -91,7 +85,7 @@
       "source": "embedded",
       "dependencies": {}
     },
-    "com.starlightshadows.statemachineh": {
+    "com.starlightshadows.statemachineultimate": {
       "version": "file:com.starlightshadows.statemachineh",
       "depth": 0,
       "source": "embedded",

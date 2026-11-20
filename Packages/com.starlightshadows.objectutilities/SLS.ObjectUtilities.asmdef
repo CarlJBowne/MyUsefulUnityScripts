@@ -6,7 +6,9 @@
         "Unity.VisualScripting.Core",
         "SLS.GeneralUtilities",
         "SLS.TimeUtilities",
-        "SLS.EditorUtilities"
+        "SLS.EditorUtilities",
+        "SLS.ListUtilities",
+        "SLS.ListUtilities.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
