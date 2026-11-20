@@ -192,6 +192,8 @@ namespace SLS.ObjectUtilities
                 this.interfaceType = interfaceType;
                 this.targets = targets;
                 BindProperty(rootProperty.FindPropertyRelative("serial"), rootProperty.displayName);
+                header.RegisterCallback<DragUpdatedEvent>(OnDragUpdated);
+                header.RegisterCallback<DragPerformEvent>(OnDragPerform);
             }
 
             protected override void AddButtonPressed()
@@ -199,6 +201,53 @@ namespace SLS.ObjectUtilities
                 base.AddButtonPressed();
                 items[items.Count - 1].OpenPicker(worldBound);
             }
+
+            void OnDragUpdated(DragUpdatedEvent evt)
+            {
+                if (!GetValidDraggedObjects().Any()) return;
+
+                DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
+                evt.StopPropagation();
+            }
+
+            void OnDragPerform(DragPerformEvent evt)
+            {
+                UnityEngine.Object[] droppedObjects = GetValidDraggedObjects().ToArray();
+                if (droppedObjects.Length == 0) return;
+
+                DragAndDrop.AcceptDrag();
+                foreach (var target in targets)
+                {
+                    if (target == null) continue;
+
+                    SerializedObject serializedObject = new(target);
+                    serializedObject.Update();
+                    SerializedProperty listProperty = serializedObject.FindProperty(property.propertyPath);
+                    if (listProperty == null || !listProperty.isArray)
+                    {
+                        Debug.LogWarning($"Could not find serialized list '{property.propertyPath}' on {target}.", target);
+                        continue;
+                    }
+
+                    foreach (var droppedObject in droppedObjects)
+                    {
+                        int index = listProperty.arraySize;
+                        listProperty.InsertArrayElementAtIndex(index);
+                        listProperty.GetArrayElementAtIndex(index).objectReferenceValue = droppedObject;
+                    }
+
+                    serializedObject.ApplyModifiedProperties();
+                }
+
+                property.serializedObject.Update();
+                BuildItems();
+                header.UpdateCounter(true);
+                evt.StopPropagation();
+            }
+
+            IEnumerable<UnityEngine.Object> GetValidDraggedObjects() => DragAndDrop.objectReferences
+                .Where(candidate => candidate != null && 
+                (unityType.IsInstanceOfType(candidate) && interfaceType.IsInstanceOfType(candidate)) || (candidate is GameObject g && g.GetComponent(interfaceType) != null));
 
             SerializedProperty rootProperty;
             public Type unityType { get; private set; }
