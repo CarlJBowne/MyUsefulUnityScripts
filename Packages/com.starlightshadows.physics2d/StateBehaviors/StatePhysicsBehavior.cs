@@ -1,6 +1,7 @@
 using UnityEngine;
+using SLS.StateMachineUltimate;
 
-namespace SLS.StateMachineUltimate.Physics
+namespace SLS.Physics2D.States
 {
     public abstract class StatePhysicsBehavior : StateBehavior<StateMachinePhysicsCaller>
     {
@@ -23,8 +24,8 @@ namespace SLS.StateMachineUltimate.Physics
 
         protected virtual void CollisionEnter(Collision collision) { }
         protected virtual void CollisionExit(Collision collision) { }
-        protected virtual void TriggerEnter(Collider other) { }
-        protected virtual void TriggerExit(Collider other) { }
+        protected virtual void TriggerEnter(Collider2D other) { }
+        protected virtual void TriggerExit(Collider2D other) { }
     }
     public interface IStatePhysicsBehavior
     {
@@ -51,7 +52,7 @@ namespace SLS.StateMachineUltimate.Physics
 
         protected virtual void CollisionEnter(Collision collision) { }
         protected virtual void CollisionExit(Collision collision) { }
-        protected virtual void TriggerEnter(Collider other) { }
-        protected virtual void TriggerExit(Collider other) { }
+        protected virtual void TriggerEnter(Collider2D other) { }
+        protected virtual void TriggerExit(Collider2D other) { }
     }
 }

@@ -1,9 +1,9 @@
 {
-    "name": "SLS.StateMachineUltimate.Physics",
-    "rootNamespace": "SLS.StateMachineUltimate.Physics",
+    "name": "SLS.Physics3D.States",
+    "rootNamespace": "SLS.Physics3D.States",
     "references": [
-        "GUID:0d6b463119833254395b9c3bad3b8755",
-        "GUID:3381c7b29e95c014b9ce5b782513c03f"
+        "SLS.StateMachineUltimate",
+        "SLS.Physics.3D"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

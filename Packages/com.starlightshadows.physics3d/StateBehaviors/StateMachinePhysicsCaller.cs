@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SLS.StateMachineUltimate.Physics
+namespace SLS.Physics3D.States
 {
     public sealed class StateMachinePhysicsCaller : MonoBehaviour
     {

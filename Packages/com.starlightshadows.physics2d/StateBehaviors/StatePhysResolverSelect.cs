@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SLS.Physics3D;
+using SLS.Physics2D;
+using SLS.StateMachineUltimate;
 
-namespace SLS.StateMachineUltimate.Physics
+namespace SLS.Physics2D.States
 {
     public class StatePhysResolverSelect : StateMovementBehavior
     {
