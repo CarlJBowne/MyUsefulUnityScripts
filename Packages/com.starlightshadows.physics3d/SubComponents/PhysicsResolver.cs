@@ -13,9 +13,9 @@ using UnityEditor.UIElements;
 namespace SLS.Physics3D
 {
     /// <summary>
-    /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="MovingBody"/>.
+    /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="MovementBody"/>.
     /// </summary>
-    [System.Serializable, RequireComponent(typeof(MovingBody))]
+    [System.Serializable, RequireComponent(typeof(MovementBody))]
     public abstract class PhysicsResolver : MonoBehaviour
     {
         #region Relations
@@ -23,8 +23,7 @@ namespace SLS.Physics3D
         /// <summary>
         /// The owning PhysicsBody instance. Available after <see cref="Init"/> is called.
         /// </summary>
-        [field: SerializeField] public MovingBody Body { get; private set; }
-        [SerializeField] protected ICollisionHandler onCollision;
+        [field: SerializeField] public MovementBody Body { get; private set; }
 
         /// <summary>
         /// Convenience properties that forward to the owning body. These provide quick
@@ -41,7 +40,7 @@ namespace SLS.Physics3D
 
         public virtual void Reset()
         {
-            if (!TryGetComponent(out MovingBody pb))
+            if (!TryGetComponent(out MovementBody pb))
             { DestroyImmediate(this); return; }
             this.Body = pb;
         }
@@ -51,17 +50,12 @@ namespace SLS.Physics3D
         /// </summary>
         public virtual void OnStart()
         {
-            if (Body == null) Body = GetComponent<MovingBody>();
+            if (Body == null) Body = GetComponent<MovementBody>();
             if (Body == null)
             {
                 Debug.LogError($"PhysicsResolver {name} could not find a MovingBody component on the same GameObject. Destroying self.");
                 DestroyImmediate(this);
                 return;
-            }
-            if (onCollision == null)
-            {
-                if (Body is ICollisionHandler handler) onCollision = handler;
-                else if (Body.TryGetComponent(out ICollisionHandler comp)) onCollision = comp;
             }
         }
         /// <summary>

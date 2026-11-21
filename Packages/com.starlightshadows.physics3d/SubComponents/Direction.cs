@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SLS.Physics3D
 {
     /// <summary>
-    /// <see cref="MovingBody"/> Sub-component that tracks the facing direction for a PhysicsBody. The Direction is used when converting between local and global velocities and for rotation helper functions (quick turns, limited turns, etc.).
+    /// <see cref="MovementBody"/> Sub-component that tracks the facing direction for a PhysicsBody. The Direction is used when converting between local and global velocities and for rotation helper functions (quick turns, limited turns, etc.).
     /// </summary>
     [System.Serializable]
     public class Direction : PhysicsSubComponent

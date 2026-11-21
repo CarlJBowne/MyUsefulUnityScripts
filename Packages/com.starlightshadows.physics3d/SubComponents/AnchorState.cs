@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SLS.GeneralUtilities.Events;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.UIElements;
@@ -7,7 +8,7 @@ using UnityEngine.UIElements;
 namespace SLS.Physics3D
 {
     /// <summary>
-    /// <see cref="MovingBody"/> Sub-component that tracks whether the body is grounded and relevant information about the ground contact (normal, slope, collider, etc.). This component also provides helper methods for performing ground checks and transitioning between grounded and airborne states.
+    /// <see cref="MovementBody"/> Sub-component that tracks whether the body is grounded and relevant information about the ground contact (normal, slope, collider, etc.). This component also provides helper methods for performing ground checks and transitioning between grounded and airborne states.
     /// </summary>
     [System.Serializable]
     public class AnchorState : PhysicsSubComponent
@@ -108,6 +109,7 @@ namespace SLS.Physics3D
             else if (standable) Body.SelectResolver(Body.groundResolver);
 
             Body.OnAnchor(wasntAnchored, objectChange);
+            OnAnchor?.Invoke(this, wasntAnchored, objectChange);
             return true;
         }
         /// <summary>
@@ -118,7 +120,7 @@ namespace SLS.Physics3D
         /// <param name="allowSticking"> Whether the system should allow anchorage to non-standable surfaces</param>
         /// <returns>Success</returns>
         new public bool Anchor(Vector3 vector, PhysicsResolver newResolver = null, bool allowSticking = false) =>
-            Body.Sweep(vector, out SweepPayload hit)
+            Body.Sweep(vector, out PhysicsSweep hit)
             && Anchor(hit, newResolver, allowSticking);
         /// <summary>
         /// Attempts to Anchor to any collision found direction of the Body's current Velocity vector
@@ -127,7 +129,7 @@ namespace SLS.Physics3D
         /// <param name="allowSticking"> Whether the system should allow anchorage to non-standable surfaces</param>
         /// <returns>Success</returns>
         new public bool Anchor(PhysicsResolver newResolver = null, bool allowSticking = false) =>
-            Body.Sweep(Body.Velocity.Global, out SweepPayload hit)
+            Body.Sweep(Body.Velocity.Global, out PhysicsSweep hit)
             && Anchor(hit, newResolver, allowSticking);
 
         /// <summary>
@@ -189,6 +191,7 @@ namespace SLS.Physics3D
             else Body.SelectResolver(Body.airResolver);
 
             Body.OnDeanchor();
+            OnDeAnchor?.Invoke(this);
         }
 
         /// <summary>
@@ -208,7 +211,7 @@ namespace SLS.Physics3D
         /// <param name="tempOrigin">An optional temporary origin to perform the sweep from instead of the current RB position.</param>
         /// <param name="queryTriggerInteraction">Whether the sweep should hit trigger colliders. Defaults to Ignore.</param>
         /// <returns>True if the sweep detected a collider, otherwise false.</returns>
-        public bool SweepStandable(Vector3 offset, out SweepPayload hit, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore) => 
+        public bool SweepStandable(Vector3 offset, out PhysicsSweep hit, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore) => 
             Body.Sweep(offset, out hit, false, buffer, tempOrigin, queryTriggerInteraction) && Standable(hit.normal);
         /// <summary>
         /// Performs a sweep test using the internal Rigidbody to determine whether this
@@ -222,7 +225,7 @@ namespace SLS.Physics3D
         /// <param name="tempOrigin">An optional temporary origin to perform the sweep from instead of the current RB position.</param>
         /// <param name="queryTriggerInteraction">Whether the sweep should hit trigger colliders. Defaults to Ignore.</param>
         /// <returns>True if the sweep detected a collider that was considered standable, otherwise false.</returns>
-        public bool SweepStandable(out SweepPayload hit, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore) =>
+        public bool SweepStandable(out PhysicsSweep hit, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore) =>
             Body.Sweep(Direction.Up * -.1f, out hit, false, buffer, tempOrigin, queryTriggerInteraction) && Standable(hit.normal);
 
 
@@ -233,7 +236,7 @@ namespace SLS.Physics3D
         /// </summary>
         /// <param name="hit">Outputs the RaycastHit that was used for the snap.</param>
         /// <returns>True if a floor was found and the body was moved, otherwise false.</returns>
-        public bool InstantSnapToFloor(out SweepPayload hit)
+        public bool InstantSnapToFloor(out PhysicsSweep hit)
         {
             if (Body.Sweep(Vector3.down * 1000, out hit, buffer: .5f))
             {
@@ -268,6 +271,14 @@ namespace SLS.Physics3D
             }
             return res;
         }
+
+        public event Action<AnchorState, bool, bool> OnAnchor;
+        public event Action<AnchorState> OnDeAnchor;
+
+        public EventTicket SubscribeOnAnchor(Action<AnchorState, bool, bool> result, bool now = true) 
+            => new(()=>OnAnchor+=result, ()=>OnAnchor-=result, now);
+        public EventTicket SubscribeOnDeAnchor(Action<AnchorState> result, bool now = true) 
+            => new(()=> OnDeAnchor += result, ()=> OnDeAnchor -= result, now);
 
     }
 

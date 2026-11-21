@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SLS.Physics3D
 {
     /// <summary>
-    /// <see cref="MovingBody"/> Sub-component that tracks velocity for a PhysicsBody in both local (forward/side/up) and global (x/y/z) coordinate spaces. Assigning to one representation will update the other representations automatically.
+    /// <see cref="MovementBody"/> Sub-component that tracks velocity for a PhysicsBody in both local (forward/side/up) and global (x/y/z) coordinate spaces. Assigning to one representation will update the other representations automatically.
     /// </summary>
     [System.Serializable]
     public class Velocity : PhysicsSubComponent
@@ -181,7 +181,7 @@ namespace SLS.Physics3D
         } float cGValue;
 
         /// <summary>
-        /// The angular velocity around the vertical axis (U) that the <see cref="MovingBody"/> automatically uses to look towards the <see cref="Direction"/>'s <see cref="Direction.lookTarget"/>.
+        /// The angular velocity around the vertical axis (U) that the <see cref="MovementBody"/> automatically uses to look towards the <see cref="Direction"/>'s <see cref="Direction.lookTarget"/>.
         /// </summary>
         public float lookVelocity;
 

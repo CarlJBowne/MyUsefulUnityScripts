@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SLS.EditorUtilities.ComponentHeaders;
+using SLS.StateMachineUltimate.Timelines;
 using UnityEditor;
 using UnityEngine;
 
@@ -53,17 +55,17 @@ namespace SLS.StateMachineUltimate
         /// <summary>  
         /// Called during the <see cref="StateMachine"/>'s setup process. Override to add custom setup logic. 
         /// </summary>  
-        protected virtual void OnSetup() { }
+        protected virtual void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+        }
 
         /// <summary>  
         /// Happens when the <see cref="StateBehavior"/> is created/reset in the editor. Override to add custom reset logic. (Remember to call base.Reset())
         /// <br /> Resets the <see cref="StateBehavior"/> to its default state.  
         /// <br /> Ensures the <see cref="State"/> and <see cref="StateMachine"/> references are properly initialized.  
         /// </summary>  
-        protected virtual void Reset()
-        {
-            if (State == null) State = GetComponent<State>();
-        }
+        protected virtual void Reset() => OnSetup();
 
         /// <summary>  
         /// Called during the Awake phase of the <see cref="StateMachine"/>. Override to add custom logic.
@@ -160,5 +162,60 @@ namespace SLS.StateMachineUltimate
                 OnEnter(null, Machine.CurrentState == State);
         }
         private bool blockedForCycle;
+
+        public void AssertMachineComponent<T>(ref T slot) where T : Component
+        {
+            if (slot != null) return;
+            if (TryGetComponentFromMachine(out slot)) return;
+            this.GetExecutionDetails(out _, out bool playing, out _);
+            if (playing) DestroyImmediate(this);
+            else
+            {
+                slot = State.Machine.origin.AddComponent<T>();
+#if UNITY_EDITOR
+                UnityEditor.EditorUtility.SetDirty(State.Machine.origin);
+#endif
+            }
+        }
+    }
+
+    [RequireComponent(typeof(State))]
+    public abstract class StateBehavior<T> : StateBehavior where T : Component
+    {
+        [SerializeField, HeaderItem(true)] protected T CoreComp;
+
+        protected override void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+            AssertMachineComponent(ref CoreComp);
+        }
+    }
+    [RequireComponent(typeof(State))]
+    public abstract class StateBehavior<T, Y> : StateBehavior where T : Component where Y : Component
+    {
+        [SerializeField, HeaderItem(true)] protected T CoreComp1;
+        [SerializeField, HeaderItem(true)] protected Y CoreComp2;
+
+        protected override void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+            AssertMachineComponent(ref CoreComp1);
+            AssertMachineComponent(ref CoreComp2);
+        }
+    }
+    [RequireComponent(typeof(State))]
+    public abstract class StateBehavior<T, Y, U> : StateBehavior where T : Component where Y : Component where U : Component
+    {
+        [SerializeField, HeaderItem(true)] protected T CoreComp1;
+        [SerializeField, HeaderItem(true)] protected Y CoreComp2;
+        [SerializeField, HeaderItem(true)] protected U CoreComp3;
+
+        protected override void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+            AssertMachineComponent(ref CoreComp1);
+            AssertMachineComponent(ref CoreComp2);
+            AssertMachineComponent(ref CoreComp3);
+        }
     }
 }

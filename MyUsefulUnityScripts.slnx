@@ -16,6 +16,7 @@
   <Project Path="SLS.EditorUtilities.csproj" />
   <Project Path="SLS.SaveFileCore.csproj" />
   <Project Path="SLS.TimeUtilities.csproj" />
+  <Project Path="SLS.StateMachineUltimate.Physics.csproj" />
   <Project Path="SLS.StateMachineUltimate.Editor.csproj" />
   <Project Path="SLS.ObjectUtilities.csproj" />
   <Project Path="SLS.ListUtilities.Editor.csproj" />

@@ -24,7 +24,7 @@ namespace SLS.Physics3D
     /// coordinates resolver selection and invocation each FixedUpdate.
     /// </summary>
     [RequireComponent(typeof(Rigidbody), typeof(Collider), typeof(NavMeshAgent))]
-    public partial class MovingBody : MonoBehaviour
+    public partial class MovementBody : MonoBehaviour
     {
         protected virtual void FixedUpdate()
         {
@@ -101,7 +101,7 @@ namespace SLS.Physics3D
         public PhysicsResolver Resolver => resolver;
         private PhysicsResolver resolver = null;
         public void SelectGroundResolver() => SelectResolver(groundResolver);
-        public void SelectAirResolver() => SelectResolver(groundResolver);
+        public void SelectAirResolver() => SelectResolver(airResolver);
         public void SelectResolver(bool airborne) => SelectResolver(airborne ? airResolver : groundResolver);
         public void SelectResolver(PhysicsResolver newResolver)
         {
@@ -114,7 +114,7 @@ namespace SLS.Physics3D
         }
 
         /// <summary>
-        /// The amount of MoveSteps this <see cref="MovingBody"/> has gone through in this FixedUpdate sharedacross / all of its <see cref="PhysicsResolver"/>s
+        /// The amount of MoveSteps this <see cref="MovementBody"/> has gone through in this FixedUpdate sharedacross / all of its <see cref="PhysicsResolver"/>s
         /// </summary>
         public int Step { get; internal set; } = 0;
 
@@ -134,7 +134,7 @@ namespace SLS.Physics3D
         /// <param name="tempOrigin">An optional temporary origin to perform the sweep from instead of the current RB position.</param>
         /// <param name="queryTriggerInteraction">Whether the sweep should hit trigger colliders. Defaults to Ignore.</param>
         /// <returns>True if the sweep detected a collider, otherwise false.</returns>
-        public SweepPayload Sweep(Vector3 offset, bool relative = false, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore)
+        public PhysicsSweep Sweep(Vector3 offset, bool relative = false, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore)
         {
             buffer ??= defaultCheckBuffer;
             Vector3 originalPos = RB.position;
@@ -150,7 +150,7 @@ namespace SLS.Physics3D
 
             hit.distance = (hit.distance - buffer.Value).Min(0);
 
-            SweepPayload result = new()
+            PhysicsSweep result = new()
             {
                 hit = didHit,
                 distance = hit.distance,
@@ -181,7 +181,7 @@ namespace SLS.Physics3D
             return result;
         }
 
-        public bool Sweep(Vector3 offset, out SweepPayload result, bool relative = false, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore)
+        public bool Sweep(Vector3 offset, out PhysicsSweep result, bool relative = false, float? buffer = null, Vector3? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore)
         {
             result = Sweep(offset, relative, buffer, tempOrigin, queryTriggerInteraction);
             return result.hit;
@@ -374,6 +374,11 @@ namespace SLS.Physics3D
             return cancelResolverContinuance;
         }
 
+        public virtual void CollisionOverride(ref PhysicsSweep payload)
+        {for (int i = 0; i < collisionOverrides.Count; i++) collisionOverrides[i].CollisionOverride(ref payload);}
+
+        public List<ICollisionOverride> collisionOverrides { get; private set; } = new();
+
         #endregion
 
         public static bool DISABLE_PHYSICS_BODIES = false;
@@ -381,10 +386,10 @@ namespace SLS.Physics3D
 #if UNITY_EDITOR
         private void OnDrawGizmos() => Debug.DisplayGizmos();
 
-        [CustomEditor(typeof(MovingBody), true)]
+        [CustomEditor(typeof(MovementBody), true)]
         public class Editor : UnityEditor.Editor
         {
-            MovingBody This;
+            MovementBody This;
 
             public TabView TabView;
             public Tab ConfigTab;
@@ -406,7 +411,7 @@ namespace SLS.Physics3D
 
             public override VisualElement CreateInspectorGUI()
             {
-                This = (MovingBody)target;
+                This = (MovementBody)target;
 
                 TabView = new();
                 MakeConfigTab();

@@ -22,7 +22,7 @@ namespace SLS.Physics3D
 
         public override bool TryEnter(ref PhysicsResolver result)
         {
-            if(!Body.Anchor.SweepStandable(out SweepPayload hit))
+            if (!Body.Anchor.SweepStandable(out PhysicsSweep hit))
             {
                 if (altGroundResolver && altGroundResolver.TryEnter(ref result)) return true;
                 else if (result && result.TryEnter(ref result)) return false;
@@ -44,7 +44,15 @@ namespace SLS.Physics3D
             Vector3 nextNormal = Vector3.zero;
 
             // Sweep for any obstacle in the trajectory (ignore flat-floor hits when moving purely horizontally).
-            var hit = Body.Sweep(stepVelocity, false, checkBuffer);
+            PhysicsSweep hit = Body.Sweep(stepVelocity, false, checkBuffer);
+
+            if (hit)
+            {
+                //If Collision Override manually disables the hit flag, recalculate the Collision.
+                //This should make it fairly easy to implement Metroid Speed Booster/Screw Attack style functionality.
+                Body.CollisionOverride(ref hit);
+                if (!hit) hit = Body.Sweep(stepVelocity, false, checkBuffer); 
+            }
 
             if (!hit)
             {
@@ -78,7 +86,7 @@ namespace SLS.Physics3D
                 //if (!Body.Sweep(Vector3.down * 5000, out RaycastHit _, checkBuffer, Position + stepVelocity, QueryTriggerInteraction.Collide)) return;
 
                 // Snap down to a slightly lower ground if detected (small ledge correction).
-                if (Body.Sweep(-Body.Direction.Up, out SweepPayload downHit)
+                if (Body.Sweep(-Body.Direction.Up, out PhysicsSweep downHit)
                     && downHit.distance < downSnap)
                 {
                     Ray cornerCheckRay = new(downHit.barycentricCoordinate + new Vector3(0, .1f, 0), Vector3.down);
@@ -107,8 +115,6 @@ namespace SLS.Physics3D
             Vector3 move = stepVelocity.normalized * stopDistance;
             Body.Position += move;
             Vector3 leftover = stepVelocity - move;
-
-            onCollision?.Collide(hit);
 
             if (ContinueCheck(stopDistance) || Body.CancelResolverContinuance()) return;
             switch (hit.angle)

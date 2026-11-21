@@ -26,7 +26,15 @@ namespace SLS.Physics3D
             bool land = false;
 
             // Sweep for any obstacle in the trajectory (ignore flat-floor hits when moving purely horizontally).
-            var hit = Body.Sweep(stepVelocity);
+            PhysicsSweep hit = Body.Sweep(stepVelocity);
+
+            if (hit)
+            {
+                //If Collision Override manually disables the hit flag, recalculate the Collision.
+                //This should make it fairly easy to implement Metroid Speed Booster/Screw Attack style functionality.
+                Body.CollisionOverride(ref hit);
+                if (!hit) hit = Body.Sweep(stepVelocity, false, checkBuffer);
+            }
 
             if (!hit)
             {
@@ -48,8 +56,6 @@ namespace SLS.Physics3D
             Vector3 snapToSurface = stopDistance != -1 ? stepVelocity.normalized * stopDistance : stepVelocity;
 
             Body.Position += snapToSurface;
-
-            onCollision?.Collide(hit);
 
             if (ContinueCheck(stopDistance) || Body.CancelResolverContinuance()) return;
             switch (hit.angle)

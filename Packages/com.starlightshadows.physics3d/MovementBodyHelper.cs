@@ -6,27 +6,27 @@ using SLS.EditorUtilities.ComponentHeaders;
 using SLS.Physics3D;
 using Unity.VisualScripting.YamlDotNet.Core.Tokens;
 using UnityEngine;
-using static SLS.Physics3D.MovingBody;
+using static SLS.Physics3D.MovementBody;
 
 namespace SLS.Physics3D
 {
     /// <summary>
     /// This is a helper class for the MovingBody component. It is used to provide additional functionality and convenience methods for working with MovingBody instances, primarily for UltEvents so that various functions and properties belonging to SubComponents can be accessible.
     /// </summary>
-    [RequireComponent(typeof(MovingBody))]
-    public class MovingBodyHelper : MonoBehaviour
+    [RequireComponent(typeof(MovementBody))]
+    public class MovementBodyHelper : MonoBehaviour
     {
-        [HeaderItem(true)] public MovingBody _movingBody;
+        [HeaderItem(true)] public MovementBody _movingBody;
 
         Velocity velocity;
         AnchorState anchor;
         Direction direction;
 
-        private void Reset() => _movingBody = GetComponent<MovingBody>();
+        private void Reset() => _movingBody = GetComponent<MovementBody>();
 
         private void Awake()
         {
-            if (_movingBody == null) _movingBody = GetComponent<MovingBody>();
+            if (_movingBody == null) _movingBody = GetComponent<MovementBody>();
             if (_movingBody == null) { Destroy(this); return; }
             velocity = _movingBody.Velocity;
             anchor = _movingBody.Anchor;

@@ -13,7 +13,7 @@ namespace SLS.Physics3D
         /// <summary>
         /// The owning PhysicsBody instance. This will be set by calling <see cref="Init"/>.
         /// </summary>
-        public MovingBody Body { get; private set; }
+        public MovementBody Body { get; private set; }
 
         /// <summary>
         /// Whether this instance has been initialized and has an owner set.
@@ -21,10 +21,10 @@ namespace SLS.Physics3D
         public bool HasOwner => Body != null;
 
         /// <summary>
-        /// Initializes the Velocity instance with its owning <see cref="MovingBody"/>.
+        /// Initializes the Velocity instance with its owning <see cref="MovementBody"/>.
         /// </summary>
         /// <param name="owner">The physics body that owns this velocity container.</param>
-        public virtual void Init(MovingBody owner) => Body = owner;
+        public virtual void Init(MovementBody owner) => Body = owner;
 
         /// <summary>
         /// Convenience accessor for the owner's transform.

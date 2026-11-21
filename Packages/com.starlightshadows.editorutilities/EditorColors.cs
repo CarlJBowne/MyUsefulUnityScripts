@@ -34,6 +34,8 @@ namespace SLS.EditorUtilities
         public static Color AssemblyNavy { get; private set; } = new(.2941177f, .5294118f, .6705883f);
         public static Color ScriptGreen { get; private set; } = new(.1529412f, .4156863f, .1647059f);
         public static Color ScriptableRed { get; private set; } = new(.9882354f, .427451f, .2509804f);
+        public static Color WarningYellow { get; private set; } = new(.6941177f, .04705883f, .04705883f);
+        public static Color ErrorRed { get; private set; } = new(.7882354f, .5921569f, 0);
 
     }
 }

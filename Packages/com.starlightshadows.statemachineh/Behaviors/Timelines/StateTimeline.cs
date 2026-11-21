@@ -10,29 +10,11 @@ namespace SLS.StateMachineUltimate.Timelines
     /// <br/> Requires a <see cref="StateTimelineManager"/> on the <see cref="StateMachine"/> to function.
     /// </summary>
     [RequireComponent(typeof(State))]
-    public class StateTimeline : StateBehavior
+    public class StateTimeline : StateBehavior<StateTimelineManager>
     {
-        [SerializeField, HeaderItem(true, nameof(_GetMan))] protected StateTimelineManager timeline;
+        protected StateTimelineManager timeline => CoreComp;
         public StateTimelineManager Manager => timeline;
         StateTimelineManager _GetMan() => GetComponentFromMachine<StateTimelineManager>();
-
-        protected override void Reset()
-        {
-            base.Reset();
-#if UNITY_EDITOR
-            if(!State.Machine.TryGetComponent(out timeline))
-            {
-                timeline = State.Machine.gameObject.AddComponent<StateTimelineManager>();
-                UnityEditor.EditorUtility.SetDirty(timeline);
-            }
-#endif
-        }
-
-        protected override void OnSetup()
-        {
-            if(!TryGetComponentFromMachine(out timeline)) 
-                DestroyImmediate(this);
-        }
 
         protected override void OnEnter(State prev, bool isFinal) => Begin();
         protected override void OnExit(State next) => End();

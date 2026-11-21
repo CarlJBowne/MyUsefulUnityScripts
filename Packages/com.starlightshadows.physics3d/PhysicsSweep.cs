@@ -4,7 +4,7 @@
 
 namespace SLS.Physics3D
 {
-    public struct SweepPayload
+    public struct PhysicsSweep
     {
         public bool hit;
         public float distance;
@@ -15,7 +15,8 @@ namespace SLS.Physics3D
         public AnchorPoint anchorPoint;
         public AnchorPoint.Angle angle;
         public Vector3 barycentricCoordinate;
-        public static implicit operator bool(SweepPayload payload) => payload.hit;
-        public static implicit operator AnchorPoint(SweepPayload payload) => payload.anchorPoint;
+        public Collider collider;
+        public static implicit operator bool(PhysicsSweep payload) => payload.hit;
+        public static implicit operator AnchorPoint(PhysicsSweep payload) => payload.anchorPoint;
     }
 }

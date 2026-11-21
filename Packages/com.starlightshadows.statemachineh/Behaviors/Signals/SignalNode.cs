@@ -20,7 +20,7 @@ namespace SLS.StateMachineUltimate.Signals
     /// Represents a node in the <see cref="StateMachine"/> that can recieve signals and enact events.  
     /// </summary>  
     [RequireComponent(typeof(State))]
-    public class SignalNode : StateBehavior
+    public class SignalNode : StateBehavior<SignalManager>
     {
         /// <summary>  
         /// The signals associated with this node.  
@@ -29,9 +29,7 @@ namespace SLS.StateMachineUltimate.Signals
 
         [SerializeField] public bool blockParentNodes = false;
         [SerializeField] public bool blockGlobalNode = false;
-        [SerializeField, HeaderItem(true, nameof(_GetMan))] protected SignalManager manager;
-        public SignalManager Manager => manager;
-        SignalManager _GetMan() => GetComponentFromMachine<SignalManager>();
+        public SignalManager manager => CoreComp;
 
 
         /// <summary>  
@@ -119,8 +117,6 @@ namespace SLS.StateMachineUltimate.Signals
         /// Locks the node, preventing signals from being fired.  
         /// </summary>  
         public void Lock() => Locked = true;
-
-        protected override void OnSetup() => manager = GetComponentFromMachine<SignalManager>();
 
         /// <summary>  
         /// Called when entering a state. Locks the node if <see cref="lockOnEnter"/> is true.  

@@ -15,6 +15,7 @@ namespace SLS.Physics3D
         [Tooltip("The distance within which the resolver will attempt to snap to the NavMesh if the agent becomes ungrounded. This should generally be set to a value slightly larger than the expected maximum step height of the character.")]
         [field: SerializeField] public float detectionRange { get; private set; } = .35f;
         [field: SerializeField] public PhysicsResolver.GroundType altGroundResolver { get; private set; }
+        [field: SerializeField] public bool DoSecondarySweep;
 
         NavMeshAgent Agent => Body.NavAgent;
 
@@ -26,7 +27,7 @@ namespace SLS.Physics3D
             if (stepVelocity == Vector3.zero) return;
             Print(() => $"Physics Step {Body.Step} - NavMesh Movement - Velocity {stepVelocity}");
 
-            if (!Agent.Raycast(Position + stepVelocity, out NavMeshHit hit))
+            if (!Sweep(stepVelocity, out PhysicsSweep hit))
             {
                 Print(() => $"Nothing hit. Moving against Nav Mesh and Ending Early.");
                 Agent.Move(stepVelocity);
@@ -34,6 +35,17 @@ namespace SLS.Physics3D
             }
             Print(() => $"Hit Mesh Edge, normal:{hit.normal}.");
             Vector3 snapToSurface = stepVelocity.normalized * hit.distance;
+
+            Body.CollisionOverride(ref hit);
+            if(!hit)
+            {
+                if (!Sweep(stepVelocity, out hit))
+                {
+                    Print(() => $"Nothing hit. Moving against Nav Mesh and Ending Early.");
+                    Agent.Move(stepVelocity);
+                    return;
+                }
+            }
 
             Agent.Move(snapToSurface);
 
@@ -53,6 +65,58 @@ namespace SLS.Physics3D
                 if (Body.CancelResolverContinuance()) return;
                 Next.Move(leftover);
             }
+        }
+
+        public PhysicsSweep Sweep(Vector3 velocity)
+        {
+            if (Agent.Raycast(Position + velocity, out NavMeshHit navHit))
+            {
+                if (DoSecondarySweep && Body.Sweep(velocity, out PhysicsSweep sweep) && sweep.distance <= navHit.distance)
+                    return sweep;
+                else return new()
+                {
+                    hit = true,
+                    distance = navHit.distance,
+                    normal = navHit.normal,
+                    input = velocity,
+                    leftover = velocity * (velocity.magnitude - navHit.distance),
+                    isRelative = false,
+                    anchorPoint = Body.Anchor.AnchorPoint,
+                    angle = AnchorPoint.Angle.Null,
+                };
+            }
+            else
+            {
+                if (DoSecondarySweep && Body.Sweep(velocity, out PhysicsSweep sweep))
+                    return sweep;
+            }
+            return default;
+        }
+        public PhysicsSweep Sweep(Vector3 velocity, out PhysicsSweep res)
+        {
+            res = default;
+            if (Agent.Raycast(Position + velocity, out NavMeshHit navHit))
+            {
+                if (DoSecondarySweep && Body.Sweep(velocity, out PhysicsSweep sweep) && sweep.distance <= navHit.distance)
+                    res = sweep;
+                else res = new()
+                {
+                    hit = true,
+                    distance = navHit.distance,
+                    normal = navHit.normal,
+                    input = velocity,
+                    leftover = velocity * (velocity.magnitude - navHit.distance),
+                    isRelative = false,
+                    anchorPoint = Body.Anchor.AnchorPoint,
+                    angle = AnchorPoint.Angle.Null,
+                };
+            }
+            else
+            {
+                if (DoSecondarySweep && Body.Sweep(velocity, out PhysicsSweep sweep))
+                    res = sweep;
+            }
+            return res;
         }
 
         public override bool TryEnter(ref PhysicsResolver result)

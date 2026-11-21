@@ -6,10 +6,10 @@ namespace SLS.Physics3D
 {
     public interface IMovablePlatform
     {
-        public List<MovingBody> bodies { get; }
+        public List<MovementBody> bodies { get; }
 
-        public void AddBody(MovingBody body) => bodies.Add(body);
-        public void RemoveBody(MovingBody body) => bodies.Remove(body);
+        public void AddBody(MovementBody body) => bodies.Add(body);
+        public void RemoveBody(MovementBody body) => bodies.Remove(body);
 
         protected static void DoMove(IMovablePlatform This, Vector3 offset)
         {
