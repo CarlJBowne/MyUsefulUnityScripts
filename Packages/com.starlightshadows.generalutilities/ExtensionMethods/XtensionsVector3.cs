@@ -252,6 +252,8 @@ public static class XtensionsVector2
         return result;
     }
 
+    public static Vector2 ProjectAndScale(this Vector2 value, Vector2 normal) 
+        => (value - (normal * Vector2.Dot(value, normal))).normalized * value.magnitude;
 
 }
 

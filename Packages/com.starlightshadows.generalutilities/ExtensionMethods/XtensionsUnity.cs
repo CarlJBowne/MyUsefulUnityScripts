@@ -445,4 +445,108 @@ public static class Xtensions_UnityColliders
         }
 #endif
     }
+    public static void DrawWireClone(this Collider2D C, Color color, Vector2? position = null, float? rotation = null)
+    {
+#if UNITY_EDITOR
+        /*
+        if (C == null) return;
+
+        var prevColor = Gizmos.color;
+        var prevMatrix = Gizmos.matrix;
+        try
+        {
+            Gizmos.color = color;
+
+            Vector3 worldPos = position ?? C.transform.position;
+            Quaternion worldRot = rotation.HasValue ? Quaternion.Euler(rotation.Value) : C.transform.rotation;
+            Vector3 lossyScale = C.transform.lossyScale;
+
+            switch (C)
+            {
+                case BoxCollider2D bc:
+                    // Apply the target transform (position/rotation) and the object's scale so local center/size work naturally
+                    Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
+                    Gizmos.DrawWireCube(bc.center, bc.size);
+                    break;
+
+                case CircleCollider2D sc:
+                    Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
+                    Gizmos.DrawWireSphere(sc.center, sc.radius);
+                    break;
+
+                case CapsuleCollider2D cc:
+                {
+                    using (new Handles.DrawingScope(Matrix4x4.TRS(worldPos, worldRot, Handles.matrix.lossyScale)))
+                    {
+                        var pointOffset = (cc.height - (cc.radius * 2)) / 2;
+
+                        //draw sideways
+                        Handles.DrawWireArc(Vector3.up * pointOffset, Vector3.left, Vector3.back, -180, cc.radius);
+                        Handles.DrawLine(new Vector3(0, pointOffset, -cc.radius), new Vector3(0, -pointOffset, -cc.radius));
+                        Handles.DrawLine(new Vector3(0, pointOffset, cc.radius), new Vector3(0, -pointOffset, cc.radius));
+                        Handles.DrawWireArc(Vector3.down * pointOffset, Vector3.left, Vector3.back, 180, cc.radius);
+                        //draw frontways
+                        Handles.DrawWireArc(Vector3.up * pointOffset, Vector3.back, Vector3.left, 180, cc.radius);
+                        Handles.DrawLine(new Vector3(-cc.radius, pointOffset, 0), new Vector3(-cc.radius, -pointOffset, 0));
+                        Handles.DrawLine(new Vector3(cc.radius, pointOffset, 0), new Vector3(cc.radius, -pointOffset, 0));
+                        Handles.DrawWireArc(Vector3.down * pointOffset, Vector3.back, Vector3.left, -180, cc.radius);
+                        //draw center
+                        Handles.DrawWireDisc(Vector3.up * pointOffset, Vector3.up, cc.radius);
+                        Handles.DrawWireDisc(Vector3.down * pointOffset, Vector3.up, cc.radius);
+
+                    }
+                }
+                break;
+
+                case PolygonCollider2D mc:
+                {
+                    Mesh mesh = mc.sharedMesh;
+                    if (mesh == null)
+                    {
+                        var mf = C.GetComponent<MeshFilter>();
+                        mesh = mf != null ? mf.sharedMesh : null;
+                    }
+
+                    if (mesh != null)
+                    {
+                        Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
+                        // mesh.bounds.center is in mesh local space; DrawWireMesh will apply Gizmos.matrix first then this local transform
+                        Gizmos.DrawWireMesh(mesh, 0, mesh.bounds.center, Quaternion.identity, Vector3.one);
+                    }
+                    else
+                    {
+                        // fallback to bounds
+                        Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
+                        Gizmos.DrawWireCube(C.bounds.center - C.transform.position, C.bounds.size);
+                    }
+                }
+                break;
+
+                case Collider2D tc:
+                {
+                    // TerrainCollider.bounds is in world space. When position override is provided we translate the bounds by the delta.
+                    Vector3 delta = worldPos - C.transform.position;
+                    Gizmos.matrix = Matrix4x4.identity;
+                    Gizmos.DrawWireCube(tc.bounds.center + delta, tc.bounds.size);
+                }
+                break;
+
+                default:
+                // Generic fallback: draw collider.bounds (world space)
+                {
+                    Vector3 delta = worldPos - C.transform.position;
+                    Gizmos.matrix = Matrix4x4.identity;
+                    Gizmos.DrawWireCube(C.bounds.center + delta, C.bounds.size);
+                }
+                break;
+            }
+        }
+        finally
+        {
+            Gizmos.color = prevColor;
+            Gizmos.matrix = prevMatrix;
+        }
+        */
+#endif
+    }
 }

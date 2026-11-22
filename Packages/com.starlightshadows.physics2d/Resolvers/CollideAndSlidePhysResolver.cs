@@ -86,18 +86,12 @@ namespace SLS.Physics2D
                 //if (!Body.Sweep(Vector2.down * 5000, out RaycastHit2D _, checkBuffer, Position + stepVelocity, QueryTriggerInteraction.Collide)) return;
 
                 // Snap down to a slightly lower ground if detected (small ledge correction).
-                if (Body.Sweep(-Body.Direction.Up, out PhysicsSweep downHit)
-                    && downHit.distance < downSnap)
+                if (Body.Sweep(-Body.Direction.Up, out PhysicsSweep downHit) && downHit.distance < downSnap)
                 {
-                    Ray cornerCheckRay = new(downHit.barycentricCoordinate + new Vector2(0, .1f), Vector2.down);
-                    if (downHit.anchorPoint.Collider2D.Raycast(cornerCheckRay, out RaycastHit2D baryHit, .11f)
-                        && baryHit.normal != downHit.normal)
-                    {
-                        Print(() => $"Snapping down at near platform or slope {downHit.distance}");
-                        Body.Position += stepVelocity;
-                        Body.Position += -Body.Direction.Up * downHit.distance;
-                        Anchor.Anchor(downHit.anchorPoint);
-                    }
+                    Print(() => $"Snapping down at near platform or slope {downHit.distance}");
+                    Body.Position += stepVelocity;
+                    Body.Position += -Body.Direction.Up * downHit.distance;
+                    Anchor.Anchor(downHit.anchorPoint);
                 }
                 else
                 {

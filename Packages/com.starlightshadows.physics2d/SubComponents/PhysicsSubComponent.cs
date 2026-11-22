@@ -42,7 +42,7 @@ namespace SLS.Physics2D
             get => Body.Position;
             set => Body.Position = value;
         }
-        public Collider2D Collider2D => Body.Collider;
+        public Collider2D Collider => Body.Collider;
         #endregion
 
         protected void Print(Func<string> value)

@@ -115,16 +115,6 @@ namespace SLS.Physics2D
         }
 
         /// <summary>
-        /// Rotational velocity around the body's up axis (see Direction.Up).
-        /// Positive values represent clockwise rotation when viewed from the
-        /// direction of the up vector.
-        /// </summary>
-        public float r
-        {
-            get => rValue;
-            set => rValue = value;
-        } float rValue;
-        /// <summary>
         /// How much Local Velocity is carried over upon rotation. 0-1
         /// </summary>
         public float carryLocal
@@ -179,7 +169,7 @@ namespace SLS.Physics2D
         /// <param name="horizontal">Zero horizontal components (f and s / x and z).</param>
         /// <param name="vertical">Zero vertical component (y).</param>
         /// <param name="rotational">Zero rotational component (r).</param>
-        public void ZeroOut(bool horizontal = true, bool vertical = true, bool rotational = true)
+        public void ZeroOut(bool horizontal = true, bool vertical = true)
         {
             if (horizontal)
             {
@@ -187,7 +177,6 @@ namespace SLS.Physics2D
                 xValue = 0;
             }
             if (vertical) yValue = 0;
-            if (rotational) rValue = 0;
         }
     }
 }

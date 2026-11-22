@@ -116,8 +116,8 @@ namespace SLS.Physics2D
                 {
                     Color color = sweep.hit ? Color.green : Color.red;
                     Color colorE = color.Changed(a: .5f);
-                    Collider2D.DrawWireClone(color, sweep.origin);
-                    Collider2D.DrawWireClone(colorE, sweep.origin +
+                    Collider.DrawWireClone(color, sweep.origin);
+                    Collider.DrawWireClone(colorE, sweep.origin +
                         (sweep.hit ? sweep.direction.normalized * sweep.hitDistance : sweep.direction));
 
                     if (sweep.hit)

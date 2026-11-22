@@ -35,7 +35,7 @@ namespace SLS.Physics2D
         /// <summary>
         /// The currently cached forward vector used by the physics body.
         /// </summary>
-        public Vector2 Value { get; private set; }
+        public Vector2 Value { get; private set; } = Vector2.right;
 
         /// <summary>
         /// The up direction the body should consider "vertical". Defaults to Vector2.up.
@@ -51,12 +51,7 @@ namespace SLS.Physics2D
         /// </summary>
         /// <param name="target">Target forward vector in world space.</param>
         /// <param name="maxDistance">Maximum degrees per second to rotate.</param>
-        public void Set(Vector2 target, float maxDistance)
-        {
-            if (target == Vector2.zero) return;
-            Vector2 res = Vector2.MoveTowards(Value, target.normalized, maxDistance * Mathf.PI, 1);
-            Set(res);
-        }
+        public void Set(Vector2 target, float maxDistance) => Set(Vector2.MoveTowards(Value, target.normalized, maxDistance * Mathf.PI));
         /// <summary>
         /// Immediately sets the facing direction to <paramref name="target"/>
         /// and updates the underlying rotation quaternion on the owner's Rigidbody2D.
@@ -66,7 +61,6 @@ namespace SLS.Physics2D
         {
             if (Value == target || target == Vector2.zero) return;
             Value = target;
-            RotationQ = Quaternion.LookRotation(target, Up);
         }
 
         /// <summary>
@@ -77,14 +71,8 @@ namespace SLS.Physics2D
         public void SetUp(Vector2 up)
         {
             if (up == Vector2.zero) return;
-            var n = up.normalized;
-            if (Up == n) return;
-            Up = n;
-            // Recompute rotation so the current forward direction is preserved using the new up.
-            // If Value is zero fall back to current transform.forward.
-            var forward = Value == Vector2.zero ? transform.forward : Value;
-            RotationQ = Quaternion.LookRotation(forward, Up);
-            
+            float angle = (Mathf.Atan2(up.y, up.x) * Mathf.Rad2Deg) - 90f;
+            transform.rotation = Quaternion.Euler(0f, 0f, angle);
         }
         /// <summary>
         /// Gets or sets the owner's transform.eulerAngles. Setting triggers <see cref="Velocity.CallThisPostRotation"/>
@@ -205,8 +193,6 @@ namespace SLS.Physics2D
             }
         }
         private Coroutine QuickTurnRoutine;
-
-        public Transform lookTarget;
 
         /// <summary>
         /// Gets the NormalType of the <see cref="AnchorPoint"/>'s Normal based on this Body's angle definitions
