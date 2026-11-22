@@ -9,7 +9,7 @@
   <Project Path="SLS.StateMachineUltimate.csproj" />
   <Project Path="Kybernetik.UltEvents.Editor.csproj" />
   <Project Path="EditorAttributes.csproj" />
-  <Project Path="SLS.Physics.3D.csproj" />
+  <Project Path="SLS.Physics3D.csproj" />
   <Project Path="SLS.Packaging.csproj" />
   <Project Path="SLS.Physics2D.csproj" />
   <Project Path="SLS.AssetUtilties.csproj" />

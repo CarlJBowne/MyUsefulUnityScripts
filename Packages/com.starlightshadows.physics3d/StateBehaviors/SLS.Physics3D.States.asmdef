@@ -3,7 +3,7 @@
     "rootNamespace": "SLS.Physics3D.States",
     "references": [
         "SLS.StateMachineUltimate",
-        "SLS.Physics.3D"
+        "SLS.Physics3D"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

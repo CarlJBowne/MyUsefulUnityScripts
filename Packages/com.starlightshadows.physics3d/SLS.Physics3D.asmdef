@@ -1,6 +1,6 @@
 {
-    "name": "SLS.Physics.3D",
-    "rootNamespace": "SLS.Physics",
+    "name": "SLS.Physics3D",
+    "rootNamespace": "SLS.Physics3D",
     "references": [
         "SLS.GeneralUtilities",
         "SLS.EditorUtilities",

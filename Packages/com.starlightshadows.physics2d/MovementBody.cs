@@ -46,10 +46,6 @@ namespace SLS.Physics2D
 
             Resolver?.FixedUpdateFormer();
 
-            if (Direction.lookTarget != null && Velocity.lookVelocity > 0f)
-                Direction.Set(Direction.lookTarget.position.To2() - Position, Velocity.lookVelocity * Time.fixedDeltaTime);
-            else if (Velocity.r != 0f) Direction.RotationY += Velocity.r * Time.fixedDeltaTime;
-
             Vector2 stepZeroVelocity = Velocity.Global * Time.fixedDeltaTime;
 
             Step = 0;
