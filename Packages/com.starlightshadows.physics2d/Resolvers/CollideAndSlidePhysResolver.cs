@@ -10,8 +10,6 @@ namespace SLS.Physics2D
     [System.Serializable]
     public class CollideAndSlidePhysResolver : PhysicsResolver.GroundType
     {
-        [Tooltip("The distance of the buffer that will be used in sweep checking.")]
-        [SerializeField] float checkBuffer = 0.1f;
         [Tooltip("The distance the player will snap downwards when walking.")]
         [SerializeField] float downSnap = 0.08f;
         [Tooltip("A Layermask for solid ground.")]
@@ -27,31 +25,30 @@ namespace SLS.Physics2D
                 if (altGroundResolver && altGroundResolver.TryEnter(ref result)) return true;
                 else if (result && result.TryEnter(ref result)) return false;
                 else if (Body.airResolver && Body.airResolver.TryEnter(ref result)) return true;
-
+                else Body.enabled = false;
             }
             return base.TryEnter(ref result);
         }
 
-        public override void Move(Vector2 stepVelocity)
+        public override void Move(Vector2 stepVelocity, Vector2 normal)
         {
             if (stepVelocity.sqrMagnitude < float.Epsilon) return;
 
             Print(() => $"Physics Step {Body.Step} - Collide and Slide - Velocity {stepVelocity}");
 
-            stepVelocity = stepVelocity.ProjectAndScale(CurrentAnchor.normal);
+            stepVelocity = stepVelocity.ProjectAndScale(CurrentAnchor.normal); 
 
             float stopDistance = -1;
-            Vector2 nextNormal = Vector2.zero;
 
             // Sweep for any obstacle in the trajectory (ignore flat-floor hits when moving purely horizontally).
-            PhysicsSweep hit = Body.Sweep(stepVelocity, checkBuffer);
+            PhysicsSweep hit = Body.Sweep(stepVelocity, normal);
 
-            if (hit)
+            if (hit) 
             {
                 //If Collision Override manually disables the hit flag, recalculate the Collision.
                 //This should make it fairly easy to implement Metroid Speed Booster/Screw Attack style functionality.
                 Body.CollisionOverride(ref hit);
-                if (!hit) hit = Body.Sweep(stepVelocity, checkBuffer); 
+                if (!hit) hit = Body.Sweep(stepVelocity, normal);
             }
 
             if (!hit)
@@ -85,24 +82,24 @@ namespace SLS.Physics2D
                 // Make sure we aren't moving off into the void at the destination
                 //if (!Body.Sweep(Vector2.down * 5000, out RaycastHit2D _, checkBuffer, Position + stepVelocity, QueryTriggerInteraction.Collide)) return;
 
-                // Snap down to a slightly lower ground if detected (small ledge correction).
-                if (Body.Sweep(-Body.Direction.Up, out PhysicsSweep downHit) && downHit.distance < downSnap)
+                Vector2 destination = Body.Position + stepVelocity;
+                bool foundGround = Anchor.SweepStandable(-Body.Direction.Up, out PhysicsSweep downHit, tempOrigin: destination)
+                    && downHit.distance >= 0f && downHit.distance <= downSnap;
+
+                if (foundGround)
                 {
-                    Print(() => $"Snapping down at near platform or slope {downHit.distance}");
-                    Body.Position += stepVelocity;
-                    Body.Position += -Body.Direction.Up * downHit.distance;
+                    Body.Position = destination - Body.Direction.Up * downHit.distance;
                     Anchor.Anchor(downHit.anchorPoint);
                 }
                 else
                 {
-                    Body.Position += stepVelocity;
+                    Body.Position = destination;
                     Body.WalkOff();
                 }
                 return;
             }
 
             stopDistance = hit.distance;
-            nextNormal = hit.normal;
 
             if (ContinueCheck(stopDistance)) return;
 
@@ -110,47 +107,36 @@ namespace SLS.Physics2D
             Body.Position += move;
             Vector2 leftover = stepVelocity - move;
 
-            if (ContinueCheck(stopDistance) || Body.CancelResolverContinuance()) return;
+            if (Body.CancelResolverContinuance()) return;
             switch (hit.angle)
             {
                 case AnchorPoint.Angle.Floor:
                     Print(() => $"Hit flatish ground with normal {hit.normal}.");
                     Anchor.Anchor(hit.anchorPoint);
-                    AlterLeftover(nextNormal, false, false);
                     break;
                 case AnchorPoint.Angle.Slope:
                     Print(() => $"Hit sloped ground with normal {hit.normal}.");
                     Anchor.Anchor(hit.anchorPoint);
-                    AlterLeftover(nextNormal, false, false);
                     break;
                 case AnchorPoint.Angle.SteepSlope:
                     Print(() => $"Hit steep slope, normal: {hit.normal}.");
-                    AlterLeftover(new(nextNormal.x.Sign(), 0), true, true);
-                    break;
+                    return;
                 case AnchorPoint.Angle.Wall:
                     Print(() => $"Hit a wall, normal: {hit.normal}");
-                    AlterLeftover(new(nextNormal.x.Sign(), 0), true, true);
-                    break;
+                    return;
                 case AnchorPoint.Angle.InvertedSlope:
-                    Print(() => $"Hit an inward curve, normal: {hit.normal}. Try to Slide up.");
-                    AlterLeftover(new(nextNormal.x.Sign(), 0), true, true);
-                    break;
+                    Print(() => $"Hit an inward curve, normal: {hit.normal}.");
+                    return;
                 case AnchorPoint.Angle.Ceiling:
-                    AlterLeftover(new(nextNormal.x.Sign(), 0), true, true);
-                    break;
+                    return;
                 default: throw new System.Exception($"Unknown AnchorPoint.Type {hit.angle} for normal {hit.normal}");
             }
-            void AlterLeftover(Vector2 nextNormal, bool flatten, bool scaleByDot)
-            {
-                leftover = leftover.ProjectAndScale(nextNormal);
-                if (flatten) leftover.y = 0;
-                if (scaleByDot) leftover *= Vector2.Dot(leftover.normalized, nextNormal) + 1;
-            }
 
+            leftover = ProjectOntoSurface(leftover, hit.normal);
             Print(() => $"Beginning next step. Leftover: {leftover}");
             ChooseNext(Body.groundResolver);
             if (Body.CancelResolverContinuance()) return;
-            Next.Move(leftover);
+            Next.Move(leftover, hit.normal);
         }
     }
 

@@ -187,14 +187,14 @@ public class Coroutine : IEnumerator
 
     public static Coroutine Begin(ref Coroutine slot, IEnumerator Enum, MonoBehaviour owner, bool replace = true)
     {
-        if (!replace && slot && slot.running) return null;
+        if (!replace && slot != null && slot.running) return null;
         slot?.StopAuto(true);
         slot = new(Enum, owner);
         return slot;
     }
     public static Coroutine Begin(ref Coroutine slot, IEnumerator Enum, bool replace = true)
     {
-        if (!replace && slot && slot.running) return null;
+        if (!replace && slot != null && slot.running) return null;
         slot?.StopAuto(true);
         slot = new(Enum, Coroutine.Runner);
         return slot;

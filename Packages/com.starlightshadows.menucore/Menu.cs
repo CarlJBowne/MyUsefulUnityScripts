@@ -67,9 +67,9 @@ namespace SLS.MenuCore
 
         public void Open() => Menu.Open(this);
 
-        public void Close(bool allowOverride = true)
+        public void Close(bool stopOverride = false)
         {
-            if (allowOverride || closeOverride == null) Menu.Close(this);
+            if (!stopOverride || closeOverride == null) Menu.Close(this);
             else closeOverride.Invoke();
         }
         public void TrueClose() => Close(false);
@@ -133,6 +133,18 @@ namespace SLS.MenuCore
             //if (!closeSound.IsNull)
             //    AudioManager.Get().PlayOneShot(closeSound, transform.position);
         }
+
+        public event Action OnOpenEvent
+        {
+            add => onOpen += value;
+            remove => onOpen -= value;
+        }
+        public event Action OnCloseEvent
+        {
+            add => onClose += value;
+            remove => onClose -= value;
+        }
+        
 
 
         #endregion

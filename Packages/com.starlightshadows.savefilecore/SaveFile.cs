@@ -68,22 +68,22 @@ namespace SLS.SaveFileCore
         public void LoadFromFile()
         {
             if (!active.Valid) return;
-            PreLoad();
+            PreLoad?.Invoke();
             active.LoadFromFile();
-            PostLoad();
+            PostLoad?.Invoke();
         }
 
         /// <summary>Saves data using the desired version, replacing an older active version if necessary.</summary>
         public void SaveToFile()
         {
-            PreSave();
+            PreSave?.Invoke();
             if (active.GetType() != DesiredFileVersion)
             {
                 active.DeleteFile();
                 active = Create(DesiredFileVersion);
             }
             active.SaveToFile();
-            PostSave();
+            PostSave?.Invoke();
         }
 
         /// <summary>Exports display data from the active file version as the requested type.</summary>

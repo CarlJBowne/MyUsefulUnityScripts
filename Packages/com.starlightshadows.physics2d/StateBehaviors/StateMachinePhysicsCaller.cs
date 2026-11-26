@@ -10,28 +10,28 @@ namespace SLS.Physics2D.States
         public bool DoTriggerEnter;
         public bool DoTriggerExit;
 
-        internal event Action<Collision> CollisionEnter;
-        internal event Action<Collision> CollisionExit;
+        internal event Action<Collision2D> CollisionEnter;
+        internal event Action<Collision2D> CollisionExit;
         internal event Action<Collider2D> TriggerEnter;
         internal event Action<Collider2D> TriggerExit;
 
 
-        private void OnCollisionEnter(Collision collision)
+        private void OnCollisionEnter2D(Collision2D collision)
         {
             if (!DoCollisionEnter) return;
             CollisionEnter?.Invoke(collision);
         }
-        private void OnCollisionExit(Collision collision)
+        private void OnCollisionExit2D(Collision2D collision)
         {
             if (!DoCollisionExit) return;
             CollisionExit?.Invoke(collision);
         }
-        private void OnTriggerEnter(Collider2D other)
+        private void OnTriggerEnter2D(Collider2D other)
         {
             if (!DoTriggerEnter) return;
             TriggerEnter(other);
         }
-        private void OnTriggerExit(Collider2D other)
+        private void OnTriggerExit2D(Collider2D other)
         {
             if (!DoTriggerExit) return;
             TriggerExit(other);

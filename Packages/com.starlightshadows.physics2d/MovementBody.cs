@@ -23,7 +23,7 @@ namespace SLS.Physics2D
     /// the high-level physical concepts (velocity, ground state, facing direction), and
     /// coordinates resolver selection and invocation each FixedUpdate.
     /// </summary>
-    [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D), typeof(NavMeshAgent))]
+    [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
     public partial class MovementBody : MonoBehaviour
     {
         protected virtual void FixedUpdate()
@@ -44,6 +44,10 @@ namespace SLS.Physics2D
             RB.linearVelocity = Vector2.zero;
             RB.angularVelocity = 0;
 
+            //movementTargetPosition = RB.position;
+            //resolvingMovement = true;
+            //try
+            //{
             Resolver?.FixedUpdateFormer();
 
             Vector2 stepZeroVelocity = Velocity.Global * Time.fixedDeltaTime;
@@ -51,9 +55,13 @@ namespace SLS.Physics2D
             Step = 0;
             if (stepZeroVelocity.sqrMagnitude > 500) stepZeroVelocity = Vector2.zero;
 
-            Resolver?.Move(stepZeroVelocity);
-
+            Resolver?.Move(stepZeroVelocity, Anchor.Normal);
             Resolver?.FixedUpdateLatter();
+            //}
+            //finally
+            //{
+            //    resolvingMovement = false;
+            //}
 
             //if (Velocity.y <= 0)
             //{
@@ -82,36 +90,46 @@ namespace SLS.Physics2D
         /// </summary>
         [field: SerializeField] public PhysicsResolver.AirType airResolver { get; private set; }
 
+        [Tooltip("The minimum distance this body keeps from colliders while moving.")]
+        [SerializeField, Min(0f)] private float skinDistance = 0.02f;
+        public float SkinDistance => Mathf.Max(0f, skinDistance);
+
         [Tooltip("The maximum amount of steps this resolver allows.")]
         [SerializeField] public int maxPhysicsSteps = 6;
-        /// <summary>
-        /// The buffer (in world units) used when performing a downwards sweep to
-        /// determine whether the body is grounded. Small positive values help
-        /// tolerate minor geometry gaps and numerical jitter.
-        /// </summary>
-        [field: SerializeField] public float defaultCheckBuffer { get; private set; } = 0.1f;
 
         #region Resolvers
 
         public PhysicsResolver Resolver => resolver;
         private PhysicsResolver resolver = null;
-        public void SelectGroundResolver() => SelectResolver(groundResolver);
-        public void SelectAirResolver() => SelectResolver(airResolver);
-        public void SelectResolver(bool airborne) => SelectResolver(airborne ? airResolver : groundResolver);
-        public void SelectResolver(PhysicsResolver newResolver)
+        public bool SelectGroundResolver() => SelectResolver(groundResolver);
+        public bool SelectAirResolver() => SelectResolver(airResolver);
+        public bool SelectResolver(bool airborne) => SelectResolver(airborne ? airResolver : groundResolver);
+        public bool SelectResolver(PhysicsResolver newResolver)
         {
-            if (newResolver == Resolver || newResolver == null) return;
+            if (newResolver == Resolver || newResolver == null) return false;
 
             PhysicsResolver prev = Resolver;
-            newResolver.TryEnter(ref resolver);
-            if (prev == resolver) return;
+            bool result = newResolver.TryEnter(ref resolver);
+            if (prev == resolver) return false;
             prev?.OnExit();
+            return result;
+        }
+
+        public BodyType bodyType => groundResolver && airResolver ? BodyType.Multi
+            : groundResolver ? BodyType.AnchoredOnly
+            : BodyType.UnAnchoredOnly;
+        public enum BodyType
+        {
+            Multi,
+            AnchoredOnly,
+            UnAnchoredOnly,
         }
 
         /// <summary>
         /// The amount of MoveSteps this <see cref="MovementBody"/> has gone through in this FixedUpdate sharedacross / all of its <see cref="PhysicsResolver"/>s
         /// </summary>
-        public int Step { get; internal set; } = 0;
+        public int Step
+        { get; internal set; } = 0;
 
         #endregion
 
@@ -120,35 +138,48 @@ namespace SLS.Physics2D
         /// <summary>
         /// Performs a sweep test using the internal Rigidbody2D to determine whether this
         /// body would collide when translated by <paramref name="offset"/>. Optionally
-        /// supports a temporary origin and a buffer distance to shrink the effective start
-        /// location for the sweep.
+        /// supports a temporary origin for the sweep.
         /// </summary>
         /// <param name="offset">The desired translation vector to sweep along.</param>
-        /// <param name="hit">Outputs the first RaycastHit2D detected by the sweep (if any).</param>
-        /// <param name="buffer">A small buffer to back the test origin up along <paramref name="offset"/>. Defaults to 0.</param>
+        /// <param name="hit">Outputs a hit whose distance is the safe travel distance after applying this body's skin distance.</param>
         /// <param name="tempOrigin">An optional temporary origin to perform the sweep from instead of the current RB position.</param>
         /// <param name="queryTriggerInteraction">Whether the sweep should hit trigger Collider2Ds. Defaults to Ignore.</param>
         /// <returns>True if the sweep detected a Collider2D, otherwise false.</returns>
-        public PhysicsSweep Sweep(Vector2 offset, float? buffer = null, Vector2? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore)
+        public PhysicsSweep Sweep(Vector2 offset, Vector2 skinDirection = default, Vector2? tempOrigin = null)
         {
-            buffer ??= defaultCheckBuffer;
-            Vector2 originalPos = RB.position;
+            if (offset.sqrMagnitude <= Mathf.Epsilon) return PhysicsSweep.Default;
 
-            Vector2? startPos = null;
-            if (tempOrigin.HasValue && buffer > 0) startPos = (tempOrigin.Value - (offset.normalized * buffer.Value));
-            else if (tempOrigin.HasValue) startPos = (tempOrigin.Value);
-            else if (buffer > 0) startPos = (RB.position - (offset.normalized * buffer.Value));
+            Vector2 direction = offset.normalized;
 
-            bool didHit = !startPos.HasValue
-                ? RB.Cast(offset.normalized, filter, sweepHits, offset.magnitude) > 0
-                : RB.Cast(startPos.Value, RB.rotation, offset.normalized, filter, sweepHits, offset.magnitude) > 0;
+            Vector2 origin = tempOrigin ?? (Position + (skinDirection * (Mathf.Epsilon + Mathf.Epsilon + Mathf.Epsilon)));
 
+            sweepHits.Clear();
+            bool didHit = RB.Cast(origin, RB.rotation, offset.normalized, filter, sweepHits, offset.magnitude) > 0;
+
+            for (int i = sweepHits.Count - 1; i >= 0; i--)
+            {
+                float dot = Vector2.Dot(direction, sweepHits[i].normal);
+                if (dot >= -Mathf.Epsilon)
+                    sweepHits.RemoveAt(i);
+            }
+
+            if (sweepHits.Count == 0) didHit = false;
+
+            Vector2 targetNorm = default;
+
+            if (sweepHits.Count == 0) didHit = false;
+            else
+            {
+                targetNorm = new(
+                    sweepHits[0].normal.x.Abs() > Mathf.Epsilon ? sweepHits[0].normal.x : 0,
+                    sweepHits[0].normal.y.Abs() > Mathf.Epsilon ? sweepHits[0].normal.y : 0);
+            }
 #if UNITY_EDITOR
             if (Debug.DisplaySweeps)
             {
                 var display = new PhysicsBodyDebug.SweepTestDisplay()
                 {
-                    origin = Center,
+                    origin = origin, //movementTargetPosition,
                     direction = offset,
                     hit = didHit,
                     hitDistance = didHit ? sweepHits[0].distance : -1,
@@ -158,45 +189,42 @@ namespace SLS.Physics2D
             }
 #endif
 
-            return didHit ? new()
+            if (!didHit) return PhysicsSweep.Default;
+
+            RaycastHit2D nearest = sweepHits[0];
+            float safeDistance = Mathf.Max(0f, nearest.distance - SkinDistance);
+            return new()
             {
                 hit = true,
-                distance = sweepHits[0].distance,
-                normal = sweepHits[0].normal,
-                angle = Direction.Angle(sweepHits[0].normal),
-                collisions = sweepHits,
+                distance = safeDistance,
+                normal = targetNorm,
+                angle = Direction.Angle(nearest.normal),
+                collisions = new(sweepHits),
                 input = offset,
-                leftover = offset.normalized * (offset.magnitude - sweepHits[0].distance),
-                anchorPoint = new(sweepHits[0].point, sweepHits[0].normal, sweepHits[0].collider)
-            }
-            : new()
-            {
-                hit = false,
-                distance = -1,
-                normal = Vector2.zero,
-                angle = AnchorPoint.Angle.Null,
-                collisions = { },
-                input = offset,
-                leftover = default,
-                anchorPoint = default
+                leftover = offset - (direction * safeDistance),
+                anchorPoint = new(nearest.point, nearest.normal, nearest.collider)
             };
         }
 
-        public bool Sweep(Vector2 offset, out PhysicsSweep result, bool relative = false, float? buffer = null, Vector2? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore)
+        public bool Sweep(Vector2 offset, out PhysicsSweep result, Vector2 skinDirection = default, Vector2? tempOrigin = null)
         {
-            result = Sweep(offset, buffer, tempOrigin, queryTriggerInteraction);
+            result = Sweep(offset, skinDirection, tempOrigin);
             return result.hit;
         }
 
         private readonly List<RaycastHit2D> sweepHits = new();
-        ContactFilter2D filter = new()
+        private readonly List<Collider2D> nearbyColliders = new();
+        //private Vector2 movementTargetPosition;
+        //private bool resolvingMovement;
+
+        public ContactFilter2D filter = new()
         {
             useLayerMask = false,
-            useDepth = false,
+            useDepth = true,
             useNormalAngle = false,
-
+            minDepth = 0,
+            maxDepth = 100,
         };
-
         #endregion
 
         #region LifeCycle and Components
@@ -249,8 +277,8 @@ namespace SLS.Physics2D
             if (resolvers.Count == 0) resolvers = gameObject.GetComponents<PhysicsResolver>().ToList();
             for (int i = 0; i < resolvers.Count; i++) if (resolvers[i]) resolvers[i].OnStart();
 
-            if (groundResolver && groundResolver.TryEnter(ref resolver)) { }
-            else if (airResolver && airResolver.TryEnter(ref resolver)) { }
+            if (groundResolver && Anchor.InstantSnapToFloor(out _, 0.1f)) { }
+            else if (airResolver && SelectAirResolver()) { }
             else if (resolvers.Count > 0 && resolvers[0] && resolvers[0].TryEnter(ref resolver)) { }
             else
             {
@@ -261,10 +289,11 @@ namespace SLS.Physics2D
 
         void OnEnable()
         {
-            RB.bodyType = RigidbodyType2D.Dynamic;
+            RB.bodyType = RigidbodyType2D.Kinematic;
             RB.simulated = true;
             RB.gravityScale = 0;
             Collider.enabled = true;
+            //EnforceSkinDistance();
             SelectGroundResolver();
         }
         void OnDisable()
@@ -294,18 +323,79 @@ namespace SLS.Physics2D
         public Vector2 Position
         {
             get => enabled
-                ? RB.position
+                ? /*resolvingMovement ? movementTargetPosition :*/ RB.position
                 : transform.position;
             set
             {
-                if (enabled) RB.MovePosition(value);
+                if (enabled)
+                {
+                    RB.position = value;
+                    //RB.position = ConstrainPosition(value);
+                    //EnforceSkinDistance();
+                }
                 else
                 {
                     transform.position = value;
                     RB.position = value;
                     RB.MovePosition(value);
                 }
+            }
+        }
 
+        private Vector2 ConstrainPosition(Vector2 target)
+        {
+            if (RB == null || Collider == null || !Collider.enabled || SkinDistance <= 0f)
+                return target;
+
+            Vector2 displacement = target - RB.position;
+            if (displacement.sqrMagnitude <= Mathf.Epsilon)
+                return target;
+
+            PhysicsSweep hit = Sweep(displacement);
+            return hit
+                ? RB.position + displacement.normalized * hit.distance
+                : target;
+        }
+
+        internal void EnforceSkinDistance()
+        {
+            if (RB == null || Collider == null || !Collider.enabled || SkinDistance <= 0f)
+                return;
+
+            for (int pass = 0; pass < 4; pass++)
+            {
+                Bounds bounds = Collider.bounds;
+                nearbyColliders.Clear();
+                UnityEngine.Physics2D.OverlapBox(
+                    bounds.center,
+                    bounds.size + Vector3.one * (SkinDistance * 2f),
+                    0f,
+                    filter,
+                    nearbyColliders);
+
+                bool adjusted = false;
+                for (int i = 0; i < nearbyColliders.Count; i++)
+                {
+                    Collider2D other = nearbyColliders[i];
+                    if (!other || other == Collider || other.attachedRigidbody == RB)
+                        continue;
+
+                    ColliderDistance2D separation = Collider.Distance(other);
+                    if (separation.distance >= SkinDistance)
+                        continue;
+
+                    Vector2 away = separation.pointA - separation.pointB;
+                    if (away.sqrMagnitude <= Mathf.Epsilon)
+                        away = (Vector2)Collider.bounds.center - (Vector2)other.bounds.center;
+                    if (away.sqrMagnitude <= Mathf.Epsilon)
+                        away = Vector2.up;
+
+                    RB.position += away.normalized * (SkinDistance - separation.distance);
+                    adjusted = true;
+                }
+
+                if (!adjusted)
+                    return;
             }
         }
 
@@ -350,7 +440,11 @@ namespace SLS.Physics2D
         /// </summary>
         /// <param name="wasntGrounded">True if the body was previously not grounded.</param>
         /// <param name="objectChange">True if the Collider2D surface changed since last ground.</param>
-        public virtual void OnAnchor(bool wasntGrounded, bool objectChange) => SelectGroundResolver();
+        public virtual void OnAnchor(bool wasntGrounded, bool objectChange)
+        {
+            Velocity.y = 0;
+            SelectGroundResolver();
+        }
 
         /// <summary>
         /// Called by <see cref="AnchorState"/> when this body leaves the ground. Override
@@ -358,7 +452,7 @@ namespace SLS.Physics2D
         /// will re-evaluate the active resolver.
         /// </summary>
         /// <param name="newValue">The new ground state value being transitioned to.</param>
-        public virtual void OnDeanchor() => SelectGroundResolver();
+        public virtual void OnDeanchor() => SelectAirResolver();
 
         public virtual void WalkOff() => Anchor.DeAnchor();
 
@@ -380,6 +474,9 @@ namespace SLS.Physics2D
 
 #if UNITY_EDITOR
         private void OnDrawGizmos() => Debug.DisplayGizmos();
+
+        [ContextMenu("GetResolvers")]
+        void GetResolvers() => resolvers = GetComponents<PhysicsResolver>().ToList();
 
         [CustomEditor(typeof(MovementBody), true)]
         public class Editor : UnityEditor.Editor
@@ -468,8 +565,9 @@ namespace SLS.Physics2D
                 ConfigTab.Add(new PropertyField(serializedObject.FindBackingField(nameof(groundResolver))));
                 ConfigTab.Add(new PropertyField(serializedObject.FindBackingField(nameof(airResolver))));
                 ConfigTab.Add(new PropertyField(serializedObject.FindBackingField(nameof(resolvers))));
+                ConfigTab.Add(new PropertyField(serializedObject.FindProperty(nameof(filter))));
+                ConfigTab.Add(new PropertyField(serializedObject.FindProperty(nameof(skinDistance))));
                 ConfigTab.Add(new PropertyField(serializedObject.FindBackingField(nameof(maxPhysicsSteps))));
-                ConfigTab.Add(new PropertyField(serializedObject.FindBackingField(nameof(defaultCheckBuffer))));
                 ConfigTab.Add(new PropertyField(serializedObject.FindBackingField(nameof(Velocity))
                     .FindPropertyRelative(nameof(Velocity.allowBackwards))));
 
@@ -581,8 +679,8 @@ namespace SLS.Physics2D
                     DirectionLabel.text = This.Direction.Value.ToString("F2");
                     RotationLabel.text = This.Direction.Rotation.ToString();
                     GroundStateLabel.text = This.Anchor.ToString();
-                    AnchorLabel.text = This.Anchor.AnchorPoint.Collider2D != null
-                        ? $"{This.Anchor.AnchorPoint.normal.ToString("F2")}({This.Anchor.AnchorPoint.Collider2D.gameObject.name})"
+                    AnchorLabel.text = This.Anchor.AnchorPoint.Collider != null
+                        ? $"{This.Anchor.AnchorPoint.normal.ToString("F2")}({This.Anchor.AnchorPoint.Collider.gameObject.name})"
                         : This.Anchor.AnchorPoint.normal.ToString("F2");
                 }
                 catch

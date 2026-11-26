@@ -22,8 +22,8 @@ namespace SLS.Physics2D.States
             PhysCaller.TriggerExit -= TriggerExit;
         }
 
-        protected virtual void CollisionEnter(Collision collision) { }
-        protected virtual void CollisionExit(Collision collision) { }
+        protected virtual void CollisionEnter(Collision2D collision) { }
+        protected virtual void CollisionExit(Collision2D collision) { }
         protected virtual void TriggerEnter(Collider2D other) { }
         protected virtual void TriggerExit(Collider2D other) { }
     }
@@ -50,8 +50,8 @@ namespace SLS.Physics2D.States
             PhysCaller.TriggerExit -= This.TriggerExit;
         }
 
-        protected virtual void CollisionEnter(Collision collision) { }
-        protected virtual void CollisionExit(Collision collision) { }
+        protected virtual void CollisionEnter(Collision2D collision) { }
+        protected virtual void CollisionExit(Collision2D collision) { }
         protected virtual void TriggerEnter(Collider2D other) { }
         protected virtual void TriggerExit(Collider2D other) { }
     }

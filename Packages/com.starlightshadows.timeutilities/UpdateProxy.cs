@@ -18,6 +18,8 @@ public class UpdateProxy : MonoBehaviour
 
     private static List<Timer> attachedTimers = new();
 
+    private void Awake() => RegisterChannel("", 999999);
+
     public class Channel
     {
         public float maxUpdatesPerFrame = 4;

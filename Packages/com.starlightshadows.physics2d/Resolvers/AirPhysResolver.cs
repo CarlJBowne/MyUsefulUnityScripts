@@ -15,14 +15,13 @@ namespace SLS.Physics2D
         [Tooltip("Whether this resolver should automatically apply gravity each frame. If false, gravity must be applied manually by calling ApplyGravity().")]
         [SerializeField] bool autoApplyGravity = false;
 
-        public override void Move(Vector2 stepVelocity)
+        public override void Move(Vector2 stepVelocity, Vector2 normal)
         {
-            if (stepVelocity == Vector2.zero) return;
+            if (stepVelocity.sqrMagnitude < float.Epsilon) return;
 
             Print(() => $"Physics Step {Body.Step} - Airborne Movement - Velocity {stepVelocity}");
 
             float stopDistance = -1;
-            Vector2 nextNormal = Vector2.zero;
             bool land = false;
 
             // Sweep for any obstacle in the trajectory (ignore flat-floor hits when moving purely horizontally).
@@ -33,7 +32,7 @@ namespace SLS.Physics2D
                 //If Collision Override manually disables the hit flag, recalculate the Collision.
                 //This should make it fairly easy to implement Metroid Speed Booster/Screw Attack style functionality.
                 Body.CollisionOverride(ref hit);
-                if (!hit) hit = Body.Sweep(stepVelocity, checkBuffer);
+                if (!hit) hit = Body.Sweep(stepVelocity);
             }
 
             if (!hit)
@@ -49,13 +48,14 @@ namespace SLS.Physics2D
                 return;
             }
 
-            Print(() => $"Sweep hit: {hit.anchorPoint.Collider2D.gameObject.name} at distance {hit.distance}, normal {hit.normal}");
+            Print(() => $"Sweep hit: {hit.anchorPoint.Collider.gameObject.name} at distance {hit.distance}, normal {hit.normal}");
             stopDistance = hit.distance;
-            nextNormal = hit.normal;
 
-            Vector2 snapToSurface = stopDistance != -1 ? stepVelocity.normalized * stopDistance : stepVelocity;
-
+            Vector2 snapToSurface = stepVelocity.normalized * stopDistance;
             Body.Position += snapToSurface;
+
+            Vector2 leftover = stepVelocity - snapToSurface;
+            Vector2 newDir;
 
             if (ContinueCheck(stopDistance) || Body.CancelResolverContinuance()) return;
             switch (hit.angle)
@@ -63,42 +63,39 @@ namespace SLS.Physics2D
                 case AnchorPoint.Angle.Floor:
                     Print(() => $"Hit flatish ground with normal {hit.normal}.");
                     land = true;
-                break;
+                    newDir = ProjectOntoSurface(leftover, hit.normal);
+                    break;
                 case AnchorPoint.Angle.Slope:
                     Print(() => $"Hit sloped ground with normal {hit.normal}.");
                     land = true;
-                break;
+                    newDir = ProjectOntoSurface(leftover, hit.normal);
+                    break;
                 case AnchorPoint.Angle.SteepSlope:
                     Print(() => $"Hit steep slope, normal: {hit.normal}.");
-                    nextNormal = new(nextNormal.x.Sign(), 0);
-                break;
-                case AnchorPoint.Angle.Wall: 
+                    newDir = ProjectOntoSurface(new(0, leftover.y), hit.normal);
+                    break;
+                case AnchorPoint.Angle.Wall:
                     Print(() => $"Hit a wall, normal: {hit.normal}");
-                    nextNormal = new(nextNormal.x.Sign(), 0);
+                    newDir = ProjectOntoSurface(new(0, leftover.y), hit.normal);
                     break;
-                case AnchorPoint.Angle.InvertedSlope: 
+                case AnchorPoint.Angle.InvertedSlope:
                     Print(() => $"Hit an inward curve, normal: {hit.normal}. Try to Slide up.");
-                    nextNormal = new(nextNormal.x.Sign(), 0);
+                    newDir = ProjectOntoSurface(leftover, hit.normal);
                     break;
-                case AnchorPoint.Angle.Ceiling: 
+                case AnchorPoint.Angle.Ceiling:
                     Print(() => $"Hit a ceiling, normal: {hit.normal}. BONK.");
+                    newDir = ProjectOntoSurface(new(leftover.x, 0), hit.normal);
                     Body.Velocity.y = 0;
-                    stepVelocity.y = 0;
-                break;
+                    break;
                 default: throw new System.Exception($"Unknown AnchorPoint.Type {hit.angle} for normal {hit.normal}");
             }
 
-            Vector2 leftover = stepVelocity - snapToSurface;
-            Vector2 newDir = leftover.ProjectAndScale(nextNormal);
-            newDir *= Vector2.Dot(leftover.normalized, nextNormal) + 1;
-
             if (land && Body.groundResolver) // Don't do landing logic if no ground-based resolvers exist.
             {
-                leftover.y = 0;
                 Anchor.Land(hit);
-                if(Next == this) ChooseNext(Body.groundResolver);
+                if (Next == this) ChooseNext(Body.groundResolver);
             }
-            Next.Move(newDir);
+            Next.Move(newDir, hit.normal);
         }
 
         public override void OnStart()

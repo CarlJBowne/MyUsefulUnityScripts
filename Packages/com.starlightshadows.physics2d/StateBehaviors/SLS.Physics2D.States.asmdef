@@ -3,7 +3,9 @@
     "rootNamespace": "SLS.Physics2D.States",
     "references": [
         "SLS.StateMachineUltimate",
-        "SLS.Physics2D"
+        "SLS.Physics2D",
+        "SLS.GeneralUtilities",
+        "Kybernetik.UltEvents"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

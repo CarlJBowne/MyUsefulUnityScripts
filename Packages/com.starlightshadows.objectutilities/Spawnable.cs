@@ -12,7 +12,15 @@ namespace SLS.ObjectUtilities
     {
         #region State Data
         /// <summary> Whether this <see cref="Spawnable"/> is currently active in the game. </summary>
-        public bool Active => gameObject.activeSelf && !IsPrefab;
+        public bool Active
+        {
+            get => gameObject.activeSelf && !IsPrefab;
+            set
+            {
+                if (IsPrefab) return;
+                gameObject.SetActive(value);
+            }
+        }
         /// <summary> Whether this <see cref="Spawnable"/> is inactive, isn't a prefab, and hasn't been labeled as Altered. </summary>
         public bool Ready => !Active && !IsAltered() && !Reserved;
         /// <summary> If this is true, this <see cref="Spawnable"/> is a prefab and should not be used for anything besides instantiation. </summary>
@@ -42,6 +50,7 @@ namespace SLS.ObjectUtilities
             if (!instance.TryGetComponent(out Spawnable result))
                 result = instance.AddComponent<Spawnable>();
             result.IsPrefab = false;
+            result.Active = false;
             if (parent != null) instance.transform.parent = parent;
             return result;
         }

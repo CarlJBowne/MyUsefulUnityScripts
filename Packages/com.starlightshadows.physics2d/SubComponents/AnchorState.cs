@@ -71,7 +71,7 @@ namespace SLS.Physics2D
         /// <summary>
         /// The Collider2D of the <see cref="AnchorPoint;"/>
         /// </summary>
-        new public Collider2D Collider2D => AnchorPoint.Collider2D;
+        new public Collider2D Collider => AnchorPoint.Collider;
 
         /// <summary>
         /// Attempts to Anchor to the passed in <see cref="Physics2D.AnchorPoint"/>
@@ -83,13 +83,19 @@ namespace SLS.Physics2D
         new public bool Anchor(AnchorPoint newAnchorPoint, PhysicsResolver newResolver = null, bool allowSticking = false)
         {
             if (!HasOwner) return false;
-            if (Body.groundResolver && newResolver) return false;
             bool wasntAnchored = !Anchored;
-            bool objectChange = Collider2D != newAnchorPoint.Collider2D;
+            bool objectChange = Collider != newAnchorPoint.Collider && Vector2.SqrMagnitude(newAnchorPoint.normal - AnchorPoint.normal) > .001f;
             bool standable = Standable(newAnchorPoint.normal);
-            if (!wasntAnchored && !objectChange) return true;
 
             if (!allowSticking && !standable) return false;
+
+            //Body.EnforceSkinDistance();
+
+            if (!wasntAnchored && !objectChange)
+            {
+                AnchorPoint = newAnchorPoint;
+                return true;
+            }
 
             Anchored = true;
             AnchorPoint = newAnchorPoint;
@@ -97,12 +103,12 @@ namespace SLS.Physics2D
             if (objectChange)
             {
                 CurrentMovingAnchor?.RemoveBody(Body);
-                CurrentMovingAnchor = newAnchorPoint.Collider2D.GetComponent<IMovablePlatform>();
+                CurrentMovingAnchor = newAnchorPoint.Collider.GetComponent<IMovablePlatform>();
                 CurrentMovingAnchor?.AddBody(Body);
             }
 
             if (newResolver) Body.SelectResolver(newResolver);
-            else if (standable) Body.SelectResolver(Body.groundResolver);
+            else if (standable) Body.SelectGroundResolver();
 
             Body.OnAnchor(wasntAnchored, objectChange);
             OnAnchor?.Invoke(this, wasntAnchored, objectChange);
@@ -143,11 +149,13 @@ namespace SLS.Physics2D
         /// <returns>Success</returns>
         public bool Land(Vector2 vector, PhysicsResolver.GroundType newResolver = null) => Anchor(vector, newResolver);
         /// <summary>
-        /// Attempts to Anchor to any collision found direction of the Body's current Velocity vector (Only Standable Ground)
+        /// Attempts to Anchor to any collision found directly below the body (Only Standable Ground)
         /// </summary>
         /// <param name="tryNavMesh"> Whether the system should attempt to Anchor the player to the NavMesh</param>
         /// <returns>Success</returns>
-        public bool Land(PhysicsResolver.GroundType newResolver = null) => Anchor(newResolver);
+        public bool Land(PhysicsResolver.GroundType newResolver = null) => 
+            Body.Sweep(new(0, -.01f), out PhysicsSweep hit)
+            && Anchor(hit, newResolver, false);
 
         /// <summary>
         /// Attempts to Anchor to the passed in <see cref="Physics2D.AnchorPoint"/> (Allows Sticking)
@@ -173,20 +181,24 @@ namespace SLS.Physics2D
         /// <param name="setJumping"></param>
         public void DeAnchor(PhysicsResolver.AirType newResolver = null)
         {
-            if (!HasOwner || !Anchored) return;
-            //if (Body.airResolver && newResolver) return;
+            if (!HasOwner) return;
 
+            bool wasAnchored = Anchored;
             Anchored = false;
             AnchorPoint = default;
 
-            CurrentMovingAnchor?.RemoveBody(Body);
+            if (wasAnchored)
+                CurrentMovingAnchor?.RemoveBody(Body);
             CurrentMovingAnchor = null;
 
             if (newResolver) Body.SelectResolver(newResolver);
-            else Body.SelectResolver(Body.airResolver);
+            else if (Body.airResolver) Body.SelectAirResolver();
 
-            Body.OnDeanchor();
-            OnDeAnchor?.Invoke(this);
+            if (wasAnchored)
+            {
+                Body.OnDeanchor();
+                OnDeAnchor?.Invoke(this);
+            }
         }
 
         /// <summary>
@@ -202,12 +214,11 @@ namespace SLS.Physics2D
         /// </summary>
         /// <param name="offset">The desired translation vector to sweep along.</param>
         /// <param name="hit">Outputs an <see cref="Physics2D.AnchorPoint"/> based on the first <see cref="RaycastHit2D"/> detected by the sweep (if any).</param>
-        /// <param name="buffer">A small buffer to back the test origin up along <paramref name="offset"/>. Defaults to 0.</param>
         /// <param name="tempOrigin">An optional temporary origin to perform the sweep from instead of the current RB position.</param>
         /// <param name="queryTriggerInteraction">Whether the sweep should hit trigger Collider2Ds. Defaults to Ignore.</param>
         /// <returns>True if the sweep detected a Collider2D, otherwise false.</returns>
-        public bool SweepStandable(Vector2 offset, out PhysicsSweep hit, float? buffer = null, Vector2? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore) => 
-            Body.Sweep(offset, out hit, false, buffer, tempOrigin, queryTriggerInteraction) && Standable(hit.normal);
+        public bool SweepStandable(Vector2 offset, out PhysicsSweep hit, Vector2 skinDirection = default, Vector2? tempOrigin = null) => 
+            Body.Sweep(offset, out hit, skinDirection, tempOrigin) && Standable(hit.normal);
         /// <summary>
         /// Performs a sweep test using the internal Rigidbody2D to determine whether this
         /// body would collide when translated by <paramref name="offset"/> with a surface that is standable. Optionally
@@ -216,12 +227,11 @@ namespace SLS.Physics2D
         /// </summary>
         /// <param name="offset">The desired translation vector to sweep along.</param>
         /// <param name="hit">Outputs an <see cref="Physics2D.AnchorPoint"/> based on the first <see cref="RaycastHit2D"/> detected by the sweep (if any).</param>
-        /// <param name="buffer">A small buffer to back the test origin up along <paramref name="offset"/>. Defaults to 0.</param>
         /// <param name="tempOrigin">An optional temporary origin to perform the sweep from instead of the current RB position.</param>
         /// <param name="queryTriggerInteraction">Whether the sweep should hit trigger Collider2Ds. Defaults to Ignore.</param>
         /// <returns>True if the sweep detected a Collider2D that was considered standable, otherwise false.</returns>
-        public bool SweepStandable(out PhysicsSweep hit, float? buffer = null, Vector2? tempOrigin = null, QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.Ignore) =>
-            Body.Sweep(Direction.Up * -.1f, out hit, false, buffer, tempOrigin, queryTriggerInteraction) && Standable(hit.normal);
+        public bool SweepStandable(out PhysicsSweep hit, Vector2 skinDirection = default, Vector2? tempOrigin = null) =>
+            Body.Sweep(Direction.Up * -.1f, out hit, skinDirection, tempOrigin) && Standable(hit.normal);
 
 
         /// <summary>
@@ -231,13 +241,15 @@ namespace SLS.Physics2D
         /// </summary>
         /// <param name="hit">Outputs the RaycastHit2D that was used for the snap.</param>
         /// <returns>True if a floor was found and the body was moved, otherwise false.</returns>
-        public bool InstantSnapToFloor(out PhysicsSweep hit)
+        public bool InstantSnapToFloor(out PhysicsSweep hit, float maxDistance = 0.1f)
         {
-            if (Body.Sweep(Vector2.down * 1000, out hit, buffer: .5f))
+            Vector2 down = -Direction.Up;
+            if (Body.Sweep(down * maxDistance, out hit) && hit.distance >= 0f && Standable(hit.normal))
             {
-                Position += Vector2.down * hit.distance;
-                return true;
+                Body.Position += down * hit.distance;
+                return Anchor(hit.anchorPoint);
             }
+
             return false;
         }
 

@@ -88,13 +88,22 @@ namespace SLS.Physics2D
         /// body's resolver selection.
         /// </summary>
         /// <param name="stepVelocity">The movement vector to process, typically velocity * deltaTime.</param>
-        public abstract void Move(Vector2 stepVelocity);
+        public abstract void Move(Vector2 stepVelocity, Vector2 normal);
 
         public bool ContinueCheck(Vector2 vel) =>
             vel.sqrMagnitude < float.Epsilon || ++Body.Step >= Body.maxPhysicsSteps;
         public bool ContinueCheck(float hitDistance) =>
-            hitDistance == -1 || ++Body.Step >= Body.maxPhysicsSteps;
+            ++Body.Step >= Body.maxPhysicsSteps;
         public bool ContinueCheck() => ++Body.Step >= Body.maxPhysicsSteps;
+
+        protected static Vector2 ProjectOntoSurface(Vector2 movement, Vector2 normal)
+        {
+            if (normal.sqrMagnitude <= Mathf.Epsilon)
+                return movement;
+
+            normal.Normalize();
+            return movement - (normal * Vector2.Dot(movement, normal));
+        }
 
         public void ChooseNext(PhysicsResolver target) => Body.SelectResolver(target);
 

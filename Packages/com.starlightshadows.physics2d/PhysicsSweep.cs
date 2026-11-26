@@ -17,5 +17,17 @@ namespace SLS.Physics2D
         public List<RaycastHit2D> collisions;
         public static implicit operator bool(PhysicsSweep payload) => payload.hit;
         public static implicit operator AnchorPoint(PhysicsSweep payload) => payload.anchorPoint;
+
+        public static PhysicsSweep Default { get; private set; } = new()
+        {
+            hit = false,
+            distance = 0,
+            input = default,
+            leftover = default,
+            normal = default,
+            anchorPoint = default,
+            angle = AnchorPoint.Angle.Null,
+            collisions = null
+        };
     }
 }

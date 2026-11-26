@@ -167,11 +167,7 @@ public static class Xtensions_Color
         if (b != null) color.b = b.Value;
         if (a != null) color.a = a.Value;
     }
-    public static Color Changed(this Color color, float? r = null, float? g = null, float? b = null, float? a = null)
-    {
-        color.Set(r, g, b, a);
-        return color;
-    }
+    public static Color Changed(this Color color, float? r = null, float? g = null, float? b = null, float? a = null) => new Color(r ?? color.r, g ?? color.g, b ?? color.b, a ?? color.a);
 
     public static void Shift(this ref Color color, float? r = null, float? g = null, float? b = null, float? a = null, bool clamp = true)
     {

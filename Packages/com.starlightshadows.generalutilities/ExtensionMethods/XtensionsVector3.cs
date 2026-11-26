@@ -252,8 +252,18 @@ public static class XtensionsVector2
         return result;
     }
 
-    public static Vector2 ProjectAndScale(this Vector2 value, Vector2 normal) 
+    public static Vector2 ProjectAndScale(this Vector2 value, Vector2 normal)
         => (value - (normal * Vector2.Dot(value, normal))).normalized * value.magnitude;
+
+    public static void ScopeToWithinPerps(this ref ContactFilter2D filter, Vector2 direction)
+    {
+        // 1. Find the angle directly opposing the target velocity (-180 to 180)
+        float oppositeAngle = Mathf.Atan2(-direction.y, -direction.x) * Mathf.Rad2Deg;
+
+        // 2. Define the 180-degree arc (perpendicular to perpendicular)
+        filter.minNormalAngle = oppositeAngle - 90f;
+        filter.maxNormalAngle = oppositeAngle + 90f;
+    }
 
 }
 

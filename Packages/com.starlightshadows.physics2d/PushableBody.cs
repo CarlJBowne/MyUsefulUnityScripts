@@ -49,7 +49,7 @@ namespace SLS.Physics2D
             Vector2 push = direction.normalized * acceptedDistance;
 
             // Do not push the target through an ordinary Collider2D.
-            if (Body.Sweep(push, out PhysicsSweep chainHit) && chainHit.distance >= 0f)
+            if (Body.Sweep(push, out PhysicsSweep chainHit, Body.Anchor.Normal) && chainHit.distance >= 0f)
             {
                 acceptedDistance = Mathf.Min(acceptedDistance, chainHit.distance);
                 push = direction.normalized * acceptedDistance;
@@ -71,7 +71,7 @@ namespace SLS.Physics2D
 
         public void CollisionOverride(ref PhysicsSweep collision)
         {
-            if (!Body || blockedThisFrame || !collision.anchorPoint.Collider2D) return;
+            if (!Body || blockedThisFrame || !collision.anchorPoint.Collider) return;
 
             Vector2 direction = collision.input.sqrMagnitude > 0.001f
                     ? collision.input.normalized
@@ -79,7 +79,7 @@ namespace SLS.Physics2D
 
             float distance = Mathf.Max(collision.distance, collision.input.magnitude);
 
-            if (collision.anchorPoint.Collider2D.TryGetComponent(out IPushable target))
+            if (collision.anchorPoint.Collider.TryGetComponent(out IPushable target))
             {
                 target = target.active;
 
@@ -92,7 +92,7 @@ namespace SLS.Physics2D
                 return;
             }
 
-            if (!collision.anchorPoint.Collider2D.TryGetComponent(out Rigidbody2D rb)) return;
+            if (!collision.anchorPoint.Collider.TryGetComponent(out Rigidbody2D rb)) return;
 
             Vector2 relativeVelocity = Body.Velocity.Global - rb.linearVelocity;
 

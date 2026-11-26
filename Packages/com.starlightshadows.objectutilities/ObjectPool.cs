@@ -33,10 +33,10 @@ namespace SLS.ObjectUtilities
 
         //Data
         [field: NonSerialized] public readonly List<Spawnable> poolList = new();
-        [field: NonSerialized] public int activeObjects { get; protected set; } = 0;
-        [field: NonSerialized] public int currentIndex { get; protected set; } = 0;
-        [field: NonSerialized] public bool initialized { get; protected set; } = false;
-        [field: NonSerialized] public bool initializing { get; protected set; } = false;
+        public int activeObjects { get; protected set; } = 0;
+        public int currentIndex { get; protected set; } = 0;
+        public bool initialized { get; protected set; } = false;
+        public bool initializing { get; protected set; } = false;
         public int pooledObjects => poolList.Count;
         public Transform poolParent => parentOverride != null ? parentOverride : DefaultPoolParent;
         public static Transform DefaultPoolParent;
@@ -375,7 +375,13 @@ namespace SLS.ObjectUtilities
 
                 new FloatField("Auto Disable Time").AddTo(primaryFoldout, t =>
                 {
-                    t.BindProperty(property.FindBackingFieldRelative(nameof(parentOverride)));
+                    t.BindProperty(property.FindBackingFieldRelative(nameof(autoDisableTime)));
+                });
+                new ObjectField("Parent Transform").AddTo(primaryFoldout, p =>
+                {
+                    p.BindProperty(property.FindBackingFieldRelative(nameof(parentOverride)));
+                    p.allowSceneObjects = true;
+                    p.objectType = typeof(Transform);
                 });
                 new Toggle("Orphan On Pool Death").AddTo(primaryFoldout, t =>
                 {

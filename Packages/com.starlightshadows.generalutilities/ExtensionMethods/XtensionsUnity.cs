@@ -448,105 +448,88 @@ public static class Xtensions_UnityColliders
     public static void DrawWireClone(this Collider2D C, Color color, Vector2? position = null, float? rotation = null)
     {
 #if UNITY_EDITOR
-        /*
         if (C == null) return;
 
-        var prevColor = Gizmos.color;
-        var prevMatrix = Gizmos.matrix;
-        try
-        {
-            Gizmos.color = color;
+        Vector3 worldPos = position ?? C.transform.position;
+        Quaternion worldRot = rotation.HasValue
+            ? Quaternion.Euler(0f, 0f, rotation.Value)
+            : C.transform.rotation;
+        Matrix4x4 matrix = Matrix4x4.TRS(worldPos, worldRot, C.transform.lossyScale);
 
-            Vector3 worldPos = position ?? C.transform.position;
-            Quaternion worldRot = rotation.HasValue ? Quaternion.Euler(rotation.Value) : C.transform.rotation;
-            Vector3 lossyScale = C.transform.lossyScale;
+        using (new Handles.DrawingScope(color, matrix))
+        {
+            void DrawPath(Vector2[] path, Vector2 offset, bool closed)
+            {
+                if (path == null || path.Length < 2) return;
+
+                Vector3[] points = new Vector3[path.Length + (closed ? 1 : 0)];
+                for (int i = 0; i < path.Length; i++)
+                    points[i] = path[i] + offset;
+                if (closed)
+                    points[path.Length] = points[0];
+                Handles.DrawPolyLine(points);
+            }
 
             switch (C)
             {
-                case BoxCollider2D bc:
-                    // Apply the target transform (position/rotation) and the object's scale so local center/size work naturally
-                    Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
-                    Gizmos.DrawWireCube(bc.center, bc.size);
+                case BoxCollider2D box:
+                    Handles.DrawWireCube(box.offset, box.size);
                     break;
 
-                case CircleCollider2D sc:
-                    Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
-                    Gizmos.DrawWireSphere(sc.center, sc.radius);
+                case CircleCollider2D circle:
+                    Handles.DrawWireDisc(circle.offset, Vector3.forward, circle.radius);
                     break;
 
-                case CapsuleCollider2D cc:
+                case CapsuleCollider2D capsule:
                 {
-                    using (new Handles.DrawingScope(Matrix4x4.TRS(worldPos, worldRot, Handles.matrix.lossyScale)))
+                    Vector2 size = capsule.size;
+                    bool vertical = capsule.direction == CapsuleDirection2D.Vertical;
+                    float radius = Mathf.Min(size.x, size.y) * 0.5f;
+                    float halfSegment = Mathf.Max(0f, (Mathf.Max(size.x, size.y) - radius * 2f) * 0.5f);
+                    const int arcSegments = 16;
+                    Vector2[] path = new Vector2[arcSegments * 2 + 2];
+
+                    for (int i = 0; i <= arcSegments; i++)
                     {
-                        var pointOffset = (cc.height - (cc.radius * 2)) / 2;
-
-                        //draw sideways
-                        Handles.DrawWireArc(Vector3.up * pointOffset, Vector3.left, Vector3.back, -180, cc.radius);
-                        Handles.DrawLine(new Vector3(0, pointOffset, -cc.radius), new Vector3(0, -pointOffset, -cc.radius));
-                        Handles.DrawLine(new Vector3(0, pointOffset, cc.radius), new Vector3(0, -pointOffset, cc.radius));
-                        Handles.DrawWireArc(Vector3.down * pointOffset, Vector3.left, Vector3.back, 180, cc.radius);
-                        //draw frontways
-                        Handles.DrawWireArc(Vector3.up * pointOffset, Vector3.back, Vector3.left, 180, cc.radius);
-                        Handles.DrawLine(new Vector3(-cc.radius, pointOffset, 0), new Vector3(-cc.radius, -pointOffset, 0));
-                        Handles.DrawLine(new Vector3(cc.radius, pointOffset, 0), new Vector3(cc.radius, -pointOffset, 0));
-                        Handles.DrawWireArc(Vector3.down * pointOffset, Vector3.back, Vector3.left, -180, cc.radius);
-                        //draw center
-                        Handles.DrawWireDisc(Vector3.up * pointOffset, Vector3.up, cc.radius);
-                        Handles.DrawWireDisc(Vector3.down * pointOffset, Vector3.up, cc.radius);
-
+                        float angle = Mathf.PI * i / arcSegments;
+                        Vector2 point = new(Mathf.Cos(angle) * radius, halfSegment + Mathf.Sin(angle) * radius);
+                        path[i] = vertical ? point : new Vector2(point.y, point.x);
                     }
+                    for (int i = 0; i <= arcSegments; i++)
+                    {
+                        float angle = Mathf.PI + Mathf.PI * i / arcSegments;
+                        Vector2 point = new(Mathf.Cos(angle) * radius, -halfSegment + Mathf.Sin(angle) * radius);
+                        path[arcSegments + 1 + i] = vertical ? point : new Vector2(point.y, point.x);
+                    }
+
+                    DrawPath(path, capsule.offset, true);
+                    break;
                 }
-                break;
 
-                case PolygonCollider2D mc:
-                {
-                    Mesh mesh = mc.sharedMesh;
-                    if (mesh == null)
-                    {
-                        var mf = C.GetComponent<MeshFilter>();
-                        mesh = mf != null ? mf.sharedMesh : null;
-                    }
+                case PolygonCollider2D polygon:
+                    for (int pathIndex = 0; pathIndex < polygon.pathCount; pathIndex++)
+                        DrawPath(polygon.GetPath(pathIndex), polygon.offset, true);
+                    break;
 
-                    if (mesh != null)
-                    {
-                        Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
-                        // mesh.bounds.center is in mesh local space; DrawWireMesh will apply Gizmos.matrix first then this local transform
-                        Gizmos.DrawWireMesh(mesh, 0, mesh.bounds.center, Quaternion.identity, Vector3.one);
-                    }
-                    else
-                    {
-                        // fallback to bounds
-                        Gizmos.matrix = Matrix4x4.TRS(worldPos, worldRot, lossyScale);
-                        Gizmos.DrawWireCube(C.bounds.center - C.transform.position, C.bounds.size);
-                    }
-                }
-                break;
+                case EdgeCollider2D edge:
+                    DrawPath(edge.points, edge.offset, false);
+                    break;
 
-                case Collider2D tc:
-                {
-                    // TerrainCollider.bounds is in world space. When position override is provided we translate the bounds by the delta.
-                    Vector3 delta = worldPos - C.transform.position;
-                    Gizmos.matrix = Matrix4x4.identity;
-                    Gizmos.DrawWireCube(tc.bounds.center + delta, tc.bounds.size);
-                }
-                break;
+                case CompositeCollider2D composite:
+                    for (int pathIndex = 0; pathIndex < composite.pathCount; pathIndex++)
+                    {
+                        Vector2[] path = new Vector2[composite.GetPathPointCount(pathIndex)];
+                        composite.GetPath(pathIndex, path);
+                        DrawPath(path, composite.offset, true);
+                    }
+                    break;
 
                 default:
-                // Generic fallback: draw collider.bounds (world space)
-                {
-                    Vector3 delta = worldPos - C.transform.position;
-                    Gizmos.matrix = Matrix4x4.identity;
-                    Gizmos.DrawWireCube(C.bounds.center + delta, C.bounds.size);
-                }
-                break;
+                    using (new Handles.DrawingScope(color, Matrix4x4.identity))
+                        Handles.DrawWireCube(C.bounds.center + (worldPos - C.transform.position), C.bounds.size);
+                    break;
             }
         }
-        finally
-        {
-            Gizmos.color = prevColor;
-            Gizmos.matrix = prevMatrix;
-        }
-        */
 #endif
     }
 }

@@ -734,7 +734,7 @@ namespace SLS.GeneralUtilities.Syncables
             slider.minValue = Min;
             slider.maxValue = Max;
             slider.value = Value;
-            CallOnValueChanged(Value);
+            //CallOnValueChanged(Value);
             slider.onValueChanged.AddListener(SetValue);
         }
     }
