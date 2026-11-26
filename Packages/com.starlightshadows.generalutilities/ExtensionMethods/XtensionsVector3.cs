@@ -135,7 +135,7 @@ public static class XtensionsVector3
     public static bool IsNan(this Vector3 value) => float.IsNaN(value.x) || float.IsNaN(value.y) || float.IsNaN(value.z);
 }
 
-public static class Direction
+public static class Directions
 {
     public static Vector3 up = new(0, 1, 0);
     public static Vector3 down = new(0, -1, 0);
@@ -237,12 +237,32 @@ public static class XtensionsVector2
         return v;
     }
 
+    public static Vector2 Abs(this Vector2 v)
+    {
+        Vector2 result = v;
+        v.x = Mathf.Abs(v.x);
+        v.y = Mathf.Abs(v.y);
+        return result;
+    }
     public static Vector2 Sign(this Vector2 v)
     {
         Vector2 result = v;
         v.x = Mathf.Sign(v.x);
         v.y = Mathf.Sign(v.y);
         return result;
+    }
+
+    public static Vector2 ProjectAndScale(this Vector2 value, Vector2 normal)
+        => (value - (normal * Vector2.Dot(value, normal))).normalized * value.magnitude;
+
+    public static void ScopeToWithinPerps(this ref ContactFilter2D filter, Vector2 direction)
+    {
+        // 1. Find the angle directly opposing the target velocity (-180 to 180)
+        float oppositeAngle = Mathf.Atan2(-direction.y, -direction.x) * Mathf.Rad2Deg;
+
+        // 2. Define the 180-degree arc (perpendicular to perpendicular)
+        filter.minNormalAngle = oppositeAngle - 90f;
+        filter.maxNormalAngle = oppositeAngle + 90f;
     }
 
 }

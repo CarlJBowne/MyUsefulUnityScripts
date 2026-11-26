@@ -28,6 +28,9 @@ public class DualEvent
 
     public void Invoke() => Real?.Invoke();
 
+    public void AddListener(Action A) => Real.DynamicCalls += A;
+    public void RemoveListener(Action A) => Real.DynamicCalls -= A;
+
 #else
 
         [UnityEngine.SerializeField] private UnityEvent Un;
@@ -53,6 +56,10 @@ public class DualEvent
             r.Un.RemoveListener(l);
             return r;
         }
+
+        public void AddListener(Action A) => Act += A;
+        public void RemoveListener(Action A) => Act -= A;
+
 
         public void Invoke()
         {

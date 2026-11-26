@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SLS.ListUtilities;
 using UnityEngine;
 
 public abstract partial class Polymorph
@@ -260,6 +261,26 @@ public abstract partial class Polymorph
         protected virtual void OnAdded(T item, int id) { }
         protected virtual void OnRemoved(T item, int id) { }
         protected virtual void OnCleared() { }
+    }
+
+    [System.Serializable]
+    public class Dictionary<T> : HashedListSReference<T> where T : Polymorph
+    {
+        public void Clone(Polymorph.Dictionary<T> source, DictionaryCloneOp op = DictionaryCloneOp.Transfer)
+        {
+            if (source == null) return;
+            if (Count == 0) op = DictionaryCloneOp.TransferAndAdd;
+            if (op is DictionaryCloneOp.ReplaceEntirely) Clear();
+            for (int i = 0; i < source; i++)
+                if (Hashes.Contains(source.Hashes[i]) || op is not DictionaryCloneOp.Transfer)
+                    this[source.Hashes[i]] = source.SerializedValues[i];
+        }
+
+        public void ForEach(Action<string, int, T> act)
+        {
+            for (int i = 0; i < Count; i++)
+                act(Keys[i], Hashes[i], Values[i]);
+        }
     }
 
     public class Single<T> where T : Polymorph

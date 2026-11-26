@@ -9,7 +9,7 @@ using EVENT = UltEvents.UltEvent;
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
-namespace SLS.StateMachineH.Signals
+namespace SLS.StateMachineUltimate.Signals
 {
     /// <summary>  
     /// Manages signals within a hierarchical state machine.  
@@ -41,7 +41,7 @@ namespace SLS.StateMachineH.Signals
 
             while (!signalFired && i >= 0)
             {
-                if (NodeStack[i].ContainsKey(key))
+                if (NodeStack[i].ContainsHash(key))
                 {
                     NodeStack[i].FireEvent(key);
                     signalFired = true;
@@ -119,7 +119,7 @@ namespace SLS.StateMachineH.Signals
             }
         }
 
-        private List<SignalNode> NodeStack;
+        private List<SignalNode> NodeStack = new();
         public void Register(SignalNode node) => NodeStack.Add(node);
         public void Deregister(SignalNode node) => NodeStack.Remove(node);
     }

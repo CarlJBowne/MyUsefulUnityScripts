@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 #endif
 
-namespace SLS.StateMachineH
+namespace SLS.StateMachineUltimate
 {
     [System.Serializable]
     public class AnimatorAction

@@ -3,6 +3,10 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using System.Reflection;
+using System.Collections.Generic;
+
+
 #if UNITY_EDITOR
 using UnityEditor.UIElements;
 #endif
@@ -12,21 +16,7 @@ public abstract partial class Polymorph
 {
 
 
-    public static Type[] GetSubtypes(Type baseType)
-    {
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a =>
-            {
-                try { return a.GetTypes(); }
-                catch { return Type.EmptyTypes; }
-            })
-            .Where(t =>
-                !t.IsAbstract &&
-                // For interfaces, include implementers; for classes, include strict subclasses only.
-                t.IsSubclassOf(baseType) && (t.IsPublic || t.IsNestedPublic || t.IsNestedFamORAssem || t.IsNestedFamily)
-            )
-            .ToArray();
-    }
+    public static List<Type> GetSubtypes(Type baseType) => baseType.GetAllInheritors(true, false, !baseType.IsAbstract);
 
 #if UNITY_EDITOR
     public virtual void OverrideBody(VisualElement container, SerializedProperty property)
@@ -52,4 +42,12 @@ public abstract partial class Polymorph
         }
     }
 #endif
+
+    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    public sealed class ValidTypesAttribute : Attribute
+    {
+        public Type[] Types { get; }
+
+        public ValidTypesAttribute(params Type[] types) => Types = types;
+    }
 }

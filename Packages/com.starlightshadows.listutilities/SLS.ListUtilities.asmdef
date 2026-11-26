@@ -1,7 +1,9 @@
 {
     "name": "SLS.ListUtilities",
     "rootNamespace": "SLS.ListUtilities",
-    "references": [],
+    "references": [
+        "GUID:b9ac657993e82304f8ee6c5211862519"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

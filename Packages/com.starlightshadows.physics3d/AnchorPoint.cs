@@ -32,7 +32,7 @@ namespace SLS.Physics3D
 
         public static implicit operator AnchorPoint(RaycastHit hit) => new(hit);
         public static implicit operator AnchorPoint(ContactPoint contact) => new(contact);
-        public static implicit operator bool(AnchorPoint anchor) => anchor.point != Vector3.zero || anchor.normal != Vector3.zero || anchor.collider != null;
+        public static implicit operator bool(AnchorPoint anchor) => anchor.normal != Vector3.zero && anchor.collider != null;
         public static implicit operator Vector3(AnchorPoint anchor) => anchor.normal;
 
         public static AnchorPoint Null => new()
@@ -41,5 +41,16 @@ namespace SLS.Physics3D
             normal = Vector3.up,
             collider = null
         };
+
+        public enum Angle
+        {
+            Floor,
+            Slope,
+            SteepSlope,
+            Wall,
+            InvertedSlope,
+            Ceiling,
+            Null,
+        }
     }
 }

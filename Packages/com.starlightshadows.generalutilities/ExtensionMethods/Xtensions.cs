@@ -30,7 +30,7 @@ public static class Xtensions_C
     public static bool NotNull<T>(this T obj) where T : class => obj != null;
 
     /// <summary>
-    /// Clones an object aat the deepest Binary. <br/>
+    /// Clones an object at the deepest Binary. <br/>
     /// Requires the type to be <see cref="SerializableAttribute"/>
     /// </summary>
     /// <typeparam name="T"></typeparam>
@@ -125,7 +125,18 @@ public static class Xtensions_Collections
             if (list[i] == null)
                 list.RemoveAt(i);
     }
-
+    public static void Add<T>(this List<T> list, T item, bool unique)
+    {
+        if (list == null) return;
+        if (unique && list.Contains(item)) return;
+        list.Add(item);
+    }
+    public static void Add<T>(this IList<T> list, T item, bool unique)
+    {
+        if (list == null) return;
+        if (unique && list.Contains(item)) return;
+        list.Add(item);
+    }
 
 }
 
@@ -156,11 +167,7 @@ public static class Xtensions_Color
         if (b != null) color.b = b.Value;
         if (a != null) color.a = a.Value;
     }
-    public static Color Changed(this Color color, float? r = null, float? g = null, float? b = null, float? a = null)
-    {
-        color.Set(r, g, b, a);
-        return color;
-    }
+    public static Color Changed(this Color color, float? r = null, float? g = null, float? b = null, float? a = null) => new Color(r ?? color.r, g ?? color.g, b ?? color.b, a ?? color.a);
 
     public static void Shift(this ref Color color, float? r = null, float? g = null, float? b = null, float? a = null, bool clamp = true)
     {
@@ -251,7 +258,7 @@ public static class Xtensions_Types
         return false;
     }
 
-    public static Type[] GetAllInheritors(this Type Top, 
+    public static List<Type> GetAllInheritors(this Type Top, 
         bool excludeAbstracts = true, bool excludeGenerics = true, bool excludeSelf = true)
     {
         return AppDomain.CurrentDomain.GetAssemblies()
@@ -260,6 +267,17 @@ public static class Xtensions_Types
                     && (!i.IsAbstract || !excludeAbstracts)
                     && (!i.IsGenericType || !excludeGenerics)
                     && (i != Top || !excludeSelf)
-                    ).ToArray();
+                    ).ToList();
+    }
+
+    public static Type FindGenericAncestor(this Type start, int maxSteps = 5)
+    {
+        int i = 0;
+        do
+        {
+            if (start.IsGenericType) return start;
+            start = start.BaseType;
+        } while (i++ < maxSteps && start != null);
+        return null;
     }
 }

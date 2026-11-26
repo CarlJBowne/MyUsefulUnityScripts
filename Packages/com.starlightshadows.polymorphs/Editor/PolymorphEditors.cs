@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using NUnit.Framework;
+using SLS.EditorUtilities;
+using SLS.ListUtilities;
+using SLS.ListUtilities.Editor;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
 using static Polymorph;
-using SLS.ListUtilities.Editor;
 
 public class PolymorphEditors
 {
@@ -19,19 +22,13 @@ public class PolymorphEditors
         GenericMenu menu = new();
 
 
-        Type[] types = GetSubtypes(baseType);
-        if (types.Length == 0)
+        List<Type> types = Polymorph.GetSubtypes(baseType);
+        for (int i = 0; i < types.Count; i++) Add(types[i]);
+        void Add(Type t)
         {
-            menu.AddItem(new GUIContent("Add"), false, () => { result?.Invoke(baseType); });
-        }
-        else
-        {
-            foreach (Type t in types)
-            {
-                if (t == baseType) continue;
-                menu.AddItem(new GUIContent(t.Name), false, () => { result?.Invoke(t); });
-            }
-
+            string name = t.Name;
+            //if (name.Contains('\'')) name = name.Replace('\'', '<') + '>';
+            menu.AddItem(new GUIContent(name), false, () => { result?.Invoke(t); });
         }
 
         if (showNullOption) menu.AddItem(new GUIContent("Nullify"), false, () => { result?.Invoke(null); });
@@ -363,7 +360,7 @@ public class PolymorphEditors
         }
     }
 
-    public class ListDrawer : SuperList<ListDrawer, ListItemDrawer, Polymorph>
+    public class ListDrawer : SuperList<ListDrawer, ListDrawer.ItemDrawer, Polymorph>
     {
         protected SerializedProperty rootProperty;
         protected FieldInfo fieldInfo;
@@ -372,15 +369,11 @@ public class PolymorphEditors
         public ListDrawer(SerializedProperty rootProperty, FieldInfo fieldInfo, bool BindImmediately = true) : base(rootProperty)
         {
             this.fieldInfo = fieldInfo;
-            try
-            {
-                if (fieldInfo != null && fieldInfo.FieldType.IsGenericType)
-                {
-                    Type[] args = fieldInfo.FieldType.GetGenericArguments();
-                    if (args != null && args.Length > 0) baseType = args[0];
-                }
-            }
-            catch { baseType = null; }
+
+            Type genType = fieldInfo.FieldType.FindGenericAncestor()
+                ?? throw new Exception("This List is somehow not scoped. WTF did you do?");
+            baseType = genType.GenericTypeArguments[0];
+
             ShowTypeChooser = () => { ShowChooseTypeMenu(baseType, false, TypeChosen); };
 
             BuildBasicElements();
@@ -391,6 +384,7 @@ public class PolymorphEditors
         {
             rootProperty = input;
             property = input.FindPropertyRelative("items");
+            AssertProperties(rootProperty, property);
             header.Bind(input);
             FinishBind();
         }
@@ -415,28 +409,346 @@ public class PolymorphEditors
             CreatePropertySlot(out int newID);
             SetOrCreateItemValue(newID, Activator.CreateInstance(chosen));
             CreateItemElement(newID);
-            Select(items[newID]);
+            Selection.Select(newID);
+        }
+
+        public class ItemDrawer : SuperListItem<ListDrawer, ItemDrawer, Polymorph>
+        {
+            public ItemDrawer(ListDrawer parentList, int Index) : base(parentList, Index) { }
+            public override VisualElement Content()
+            {
+                HeaderDrawer result = new(property);
+                result.ChangeButton.SetEnabled(false);
+                result.ChangeButton.style.display = DisplayStyle.None;
+                result.style.marginLeft = 14;
+                result.style.marginRight = 3;
+                return result;
+            }
+            protected override void PostContent()
+            {
+                Label = (content as HeaderDrawer).Label;
+                ContextMenuTarget = (content as HeaderDrawer).FoldoutToggle;
+            }
         }
 
     }
-    public class ListItemDrawer : SuperListItem<ListDrawer, ListItemDrawer, Polymorph>
+    public class DictionaryDrawer : SuperList<DictionaryDrawer, DictionaryDrawer.ItemDrawer, NameHashValueTrio<Polymorph>>
     {
-        public ListItemDrawer(ListDrawer parentList, int Index) : base(parentList, Index) { }
-        public override VisualElement Content()
+        private readonly FieldInfo fieldInfo;
+        private readonly Type targetBaseType;
+        public ILookupTable LookupTable { get; private set; }
+        public SerializedProperty KeysProperty { get; private set; }
+        public SerializedProperty HashesProperty { get; private set; }
+        public SerializedProperty ValuesProperty { get; private set; }
+
+        public DictionaryDrawer(SerializedProperty rootProperty, FieldInfo fieldInfo, bool BindImmediately = true) : base(rootProperty, true)
         {
-            HeaderDrawer result = new(property);
-            result.ChangeButton.SetEnabled(false);
-            result.ChangeButton.style.display = DisplayStyle.None;
-            result.style.marginLeft = 14;
-            result.style.marginRight = 3;
-            return result;
+            this.fieldInfo = fieldInfo;
+
+            Type genType = fieldInfo.FieldType.FindGenericAncestor()
+                ?? throw new Exception("This List is somehow not scoped. WTF did you do?");
+            targetBaseType = genType.GenericTypeArguments[0];
+
+            try
+            {
+                LookupTable = fieldInfo?.GetValue(rootProperty.serializedObject.targetObject) as ILookupTable;
+            }
+            catch { LookupTable = null; }
+
+            BuildBasicElements();
+            enterDataMenu = new EnterPolyDataMenu(TypeChosen, targetBaseType).AddTo(collectionBackground);
+
+            if (BindImmediately) BindProperty(rootProperty);
         }
-        protected override void PostContent()
+
+        new public void BindProperty(SerializedProperty input)
         {
-            Label = (content as HeaderDrawer).Label;
-            ContextMenuTarget = (content as HeaderDrawer).FoldoutToggle;
+            property = input;
+            KeysProperty = property.FindPropertyRelative("serializedKeys");
+            HashesProperty = property.FindPropertyRelative("serializedHashes");
+            ValuesProperty = property.FindPropertyRelative("serializedValues");
+            AssertProperties(KeysProperty, HashesProperty, ValuesProperty);
+            header.Bind(input);
+            FinishBind();
+        }
+
+        public override int CurrentSize => ValuesProperty != null ? ValuesProperty.arraySize : 0;
+
+        public override bool allowCounterEdit => false;
+
+
+        EnterPolyDataMenu enterDataMenu;
+        public class EnterPolyDataMenu : EnterDataMenu
+        {
+            public EnterPolyDataMenu(Action<string, Type> result, Type baseType, bool Override = false) : base(null, true)
+            {
+                if (Override) return;
+                style.flexDirection = FlexDirection.Row;
+                this.Display(false);
+
+                TextField = new TextField("").AddTo(this);
+                TextField.style.flexGrow = 1f;
+
+                Types = Polymorph.GetSubtypes(baseType);
+
+                TypeField = new PopupField<Type>(Types, -1, Name, Name).AddTo(this);
+                string Name(Type t) => t?.Name.Replace($"{baseType.Name}+", "");
+                TypeField.style.width = Length.Percent(40);
+                TypeField.style.flexShrink = 0;
+
+                Result = result;
+                FinishButton = new Button(Complete).AddTo(this);
+                FinishButton.style.width = 20;
+                FinishButton.text = "+";
+                FinishButton.style.backgroundColor = new Color(.5f, .75f, .5f);
+            }
+
+            public PopupField<Type> TypeField { get; protected set; }
+            public List<Type> Types { get; protected set; }
+            new public Action<string, Type> Result { get; protected set; }
+
+            protected override void Complete()
+            {
+                Result?.Invoke(TextField.text, TypeField.value);
+                TextField.SetValueWithoutNotify("");
+                TypeField.value = null;
+                this.Display(false);
+            }
+        }
+
+        protected override void AddButtonPressed()
+        {
+            // Show type chooser so caller can pick the concrete Polymorph type to create
+            enterDataMenu.Show();
+            collectionBackground.style.display = DisplayStyle.Flex;
+        }
+        public override void CreatePropertySlot(out int newID)
+        {
+            if (ValuesProperty == null || HashesProperty == null || KeysProperty == null) throw new ArgumentNullException();
+            newID = Selection.NewItemID;
+            ValuesProperty.InsertArrayElementAtIndex(newID);
+            KeysProperty.InsertArrayElementAtIndex(newID);
+            HashesProperty.InsertArrayElementAtIndex(newID);
+        }
+
+        public virtual void TypeChosen(string newName, Type chosen)
+        {
+            if (chosen == null) return;
+            CreatePropertySlot(out int newID);
+
+            // ensure a stable name and corresponding hash key for the new slot
+            SerializedProperty nameProp = KeysProperty.GetArrayElementAtIndex(newID);
+            nameProp.stringValue = newName;
+
+            SerializedProperty keyProp = HashesProperty.GetArrayElementAtIndex(newID);
+            keyProp.intValue = newName.Hash();
+
+            SerializedProperty valProp = ValuesProperty.GetArrayElementAtIndex(newID);
+            try { valProp.managedReferenceValue = Activator.CreateInstance(chosen); } catch { valProp.managedReferenceValue = null; }
+
+            property.serializedObject.ApplyModifiedProperties();
+
+            CreateItemElement(newID);
+            Selection.Select(newID);
+        }
+
+
+
+        public override void BuildItems()
+        {
+            base.BuildItems();
+            CallUpdateColors();
+        }
+
+        public override void DeletePropertySlotAt(int index)
+        {
+            int prevNamesCount = KeysProperty.arraySize;
+            int prevKeysCount = HashesProperty.arraySize;
+            int prevValuesCount = ValuesProperty.arraySize;
+
+            KeysProperty.DeleteArrayElementAtIndex(index);
+            HashesProperty.DeleteArrayElementAtIndex(index);
+            ValuesProperty.DeleteArrayElementAtIndex(index);
+
+            // Handle the Unity quirk where deleting an object reference leaves a null element
+            if (prevNamesCount == KeysProperty.arraySize)
+            {
+                SerializedProperty maybeElem = KeysProperty.GetArrayElementAtIndex(index);
+                if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
+                    KeysProperty.DeleteArrayElementAtIndex(index);
+            }
+            if (prevKeysCount == HashesProperty.arraySize)
+            {
+                SerializedProperty maybeElem = HashesProperty.GetArrayElementAtIndex(index);
+                if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
+                    HashesProperty.DeleteArrayElementAtIndex(index);
+            }
+            if (prevValuesCount == ValuesProperty.arraySize)
+            {
+                SerializedProperty maybeElem = ValuesProperty.GetArrayElementAtIndex(index);
+                if (maybeElem != null && maybeElem.propertyType == SerializedPropertyType.ObjectReference && maybeElem.objectReferenceValue == null)
+                    ValuesProperty.DeleteArrayElementAtIndex(index);
+            }
+
+            header.UpdateExpanded(false);
+            property.serializedObject.ApplyModifiedProperties();
+        }
+
+        protected override void EstablishContextMenu(ContextualMenuPopulateEvent evt)
+        {
+            base.EstablishContextMenu(evt);
+            if (LookupTable != null)
+            {
+                var list = evt.menu.MenuItems();
+                list.Insert(1, new DropdownMenuAction("Remove Duplicates", RemoveDuplicatesContextMenu, DropDownMenuStatus));
+            }
+        }
+
+        void RemoveDuplicatesContextMenu(DropdownMenuAction D)
+        {
+            LookupTable?.RemoveDuplicates();
+            property.serializedObject.Update();
+            BuildItems();
+            TryForceRefreshPrefabMarkers();
+        }
+
+        public void CallUpdateColors()
+        {
+            if (LookupTable == null || items == null) return;
+            List<bool> dupes = LookupTable.Duplicates();
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (i < dupes.Count) items[i].Invalid = dupes[i];
+            }
+        }
+
+        public class ItemDrawer : SuperListItem<DictionaryDrawer, ItemDrawer, NameHashValueTrio<Polymorph>>
+        {
+            public ItemDrawer(DictionaryDrawer parentList, int Index) : base(parentList, Index) { }
+
+            protected override void BindProperty()
+            {
+                this.KeyProp = parent.KeysProperty.GetArrayElementAtIndex(Index);
+                this.HashProp = parent.HashesProperty.GetArrayElementAtIndex(Index);
+                this.ValueProp = parent.ValuesProperty.GetArrayElementAtIndex(Index);
+                AssertProperties(KeyProp, HashProp, ValueProp);
+                FinishBind();
+            }
+
+            public SerializedProperty KeyProp { get; protected set; }
+            public TextField KeyField { get; protected set; }
+            public SerializedProperty HashProp { get; protected set; }
+            public SerializedProperty ValueProp { get; protected set; }
+            public HeaderDrawer ValueHeader { get; protected set; }
+
+            public override VisualElement Content()
+            {
+                UpdateBackground();
+
+                content = new VisualElement()
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row,
+                        flexGrow = 1f
+                    }
+                };
+
+                ValueHeader = new HeaderDrawer(ValueProp)
+                {
+                    style =
+                    {
+                        flexBasis = new Length(70, LengthUnit.Percent),
+                        marginRight = 2,
+                        marginLeft = 12,
+                        flexGrow = 1f
+                    }
+                }.AddTo(content).DelayedBuild(() =>
+                {
+                    ValueHeader.ChangeButton.parent.Remove(ValueHeader.ChangeButton);
+
+                    // Name field (visible)
+                    KeyField?.Unbind();
+                    KeyField = new TextField().AddTo(ValueHeader.Label.parent, k =>
+                    {
+                        ValueHeader.Label.text = ValueHeader.Label.text.Split(' ')[2];
+                        k.style.flexBasis = Length.Percent(50);
+                        k.label = "";
+                        k.style.height = EditorGUIUtility.singleLineHeight - 2;
+                        k.style.flexGrow = 1;
+                        k.SendToBack();
+                        ValueHeader.Arrow.SendToBack();
+                        ValueHeader.Arrow.style.marginRight = 0;
+                        ValueHeader.Label.style.marginLeft = 4;
+                        ValueHeader.Label.style.flexGrow = 0;
+                        ValueHeader.Label.ShrinkToTextWidth();
+
+
+                        k.SetValueWithoutNotify(KeyProp.stringValue);
+
+                        k.SetValueWithoutNotify(KeyProp.stringValue);
+                        k.BindProperty(KeyProp);
+                        k.isDelayed = true;
+                        // When name changes, update the hash key and propagate duplicate checks
+                        k.DelayedBuild(() => k.RegisterValueChangedCallback(ev =>
+                        {
+                            KeyProp.stringValue = ev.newValue;
+                            HashProp.intValue = ev.newValue.Hash();
+                            KeyProp.serializedObject.ApplyModifiedProperties();
+                            parent.CallUpdateColors();
+                        }));
+
+                        k.tooltip = $"Key: {HashProp.intValue}";
+                        k.RegisterValueChangedCallback(ev =>
+                        {
+                            HashProp.intValue = ev.newValue.Hash();
+                            k.tooltip = $"Key: {HashProp.intValue}";
+                            parent.CallUpdateColors();
+                        });
+
+                        ContextMenuTarget = k;
+
+
+                    });
+                });
+
+                return content;
+            }
+
+
+            protected override void PostContent()
+            {
+
+            }
+
+            protected override void ContextMenu(ContextualMenuPopulateEvent evt)
+            {
+                var list = evt.menu.MenuItems();
+                bool deleteFound = false;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i] is not DropdownMenuAction iAction) continue;
+
+                    if (iAction.name.StartsWith("Apply to Prefab")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+                    if (iAction.name.StartsWith("Revert")) list[i] = new DropdownMenuAction(iAction.name, T => ApplyOrRevertContextMenu(iAction), DropDownMenuStatus);
+
+                    if (iAction.name == "Duplicate Array Element")
+                    {
+                        list.RemoveAt(i);
+                        i--;
+                    }
+                    if (iAction.name == "Delete Array Element")
+                    {
+                        list[i] = new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus);
+                        deleteFound = true;
+                    }
+                }
+                if (!deleteFound)
+                    list.Add(new DropdownMenuAction("Delete", DeleteContextMenu, DropDownMenuStatus));
+            }
         }
     }
+
 
 
     #endregion
@@ -468,101 +780,16 @@ public class PolymorphEditors
     [CustomPropertyDrawer(typeof(ListOf<>), true)]
     public class ListOfDrawer : PropertyDrawer
     {
-
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             ListDrawer list = new(property, fieldInfo);
             return list;
         }
-
-
-        public class Item : VisualElement
-        {
-            private readonly Action<Item, int> moveCallback;
-
-            public Item(SerializedProperty itemProperty, Action<Item> RemoveCall, Action<Item, int> MoveCall)
-            {
-                this.itemProperty = itemProperty;
-                moveCallback = MoveCall;
-
-                name = "PolyListRow";
-                style.flexDirection = FlexDirection.Row;
-                style.alignItems = Align.Center;
-                style.marginTop = 2;
-
-                glyph = new("≡")
-                {
-                    name = "listof-grab", style =
-                    {
-                        width = 18,
-                        marginRight = 16,
-                        marginLeft = 4,
-                        unityTextAlign = TextAnchor.MiddleCenter
-                    }
-                };
-                Add(glyph);
-
-                // Register wheel event on the glyph to trigger reorder.
-                glyph.RegisterCallback<WheelEvent>((evt) =>
-                {
-                    // evt.delta.y > 0 => scroll up; move up one slot
-                    // evt.delta.y < 0 => scroll down; move down one slot
-                    float dy = evt.delta.y;
-                    int delta = 0;
-                    if (dy > 0f) delta = 1;
-                    else if (dy < 0f) delta = -1;
-
-                    if (delta != 0)
-                    {
-                        try
-                        {
-                            moveCallback?.Invoke(this, delta);
-                        }
-                        catch { /* defensive: swallow */ }
-                        evt.StopPropagation();
-                    }
-                });
-
-                body = new(itemProperty);
-                body.style.flexGrow = 1;
-                Add(body);
-                body.ChangeButton.style.visibility = Visibility.Hidden;
-
-                var removeBtn = new Button(() => RemoveCall(this))
-                {
-                    text = "-",
-                    name = "listof-remove",
-                    style =
-                    {
-                        width = 20,
-                        marginLeft = 6,
-                        backgroundColor = Color.clear,
-                        borderBottomColor = Color.clear,
-                        borderLeftColor = Color.clear,
-                        borderRightColor = Color.clear,
-                        borderTopColor = Color.clear
-                    }
-                };
-                removeBtn.RegisterCallback<ClickEvent>((evt) => evt.StopPropagation());
-                Add(removeBtn);
-                removeBtn.RegisterHoverEvents(value => removeBtn.style.color = value ? new(1, .2f, .2f) : Color.white);
-
-                // expose removebutton property for parity with existing class API
-                removebutton = removeBtn;
-            }
-
-            public SerializedProperty itemProperty { get; private set; }
-            public Label glyph { get; private set; }
-            public Button removebutton { get; private set; }
-            public HeaderDrawer body { get; private set; }
-        }
-
     }
 
     [CustomPropertyDrawer(typeof(UniqueList<>), true)]
     public class UniqueListDrawer : ListOfDrawer
     {
-        public UniqueListDrawer() : base() { }
         ListDrawer list;
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
@@ -594,6 +821,18 @@ public class PolymorphEditors
 
                 menu.ShowAsContext();
             }
+        }
+
+    }
+
+    [CustomPropertyDrawer(typeof(Dictionary<>), true)]
+    public class DictionaryOfDrawer : PropertyDrawer
+    {
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            // Make a concrete generic drawer type for the dictionary value type
+            var display = new DictionaryDrawer(property, fieldInfo, true) as VisualElement;
+            return display;
         }
 
     }

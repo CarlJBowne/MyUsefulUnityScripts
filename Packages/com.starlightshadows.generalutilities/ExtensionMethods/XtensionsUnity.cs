@@ -18,6 +18,16 @@ public static class Xtensions_Unity_Core
 #endif
         objectSceneIsLoaded = M.gameObject.scene.isLoaded;
     }
+    public static void GetExecutionDetails(this ScriptableObject S, out bool gameIsEditor, out bool gameIsPlaying)
+    {
+#if UNITY_EDITOR
+        gameIsEditor = true;
+        gameIsPlaying = EditorApplication.isPlayingOrWillChangePlaymode;
+#else
+        gameIsEditor = false;
+        gameIsPlaying = true;
+#endif
+    }
 
     public static void LateAwake(this MonoBehaviour m, Delegate result)
     {
@@ -117,7 +127,7 @@ public static class Xtensions_Unity_Core
         return com;
     }
 
-    public static Vector2 GetUp(this PlatformEffector2D P) => P.transform.up.Rotated(P.rotationalOffset, Direction.back);
+    public static Vector2 GetUp(this PlatformEffector2D P) => P.transform.up.Rotated(P.rotationalOffset, Directions.back);
 
     public static void EndGame(this UnityEngine.Object o)
     {
@@ -295,10 +305,44 @@ public static class Xtensions_Unity_Transform
         Rightward = 5,
         Leftward = 6
     };
+
+    public static void CopyFrom(this Transform target, Transform source, bool position = true, bool rotation = true, bool scale = false)
+    {
+        if (position) target.localPosition = source.localPosition;
+        if (rotation) target.localRotation = source.localRotation;
+        if (scale) target.localScale = source.localScale;
+    }
+    public static void CopyTo(this Transform source, Transform target, bool position = true, bool rotation = true, bool scale = false)
+    {
+        if (position) target.localPosition = source.localPosition;
+        if (rotation) target.localRotation = source.localRotation;
+        if (scale) target.localScale = source.localScale;
+    }
+
+    public static void CopyFrom(this Transform target, Placement P, bool position = true, bool rotation = true)
+    {
+        if(position) target.position = P;
+        if(rotation) target.rotation = P;
+    }
+    public static void CopyTo(this Placement P, Transform target, bool position = true, bool rotation = true)
+    {
+        if(position) target.position = P;
+        if(rotation) target.rotation = P;
+    }
 }
 
 public static class Xtensions_UnityColliders
 {
+    public static Vector3 Center(this Collider C) => C switch
+    {
+        BoxCollider bc => C.transform.position + bc.center,
+        CapsuleCollider cc => C.transform.position + cc.center,
+        SphereCollider sc => C.transform.position + sc.center,
+        MeshCollider mc => C.transform.position + mc.bounds.center,
+        TerrainCollider tc => C.transform.position + tc.bounds.center,
+        _ => C.bounds.center
+    };
+
     public static void DrawWireClone(this Collider C, Color color, Vector3? position = null, Vector3? rotation = null)
     {
 #if UNITY_EDITOR
@@ -398,6 +442,93 @@ public static class Xtensions_UnityColliders
         {
             Gizmos.color = prevColor;
             Gizmos.matrix = prevMatrix;
+        }
+#endif
+    }
+    public static void DrawWireClone(this Collider2D C, Color color, Vector2? position = null, float? rotation = null)
+    {
+#if UNITY_EDITOR
+        if (C == null) return;
+
+        Vector3 worldPos = position ?? C.transform.position;
+        Quaternion worldRot = rotation.HasValue
+            ? Quaternion.Euler(0f, 0f, rotation.Value)
+            : C.transform.rotation;
+        Matrix4x4 matrix = Matrix4x4.TRS(worldPos, worldRot, C.transform.lossyScale);
+
+        using (new Handles.DrawingScope(color, matrix))
+        {
+            void DrawPath(Vector2[] path, Vector2 offset, bool closed)
+            {
+                if (path == null || path.Length < 2) return;
+
+                Vector3[] points = new Vector3[path.Length + (closed ? 1 : 0)];
+                for (int i = 0; i < path.Length; i++)
+                    points[i] = path[i] + offset;
+                if (closed)
+                    points[path.Length] = points[0];
+                Handles.DrawPolyLine(points);
+            }
+
+            switch (C)
+            {
+                case BoxCollider2D box:
+                    Handles.DrawWireCube(box.offset, box.size);
+                    break;
+
+                case CircleCollider2D circle:
+                    Handles.DrawWireDisc(circle.offset, Vector3.forward, circle.radius);
+                    break;
+
+                case CapsuleCollider2D capsule:
+                {
+                    Vector2 size = capsule.size;
+                    bool vertical = capsule.direction == CapsuleDirection2D.Vertical;
+                    float radius = Mathf.Min(size.x, size.y) * 0.5f;
+                    float halfSegment = Mathf.Max(0f, (Mathf.Max(size.x, size.y) - radius * 2f) * 0.5f);
+                    const int arcSegments = 16;
+                    Vector2[] path = new Vector2[arcSegments * 2 + 2];
+
+                    for (int i = 0; i <= arcSegments; i++)
+                    {
+                        float angle = Mathf.PI * i / arcSegments;
+                        Vector2 point = new(Mathf.Cos(angle) * radius, halfSegment + Mathf.Sin(angle) * radius);
+                        path[i] = vertical ? point : new Vector2(point.y, point.x);
+                    }
+                    for (int i = 0; i <= arcSegments; i++)
+                    {
+                        float angle = Mathf.PI + Mathf.PI * i / arcSegments;
+                        Vector2 point = new(Mathf.Cos(angle) * radius, -halfSegment + Mathf.Sin(angle) * radius);
+                        path[arcSegments + 1 + i] = vertical ? point : new Vector2(point.y, point.x);
+                    }
+
+                    DrawPath(path, capsule.offset, true);
+                    break;
+                }
+
+                case PolygonCollider2D polygon:
+                    for (int pathIndex = 0; pathIndex < polygon.pathCount; pathIndex++)
+                        DrawPath(polygon.GetPath(pathIndex), polygon.offset, true);
+                    break;
+
+                case EdgeCollider2D edge:
+                    DrawPath(edge.points, edge.offset, false);
+                    break;
+
+                case CompositeCollider2D composite:
+                    for (int pathIndex = 0; pathIndex < composite.pathCount; pathIndex++)
+                    {
+                        Vector2[] path = new Vector2[composite.GetPathPointCount(pathIndex)];
+                        composite.GetPath(pathIndex, path);
+                        DrawPath(path, composite.offset, true);
+                    }
+                    break;
+
+                default:
+                    using (new Handles.DrawingScope(color, Matrix4x4.identity))
+                        Handles.DrawWireCube(C.bounds.center + (worldPos - C.transform.position), C.bounds.size);
+                    break;
+            }
         }
 #endif
     }

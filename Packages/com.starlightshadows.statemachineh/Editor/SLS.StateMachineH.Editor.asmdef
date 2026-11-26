@@ -1,12 +1,11 @@
 {
-    "name": "SLS.StateMachineH.Editor",
-    "rootNamespace": "SLS.StateMachineH.Editor",
+    "name": "SLS.StateMachineUltimate.Editor",
+    "rootNamespace": "SLS.StateMachineUltimate.Editor",
     "references": [
-        "SLS.StateMachineH",
+        "SLS.StateMachineUltimate",
         "SLS.ListUtilities",
         "SLS.ListUtilities.Editor",
-        "SLS.EditorUtilities",
-        "SLS.EditorUtilities.Editor"
+        "SLS.EditorUtilities"
     ],
     "includePlatforms": [
         "Editor"
@@ -17,6 +16,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.starlightshadows.polymorphs",
+            "expression": "",
+            "define": "POLYMORPHS"
+        }
+    ],
     "noEngineReferences": false
 }

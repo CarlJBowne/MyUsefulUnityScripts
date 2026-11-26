@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace SLS.StateMachineH.Timelines
+namespace SLS.StateMachineUltimate.Timelines
 {
     /// <summary>
     /// A Central <see cref="StateBehavior"/> to manage <see cref="StateTimeline"/> behaviors.

@@ -1,0 +1,24 @@
+{
+    "name": "SLS.SaveFileCore",
+    "rootNamespace": "SLS.SaveFileCore",
+    "references": [
+        "SLS.GeneralUtilities",
+        "SLS.Polymorphs",
+        "SLS.ListUtilities"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.starlightshadows.polymorphs",
+            "expression": "",
+            "define": "SLS_POLYMORPHS"
+        }
+    ],
+    "noEngineReferences": false
+}

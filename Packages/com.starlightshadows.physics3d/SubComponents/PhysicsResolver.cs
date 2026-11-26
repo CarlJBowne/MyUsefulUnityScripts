@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
 using Unity.VisualScripting;
+using System.Collections.Generic;
+
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -11,9 +13,9 @@ using UnityEditor.UIElements;
 namespace SLS.Physics3D
 {
     /// <summary>
-    /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="PhysicsBody"/>.
+    /// Abstract base class for movement resolvers. A resolver is responsible for translating a proposed movement vector into collisions, sliding, landing and other movement effects for its owning <see cref="MovementBody"/>.
     /// </summary>
-    [System.Serializable, RequireComponent(typeof(PhysicsBody))]
+    [System.Serializable, RequireComponent(typeof(MovementBody))]
     public abstract class PhysicsResolver : MonoBehaviour
     {
         #region Relations
@@ -21,7 +23,7 @@ namespace SLS.Physics3D
         /// <summary>
         /// The owning PhysicsBody instance. Available after <see cref="Init"/> is called.
         /// </summary>
-        [field: SerializeField] public PhysicsBody Body { get; private set; }
+        [field: SerializeField] public MovementBody Body { get; private set; }
 
         /// <summary>
         /// Convenience properties that forward to the owning body. These provide quick
@@ -29,16 +31,16 @@ namespace SLS.Physics3D
         /// </summary>
         protected Vector3 Position => Body.Position;
         protected Velocity stepZeroVelocity => Body.Velocity;
-        protected GroundState Ground => Body.Ground;
-        protected AnchorPoint anchor => Body.Ground.anchor;
-        protected Direction direction => Body.Direction;
+        protected AnchorState Anchor => Body.Anchor;
+        protected AnchorPoint CurrentAnchor => Body.Anchor.AnchorPoint;
+        protected Direction Direction => Body.Direction;
         protected PhysicsResolver Next => Body.Resolver;
 
         #endregion
 
         public virtual void Reset()
         {
-            if (!TryGetComponent(out PhysicsBody pb))
+            if (!TryGetComponent(out MovementBody pb))
             { DestroyImmediate(this); return; }
             this.Body = pb;
         }
@@ -46,15 +48,30 @@ namespace SLS.Physics3D
         /// <summary>
         /// Lifecycle hooks and the main Move contract for resolvers.
         /// </summary>
-        public virtual void OnStart() { }
+        public virtual void OnStart()
+        {
+            if (Body == null) Body = GetComponent<MovementBody>();
+            if (Body == null)
+            {
+                Debug.LogError($"PhysicsResolver {name} could not find a MovingBody component on the same GameObject. Destroying self.");
+                DestroyImmediate(this);
+                return;
+            }
+        }
         /// <summary>
-        /// Called when this resolver becomes the active resolver for a PhysicsBody.
+        /// Called when this resolver is attempting to become the active resolver for a PhysicsBody. <br/>
+        /// Must handle Situational Validation -> Alternative Testing -> Finalization and result setting. <br/>
+        /// End with base.<see cref="TryEnter"/> to finalize the selection if successful. <br/>
         /// </summary>
-        public virtual void Enter() { }
+        public virtual bool TryEnter(ref PhysicsResolver result)
+        {
+            result = this;
+            return true;
+        }
         /// <summary>
         /// Called when this resolver is no longer active for a PhysicsBody.
         /// </summary>
-        public virtual void Exit() { }
+        public virtual void OnExit() { }
         /// <summary>
         /// Called before the main resolver Move invocation for per-frame setup.
         /// </summary>
@@ -77,11 +94,14 @@ namespace SLS.Physics3D
             vel.sqrMagnitude < float.Epsilon || ++Body.Step >= Body.maxPhysicsSteps;
         public bool ContinueCheck(float hitDistance) =>
             hitDistance == -1 || ++Body.Step >= Body.maxPhysicsSteps;
+        public bool ContinueCheck() => ++Body.Step >= Body.maxPhysicsSteps;
 
-        public void ChooseNext() => Body.UpdateResolver();
-        public void ChooseNext(PhysicsResolver target) => Body.UpdateResolver(target);
+        public void ChooseNext(PhysicsResolver target) => Body.SelectResolver(target);
+
+        public void Select() => Body.SelectResolver(this);
 
         public static implicit operator bool(PhysicsResolver P) => P != null;
+        public bool active => Body.Resolver == this;
 
         protected void Print(Func<string> value)
         {
@@ -96,105 +116,136 @@ namespace SLS.Physics3D
         {
             this.hideFlags = HideFlags.HideInInspector;
         }
+
+        public abstract class GroundType : PhysicsResolver { }
+        public abstract class AirType : PhysicsResolver { }
+        public abstract class StickyType : PhysicsResolver { }
     }
 
 #if UNITY_EDITOR
     [UnityEditor.CustomPropertyDrawer(typeof(PhysicsResolver), true)]
     public class Editor : UnityEditor.PropertyDrawer
     {
-        SerializedProperty property;
-        VisualElement root;
-        Foldout foldout;
-        Button GetButton;
+        static List<UnityEngine.Object> shown = new();
 
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            this.property = property;
-            root = new();
-            foldout = new()
+            // Localize everything to avoid reuse issues with PropertyDrawer instances.
+            var root = new VisualElement();
+
+            var foldout = new Foldout
             {
-                text = property.displayName
+                text = property.displayName,
+                value = false
             };
             foldout.BindProperty(property);
+            foldout.SetValueWithoutNotify(false);
             root.Add(foldout);
-            GetButton = new(ButtonPress);
-            GetButton.style.width = new Length(40, LengthUnit.Percent);
-            GetButton.style.height = 14;
-            GetButton.style.position = Position.Absolute;
-            GetButton.style.top = 0;
-            GetButton.style.right = 0;
-            root.Add(GetButton);
+            foldout.value = false;
 
-            Build();
+            var getButton = new Button(ButtonPress)
+            {
+                style =
+                {
+                    width = new Length(40, LengthUnit.Percent),
+                    height = 14,
+                    position = Position.Absolute,
+                    top = 0,
+                    right = 0,
+                }
+            };
+            root.Add(getButton);
 
-            Undo.undoRedoPerformed += Build;
-            root.RegisterCallbackOnce<DetachFromPanelEvent>(ev => { Undo.undoRedoPerformed -= Build; });
+            void UpdateButtonText()
+            {
+                getButton.text = property.objectReferenceValue != null
+                    ? property.objectReferenceValue.GetType().Name.Replace("PhysResolver", "")
+                    : "Select";
+            }
+            UpdateButtonText();
+
+            // Register the foldout callback after attachment to panel (mirrors previous intent).
+            foldout.RegisterCallbackOnce<AttachToPanelEvent>(c =>
+                foldout.schedule.Execute(() => foldout.RegisterValueChangedCallback(FoldoutChange))
+            );
+
+            void FoldoutChange(ChangeEvent<bool> e)
+            {
+                if (e.target != e.currentTarget) return;
+                UpdateButtonText();
+
+                if (e.newValue)
+                {
+                    var target = property.objectReferenceValue;
+                    if (target != null && shown.Contains(target)) return;
+
+                    if (target != null) shown.Add(target);
+
+                    if (target != null)
+                        foldout.Add(new InspectorElement(new SerializedObject(target)));
+                }
+                else
+                {
+                    var target = property.objectReferenceValue;
+                    if (target != null && shown.Contains(target)) shown.Remove(target);
+                    foldout.contentContainer.Clear();
+                }
+            }
+
+            void ButtonPress()
+            {
+                var menu = new GenericMenu();
+
+                PhysicsResolver[] existingResolvers = (property.serializedObject.targetObject as Component).GetComponents<PhysicsResolver>();
+                for (int i = 0; i < existingResolvers.Length; i++)
+                {
+                    int t = i;
+                    menu.AddItem(new($"{i + 1} : {existingResolvers[t].GetType().Name.Replace("PhysResolver", "")}"),
+                        property.objectReferenceValue == existingResolvers[t],
+                        () => PostMenuE(existingResolvers[t]));
+                }
+
+                menu.AddSeparator("");
+
+                Type[] subTypes = GetSubtypes();
+                for (int i = 0; i < subTypes.Length; i++)
+                {
+                    int t = i;
+                    menu.AddItem(new($"+ {subTypes[t].Name.Replace("PhysResolver", "")}"), false, () => PostMenuN(subTypes[t]));
+                }
+
+                if (property.objectReferenceValue != null)
+                {
+                    menu.AddSeparator("");
+                    menu.AddItem(new("Nullify"), false, PostMenuNull);
+                }
+
+                menu.ShowAsContext();
+            }
+
+            void PostMenuE(PhysicsResolver input)
+            {
+                property.objectReferenceValue = input;
+                property.serializedObject.ApplyModifiedProperties();
+                // Expand so the user can see the newly selected resolver
+                foldout.value = true;
+            }
+            void PostMenuN(Type targetType)
+            {
+                PhysicsResolver newRes = (property.serializedObject.targetObject as Component).gameObject.AddComponent(targetType) as PhysicsResolver;
+                property.objectReferenceValue = newRes;
+                newRes.hideFlags = HideFlags.HideInInspector;
+                property.serializedObject.ApplyModifiedProperties();
+                foldout.value = true;
+            }
+            void PostMenuNull()
+            {
+                property.objectReferenceValue = null;
+                property.serializedObject.ApplyModifiedProperties();
+                foldout.value = true;
+            }
 
             return root;
-        }
-
-        void Build()
-        {
-            foldout.contentContainer.Clear();
-            GetButton.text = property.objectReferenceValue != null
-                ? property.objectReferenceValue.GetType().Name.Replace("PhysResolver", "")
-                : "Select";
-            if (property.objectReferenceValue != null)
-                foldout.Add(new InspectorElement(new SerializedObject(property.objectReferenceValue)));
-        }
-
-        void ButtonPress()
-        {
-            GenericMenu Menu = new();
-
-            PhysicsResolver[] existingResolvers = (property.serializedObject.targetObject as Component).GetComponents<PhysicsResolver>();
-
-            for (int i = 0; i < existingResolvers.Length; i++)
-            {
-                int t = i;
-                Menu.AddItem(new($"{i + 1} : {existingResolvers[t].GetType().Name.Replace("PhysResolver", "")}"),
-                    property.objectReferenceValue == existingResolvers[t],
-                    () => PostMenuE(existingResolvers[t]));
-            }
-
-
-            Menu.AddSeparator("");
-
-            Type[] subTypes = GetSubtypes();
-            for (int i = 0; i < subTypes.Length; i++)
-            {
-                int t = i;
-                Menu.AddItem(new($"+ {subTypes[t].Name.Replace("PhysResolver", "")}"), false, () => PostMenuN(subTypes[t]));
-            }
-
-
-            if (property.objectReferenceValue != null)
-            {
-                Menu.AddSeparator("");
-                Menu.AddItem(new("Nullify"), false, PostMenuNull);
-            }
-
-            Menu.ShowAsContext();
-        }
-        void PostMenuE(PhysicsResolver input)
-        {
-            property.objectReferenceValue = input;
-            property.serializedObject.ApplyModifiedProperties();
-            Build();
-        }
-        void PostMenuN(Type targetType)
-        {
-            PhysicsResolver newRes = (property.serializedObject.targetObject as Component).gameObject.AddComponent(targetType) as PhysicsResolver;
-            property.objectReferenceValue = newRes;
-            newRes.hideFlags = HideFlags.HideInInspector;
-            property.serializedObject.ApplyModifiedProperties();
-            Build();
-        }
-        void PostMenuNull()
-        {
-            property.objectReferenceValue = null;
-            property.serializedObject.ApplyModifiedProperties();
-            Build();
         }
 
         public static Type[] GetSubtypes()
@@ -212,7 +263,6 @@ namespace SLS.Physics3D
                 )
                 .ToArray();
         }
-
     }
-#endif 
+#endif
 }

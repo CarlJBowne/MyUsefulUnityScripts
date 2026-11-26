@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace SLS.StateMachineH.V5
+namespace SLS.StateMachineUltimate.V5
 {
     /// <summary>  
     /// The base interface for every node in the hierarchical state machine. 

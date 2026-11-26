@@ -12,6 +12,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.starlightshadows.appstatemachine": {
+      "version": "file:com.starlightshadows.appstatemachine",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.starlightshadows.assetutilities": {
       "version": "file:com.starlightshadows.assetutilities",
       "depth": 0,
@@ -24,12 +30,6 @@
     },
     "com.starlightshadows.editorutilities": {
       "version": "file:com.starlightshadows.editorutilities",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.starlightshadows.gamestatemachine": {
-      "version": "file:com.starlightshadows.gamestatemachine",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
@@ -53,7 +53,7 @@
       "dependencies": {}
     },
     "com.starlightshadows.objectutilities": {
-      "version": "file:com.starlightshadows.objectpooling",
+      "version": "file:com.starlightshadows.objectutilities",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
@@ -79,8 +79,8 @@
       "source": "embedded",
       "dependencies": {}
     },
-    "com.starlightshadows.savesystem": {
-      "version": "file:com.starlightshadows.savedata",
+    "com.starlightshadows.savefilecore": {
+      "version": "file:com.starlightshadows.savefilecore",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
@@ -91,7 +91,7 @@
       "source": "embedded",
       "dependencies": {}
     },
-    "com.starlightshadows.statemachineh": {
+    "com.starlightshadows.statemachineultimate": {
       "version": "file:com.starlightshadows.statemachineh",
       "depth": 0,
       "source": "embedded",

@@ -1,0 +1,28 @@
+{
+    "name": "SLS.AppStateMachine",
+    "rootNamespace": "SLS.AppStateMachine",
+    "references": [
+        "SLS.Polymorphs",
+        "SLS.ListUtilities",
+        "Kybernetik.UltEvents",
+        "SLS.AssetUtilties",
+        "SLS.Singletons",
+        "SLS.GeneralUtilities",
+        "SLS.TimeUtilities"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.kybernetik.ultevents",
+            "expression": "",
+            "define": "ULT_EVENTS"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
-using SaveSystem;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -140,7 +137,7 @@ public class GameSession : MonoBehaviour
             InitializeSaves(fileNo);
             //RoomManager.destination = SaveData.Current.location;
 
-            Menu.CloseAllMenus();
+            //Menu.CloseAllMenus();
             var Load = SceneManager.LoadSceneAsync(GAMEPLAY_SCENE);
 
             yield return WaitFor.Until(() => Load.isDone && Active);
@@ -161,9 +158,9 @@ public class GameSession : MonoBehaviour
 
     public static void InitializeSaves(int fileNo)
     {
-        SaveData.IO = new(fileNo);
-        SaveData.IO.LoadFromFile(SaveData.Current);
-        SaveData.RevertToSaveFile();
+        //SaveData.IO = new(fileNo);
+        //SaveData.IO.LoadFromFile(SaveData.Current);
+        //SaveData.RevertToSaveFile();
     }
 
 
@@ -177,13 +174,13 @@ public class GameSession : MonoBehaviour
 
     public static void Death()
     {
-        SaveData.RevertToDeathData();
+        //SaveData.RevertToDeathData();
         //RoomManager.StartTransition(Destination.Current);
     }
 
     public static void ReloadSave()
     {
-        SaveData.RevertToSaveFile();
+        //SaveData.RevertToSaveFile();
         //RoomManager.StartTransition(Destination.Current);
     }
 

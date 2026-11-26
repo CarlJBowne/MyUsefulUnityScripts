@@ -10,7 +10,7 @@ using EVENT = UltEvents.UltEvent;
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
-namespace SLS.StateMachineH.Utils
+namespace SLS.StateMachineUltimate.Utils
 {
     [Tooltip("A list of events that can be fired by index, completely disconnected from both State architecture and the horrors of Serialized Polymorphs. Use if you want a way to serialize Events by a set ID without giving this State a SignalNode. If you already have a Signal Node, just use that. You can fire by number.")]
     public class SignallessEvents : MonoBehaviour

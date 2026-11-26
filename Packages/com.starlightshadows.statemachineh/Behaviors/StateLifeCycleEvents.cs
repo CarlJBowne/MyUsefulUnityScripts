@@ -1,4 +1,4 @@
-using SLS.StateMachineH;
+using SLS.StateMachineUltimate;
 using UnityEngine;
 
 
@@ -8,7 +8,7 @@ using EVENT = UltEvents.UltEvent;
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
-namespace SLS.StateMachineH
+namespace SLS.StateMachineUltimate
 {
     /// <summary>  
     /// A behavior that invokes inspector-usable events for the lifecycle phases of a state in the hierarchical <see cref="StateMachine"/>.

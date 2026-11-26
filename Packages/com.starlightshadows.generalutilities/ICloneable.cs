@@ -1,34 +1,25 @@
+using System;
+
 /// <summary>
 /// A better Cloneable interface that enforces support for deep cloning data into an existing object.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public interface ICloneable<T> where T : class
+public interface ICloneable<T> where T : class, ICloneable<T>
 {
     /// <summary>
-    /// Deep Clones this object, creating a new instance or populating the provided instance field.
-    /// Note: Does not properly populate existing null fields. Use <see cref="Clone(out)"/> instead.
+    /// The center of the <see cref="ICloneable{T}"/> interface. This method should copy all data from the <paramref name="source"/> object into this object, overwriting any existing data.
     /// </summary>
-    public T Clone(T target = null);
+    /// <param name="source">The source object</param>
+    /// <returns>Should return the resulting destination object</returns>
+    public T Clone(T source = null);
 }
 
-public static class XtensionsICloneable
+public static class Xtensions_ICloneable
 {
-    /// <summary>
-    /// Deep Clones this object into the null field provided.
-    /// </summary>
-    public static T Clone<T>(this T source, out T result) where T : class, ICloneable<T>
+    public static T CloneInto<T>(this T source, T target) where T : class, ICloneable<T>
     {
-        result = source.Clone();
-        return result;
-    }
-
-    /// <summary>
-    /// Populates this object with a Deep Clone of all of the source's data.
-    /// NOTE: Does NOT work with null fields.
-    /// </summary>
-    public static T CloneFrom<T>(this T target, T source) where T : class, ICloneable<T>
-    {
-        source.Clone(target);
+        if (source == null) return null;
+        target.Clone(source);
         return target;
     }
 }

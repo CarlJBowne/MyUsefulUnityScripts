@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using SLS.EditorUtilities.ComponentHeaders;
 using UnityEngine;
 
-namespace SLS.StateMachineH
+namespace SLS.StateMachineUltimate
 {
     /// <summary>  
     /// A behavior that manages animation states within a <see cref="StateMachine"/>.  
     /// </summary>  
-    public class StateAnimator : StateBehavior
+    public class StateAnimator : StateBehavior<Animator>
     {
         public AnimatorAction action = new();
 
@@ -17,20 +17,6 @@ namespace SLS.StateMachineH
         /// </summary>  
         public bool doWhenNotFinal;
 
-        /// <summary>  
-        /// The <see cref="Animator"/> component used to control animations.  
-        /// </summary>  
-        [field: SerializeField, HeaderItem(true, nameof(_GetAnim))] public virtual Animator Animator { get; private set; }
-        Animator _GetAnim() => GetComponentFromMachine<Animator>();
-
-        /// <summary>  
-        /// Sets up the <see cref="StateAnimator"/> by attempting to retrieve the <see cref="Animator"/> component.  
-        /// </summary>  
-        protected override void OnSetup()
-        {
-            Animator = GetComponentFromMachine<Animator>();
-            if (Animator == null) Animator = Machine.gameObject.AddComponent<Animator>();
-        }
 
         /// <summary>  
         /// Executes the animation action when entering a state.  
@@ -40,7 +26,7 @@ namespace SLS.StateMachineH
         protected override void OnEnter(State prev, bool isFinal)
         {
             if (!isFinal && !doWhenNotFinal) return;
-            action.Do(Animator);
+            action.Do(CoreComp);
         }
 
         #region Auxilary Alternatives
@@ -48,33 +34,33 @@ namespace SLS.StateMachineH
         /// Plays the specified animation.  
         /// </summary>  
         /// <param name="name">The name of the animation to play.</param>  
-        public void Play(string name) => Animator.Play(name);
+        public void Play(string name) => CoreComp.Play(name);
 
         /// <summary>  
         /// Crossfades to the specified animation over a given duration.  
         /// </summary>  
         /// <param name="name">The name of the animation to crossfade to.</param>  
         /// <param name="time">The duration of the crossfade.</param>  
-        public void CrossFade(string name, float time = 0f) => Animator.CrossFade(name, time, 0);
+        public void CrossFade(string name, float time = 0f) => CoreComp.CrossFade(name, time, 0);
 
         /// <summary>  
         /// Triggers the specified animation.  
         /// </summary>  
         /// <param name="name">The name of the animation trigger.</param>  
-        public void Trigger(string name) => Animator.SetTrigger(name);
+        public void Trigger(string name) => CoreComp.SetTrigger(name);
 
         /// <summary>  
         /// Plays the specified animation starting at the current normalized time of the Animator.  
         /// </summary>  
         /// <param name="name">The name of the animation to play.</param>  
-        public void PlayAtCurrentPoint(string name) => Animator.Play(name, -1, Animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
+        public void PlayAtCurrentPoint(string name) => CoreComp.Play(name, -1, CoreComp.GetCurrentAnimatorStateInfo(-1).normalizedTime);
 
         /// <summary>  
         /// Crossfades to the specified animation starting at the current normalized time of the Animator.  
         /// </summary>  
         /// <param name="name">The name of the animation to crossfade to.</param>  
         /// <param name="time">The duration of the crossfade.</param>  
-        public void CrossFadeAtCurrentPoint(string name, float time = 0f) => Animator.CrossFade(name, time, 0, Animator.GetCurrentAnimatorStateInfo(-1).normalizedTime);
+        public void CrossFadeAtCurrentPoint(string name, float time = 0f) => CoreComp.CrossFade(name, time, 0, CoreComp.GetCurrentAnimatorStateInfo(-1).normalizedTime);
 
         #endregion
     }

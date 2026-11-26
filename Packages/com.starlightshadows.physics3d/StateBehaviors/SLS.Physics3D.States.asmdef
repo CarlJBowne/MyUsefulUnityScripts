@@ -1,0 +1,17 @@
+{
+    "name": "SLS.Physics3D.States",
+    "rootNamespace": "SLS.Physics3D.States",
+    "references": [
+        "SLS.StateMachineUltimate",
+        "SLS.Physics3D"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

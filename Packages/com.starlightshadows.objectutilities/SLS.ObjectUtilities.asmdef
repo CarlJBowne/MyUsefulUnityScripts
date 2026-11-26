@@ -1,0 +1,22 @@
+{
+    "name": "SLS.ObjectUtilities",
+    "rootNamespace": "SLS.ObjectUtilities",
+    "references": [
+        "SLS.Singletons",
+        "Unity.VisualScripting.Core",
+        "SLS.GeneralUtilities",
+        "SLS.TimeUtilities",
+        "SLS.EditorUtilities",
+        "SLS.ListUtilities",
+        "SLS.ListUtilities.Editor"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

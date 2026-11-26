@@ -1,177 +1,311 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
+using System.Collections;
+
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
 /// <summary>
-/// Simple, reusable timer that can be driven manually via <see cref="Tick"/> or attached to the
-/// background runner `TimeUtilityBackground.Self` for automatic ticking.
+/// Simple, reusable timer. Default implementation that uses the central <see cref="UpdateProxy"/> as a central timer manager.
+/// <br/> Has subclasses <see cref="Timer.Manual"/> and <see cref="Timer.MonoDriven"/> for alternate implementations.
 /// </summary>
+[System.Serializable]
 public class Timer
 {
-    // Public configurable fields (kept for compatibility with existing codebase)
-    public float length;
-    public bool loop;
-    public Action targetAction;
-    public bool unscaled = false;
+    /// <summary>
+    /// Duration of the timer in seconds. This is the only field intended to be visible in the Editor.
+    /// Must be non-negative.
+    /// </summary>
+    public float length; //The only field that should actually be visible in Editor;
 
-    // State
-    public float time { get; private set; }
-    public enum State
-    {
-        Inactive,
-        Updating,
-        BackgroundPaused,
-        BackgroundDriven,
-    }
-    public State state { get; private set; } = State.Inactive;
+    /// <summary>
+    /// Whether the timer should automatically restart after firing.
+    /// </summary>
+    public bool loop = true;
+
+    /// <summary>
+    /// Whether the timer uses unscaled time (ignores timeScale).
+    /// </summary>
+    public bool unscaled = true;
+
+    // NonSerialized
+    /// <summary>
+    /// The action invoked when the timer completes a cycle. Not serialized.
+    /// </summary>
+    [NonSerialized] public Action action;
+
+    /// <summary>
+    /// The current elapsed time of the timer in seconds.
+    /// </summary>
+    public float time { get; private set; } = 0f;
+
+    /// <summary>
+    /// Whether the timer is currently active (ticking).
+    /// </summary>
+    public virtual bool active { get; private set; } = false;
+
+    /// <summary>
+    /// Whether the timer is currently paused.
+    /// </summary>
+    public bool paused { get; private set; } = false;
 
 
     /// <summary>
     /// Create a timer instance.
     /// </summary>
-    /// <param name="length">Duration in seconds.</param>
+    /// <param name="length">Duration in seconds. Values less than zero are clamped to zero.</param>
     /// <param name="loop">Whether the timer should loop after firing.</param>
-    /// <param name="result">Action invoked when the timer completes a cycle.</param>
-    /// <param name="autoStart">Whether to start immediately.</param>
-    /// <param name="attachToBackground">Whether to attach automatically to the background runner.</param>
-    public Timer(float length, bool loop = false, Action result = null, State immediateState = State.Inactive)
+    public Timer(float length, bool loop = true)
     {
         this.length = Mathf.Max(0f, length);
         this.loop = loop;
-        this.targetAction = result;
-        time = 0f;
-
-        targetAction = result;
-        SetState(immediateState, true);
     }
 
-
-    public Timer SetState(State newState, bool restart = false, Action replaceAction = null)
+    /// <summary>
+    /// Start the timer and optionally set the action to invoke when the timer completes.
+    /// </summary>
+    /// <param name="targetAction">Action to invoke on completion. If null, existing action is preserved.</param>
+    public virtual void Start(Action targetAction)
     {
-        if (state is State.Updating or State.BackgroundDriven && !restart) return this;
-
-        if (newState is State.BackgroundDriven or State.BackgroundPaused && targetAction == null && replaceAction == null)
-            return this;
-        if (replaceAction != null) Target(replaceAction);
-
-        if (IsStateBackground(newState) && !IsBackground) 
-            UpdateProxy.AttachTimer(this);
-        else if (!IsStateBackground(newState) && IsBackground)
-            UpdateProxy.DetachTimer(this);
-
-        state = newState;
         time = 0;
-
-        return this;
+        active = true;
+        paused = false;
+        if (targetAction != null) action = targetAction;
+        UpdateProxy.AttachTimer(this);
     }
-    public Timer StartUpdate(bool restart = false, Action replaceAction = null) => 
-        SetState(State.Updating, restart, replaceAction);
-    public Timer StartBackground(bool restart = false, Action replaceAction = null) => 
-        SetState(State.BackgroundDriven, restart, replaceAction);
-    public Timer PrepBackground(bool restart = false, Action replaceAction = null) => 
-        SetState(State.BackgroundPaused, restart, replaceAction);
-    public Timer Stop() => SetState(State.Inactive);
-    public Timer Pause(bool unPause = false)
+
+    /// <summary>
+    /// Stop the timer. The timer will no longer tick until started again.
+    /// </summary>
+    public virtual void Stop()
     {
-        if (!unPause)
-        {
-            if (state is State.Updating) state = State.Inactive;
-            if (state is State.BackgroundDriven) state = State.BackgroundPaused;
-        }
-        else
-        {
-            if (state is State.Inactive) state = State.Updating;
-            if (state is State.BackgroundPaused) state = State.BackgroundDriven;
-        }
-
-        return this;
+        active = false;
+        UpdateProxy.DetachTimer(this);
     }
 
+    /// <summary>
+    /// Pause or unpause the timer.
+    /// </summary>
+    /// <param name="unPause">If true, unpause; otherwise toggle paused state.</param>
+    public virtual void Pause(bool unPause = false)
+    {
+        paused = !unPause;
+    }
 
+    /// <summary>
+    /// Reset the elapsed time to zero. Does not change active/paused state.
+    /// </summary>
+    public virtual void Reset() => time = 0f;
 
-    public void Target(Action newTarget) => targetAction = newTarget;
-    public void Reset() => time = 0f;
-
-    // ---------- Tick logic ----------
 
     /// <summary>
     /// Advance the timer by the current frame's delta time. Returns true the frame the timer reaches its length.
     /// This is the method used by the background runner as well.
     /// </summary>
-    /// <returns>True the frame the timer completes a cycle.</returns>
+    /// <returns>True on the frame the timer completes a cycle and invokes its action; otherwise false.</returns>
     public bool Tick()
     {
-        if (!IsActive) return false;
+        if (!active || paused) return false;
 
-        // Zero-length timers fire immediately.
-        if (length <= 0f)
-        {
-            targetAction?.Invoke();
-            if (loop)
-            {
-                // keep active and leave time at 0
-                time = 0f;
-            }
-            else
-            {
-                Stop();
-                time = 0f;
-            }
-            return true;
-        }
-
-        time += unscaled ? Time.unscaledDeltaTime : Time.deltaTime;
+        if (length > 0) time += unscaled ? Time.unscaledDeltaTime : Time.deltaTime;
         if (time < length) return false;
 
         // fire
-        targetAction?.Invoke();
+        action?.Invoke();
 
-        if (loop)
+        if (loop) time %= length;
+        else
         {
-            // Preserve overflow time for more accurate intervals.
-            time %= length;
-            // remain active
+            time = 0;
+            Stop();
         }
-        else Stop();
 
         return true;
     }
 
-    // ---------- Utility properties ----------
 
     /// <summary>
-    /// Progress from 0..1 (clamped). 0 = just started, 1 = reached or exceeded length.
+    /// Progress of the timer as a value from 0 to 1 (clamped). 0 = just started, 1 = reached or exceeded length.
     /// </summary>
     public float Progress => length <= 0f ? 1f : Mathf.Clamp01(time / length);
 
     /// <summary>
-    /// Remaining time until next firing (>= 0).
+    /// Remaining time in seconds until the next firing (>= 0).
     /// </summary>
     public float Remaining => Mathf.Max(0f, length - time);
 
-    public bool IsActive => state is State.Updating or State.BackgroundDriven;
-    public bool IsBackground => state is State.BackgroundDriven or State.BackgroundPaused;
-    public bool IsStateActive(State state) => state is State.Updating or State.BackgroundDriven;
-    public bool IsStateBackground(State state) => state is State.BackgroundDriven or State.BackgroundPaused;
+    public bool Running => active && !paused;
 
-    public override string ToString() => 
-        $"Timer(len={length:0.00}, time={time:0.00}, active={IsActive}, loop={loop})";
 
-    public static void Begin(ref Timer timer, float length, bool loop, Action targetAction = null, bool background = false)
+    /// <summary>
+    /// Returns a short string representation of the timer.
+    /// </summary>
+    public override string ToString() =>
+        $"Timer(len={length:0.00}, t={time:0.00}, active={active}, loop={loop})";
+
+
+    /// <summary>
+    /// A Manual variation of the <see cref="Timer"/> that must be called manually in a MonoBehaviour's Update() method. This is useful for timers that need to be tied to a specific object or called exactly within an update cycle.
+    /// </summary>
+    /// <remarks>
+    /// An action callback can technically be attached, but its easier to just put the Tick function into an if statement.
+    /// </remarks>
+    public class Manual : Timer
     {
-        if (timer == null) timer = new(length, loop, targetAction,
-            background ? State.BackgroundDriven : State.Updating);
-        else timer.SetState(background ? State.BackgroundDriven : State.Updating, true);
-    }
-}
+        /// <summary>
+        /// This value is irrelevent to this Timer variation as it has to be driven manually. Thus, always true.
+        /// </summary>
+        public override bool active => true;
 
-public static class Xtensions_Timers
-{
-    public static Timer Timer(this float length, Action result = null, Timer.State immediateState = global::Timer.State.Inactive) => new(length, false, result, immediateState);
-    public static Timer Loop(this float length, Action result = null, Timer.State immediateState = global::Timer.State.Inactive) => new(length, true, result, immediateState);
-    public static Timer Timer(this Action result, float length, Timer.State immediateState = global::Timer.State.Inactive) => new(length, false, result, immediateState);
-    public static Timer Loop(this Action result, float length, Timer.State immediateState = global::Timer.State.Inactive) => new(length, true, result, immediateState);
+        /// <summary>
+        /// This constructor creates a Manual timer instance.
+        /// </summary>
+        public Manual(float length, bool loop = true) : base(length, loop) { }
+
+        /// <summary>
+        /// Irrelevant. Manual timers are always considered active.
+        /// </summary>
+        public override void Start(Action targetAction) => action = targetAction;
+        /// <summary>
+        /// Irrelevant. Manual timers are always considered active.
+        /// </summary>
+        public override void Stop() { }
+    }
+
+    /// <summary>
+    /// A Timer subtype designed to be driven by a MonoBehaviour via a coroutine.
+    /// </summary>
+    /// <remarks> 
+    /// Note, this technically only disables when the entire GameObject the MonoBehavior is attached to is disabled, not when the MonoBehavior itself is disabled. Making its usecase more limited than makes intuitive sense. >:T
+    /// </remarks>
+    public class MonoDriven : Timer
+    {
+        /// <summary>
+        /// Create a MonoDriven timer.
+        /// </summary>
+        /// <param name="length">Duration in seconds.</param>
+        /// <param name="loop">Whether to loop after firing.</param>
+        public MonoDriven(float length, bool loop = true) : base(length, loop) { }
+
+        /// <summary>
+        /// Start the timer and launch a coroutine on the provided MonoBehaviour to drive it.
+        /// </summary>
+        /// <param name="targetAction">Action to invoke on completion.</param>
+        /// <param name="self">MonoBehaviour used to start the coroutine.</param>
+        public void Start(Action targetAction, MonoBehaviour self)
+        {
+            base.Start(targetAction);
+            Coroutine.Begin(ref coroutine, TickCoroutine(), self, false);
+        }
+
+        /// <summary>
+        /// Stop the timer and stop the coroutine driving it (if any).
+        /// </summary>
+        public override void Stop()
+        {
+            base.Stop();
+            coroutine?.StopAuto();
+        }
+
+        Coroutine coroutine;
+
+        /// <summary>
+        /// Coroutine that advances the timer each frame until it completes or is stopped.
+        /// </summary>
+        /// <returns>IEnumerator for the Unity coroutine system.</returns>
+        IEnumerator TickCoroutine()
+        {
+            time = 0;
+            do
+            {
+                while (time < length)
+                {
+                    if (paused || !active)
+                    {
+                        yield return null;
+                        continue;
+                    }
+                    Tick();
+                    yield return null;
+                }
+            } while (loop);
+        }
+
+        /// <summary>
+        /// THIS VERSION WILL NOT ALLOW THIS SUBTYPE TO FUNCTION, USE <see cref="Start(Action, MonoBehaviour)"/>.
+        /// </summary>
+        /// <param name="targetAction">Not used.</param>
+        /// <exception cref="InvalidOperationException">Always thrown to prevent misuse of this overload.</exception>
+        public override void Start(Action targetAction) => throw new InvalidOperationException();
+    }
+
+
+
+
+    [System.Serializable]
+    public struct Loop
+    {
+        [SerializeField] public float rate;
+        [SerializeField] public float current;
+        [HideInInspector] public bool disabled;
+
+        public Loop(float rate, bool disable = false)
+        {
+            this.rate = rate;
+            current = 0f;
+            disabled = disable;
+        }
+
+        public void Tick(Action callback)
+        {
+            if (disabled || rate < 0) return;
+            if (rate == 0) callback?.Invoke();
+            current += Time.deltaTime;
+            if (current > rate)
+            {
+                current %= rate;
+                callback?.Invoke();
+            }
+        }
+    }
+
+    [System.Serializable]
+    public struct OneTime
+    {
+        [SerializeField] public float length;
+        [SerializeField] public float current;
+        [HideInInspector] public bool running;
+
+        public OneTime(float length, bool activate = false)
+        {
+            this.length = length;
+            current = 0f;
+            running = false;
+            if (activate) Begin();
+        }
+
+        public void Begin()
+        {
+            current = 0f;
+            running = true;
+        }
+
+        public void Tick(Action callback)
+        {
+            if (!running) return;
+            current += Time.deltaTime;
+            if (current > length)
+            {
+
+                running = false;
+                callback?.Invoke();
+            }
+        }
+    }
+
+
 }

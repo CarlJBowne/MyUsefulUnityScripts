@@ -1,14 +1,15 @@
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// A near instant way to create Services! <br/>
 /// Add a static one to any class and initialize it in its source via constructor and voila!
 /// </summary>
-public class Service<T>
+public class GetService<T>
 {
-    public Service(Func<T> input) => Getter = input;
+    public GetService(Func<T> input) => Getter = input;
     private readonly Func<T> Getter;
-    public static implicit operator T(Service<T> This) => This.Getter != null ? This.Getter() : default;
+    public static implicit operator T(GetService<T> This) => This.Getter != null ? This.Getter() : default;
     public T Get => Getter != null ? Getter() : default;
     public bool TryGet(out T value)
     {
@@ -34,6 +35,7 @@ public class GSService<T>
     public static implicit operator T(GSService<T> This) => This.Getter != null ? This.Getter() : default;
 
     public T Get => Getter != null ? Getter() : default;
+    public TO GetAs<TO>() where TO : T => Getter != null ? (TO)(object)Getter() : default;
 
     public bool TryGet(out T value)
     {

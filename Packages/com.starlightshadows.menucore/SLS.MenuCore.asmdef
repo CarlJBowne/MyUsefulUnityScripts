@@ -5,7 +5,8 @@
         "Unity.TextMeshPro",
         "SLS.TimeUtilities",
         "SLS.Singletons",
-        "SLS.AssetUtilties"
+        "SLS.AssetUtilties",
+        "Kybernetik.UltEvents"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

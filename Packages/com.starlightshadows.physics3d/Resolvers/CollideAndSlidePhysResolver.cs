@@ -1,11 +1,14 @@
 ﻿using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.XR;
 
 namespace SLS.Physics3D
 {
+    /// <summary> 
     /// A resolver representing the famed "Collide and Slide" algorithm. This resolver performs a single collision sweep for the proposed movement vector, moves the body to the point of impact (or full distance if no collision), and then delegates remaining movement along the surface normal of the collision.
     /// </summary>
     [System.Serializable]
-    public class CollideAndSlidePhysResolver : PhysicsResolver
+    public class CollideAndSlidePhysResolver : PhysicsResolver.GroundType
     {
         [Tooltip("The distance of the buffer that will be used in sweep checking.")]
         [SerializeField] float checkBuffer = 0.1f;
@@ -13,20 +16,20 @@ namespace SLS.Physics3D
         [SerializeField] float downSnap = 0.08f;
         [Tooltip("A Layermask for solid ground.")]
         [SerializeField] LayerMask validGroundMask;
-        [field: SerializeField] public PhysicsResolver airborneResolver { get; private set; }
+        [field: SerializeField] public PhysicsResolver.GroundType altGroundResolver { get; private set; }
 
-        public override void Enter()
+
+
+        public override bool TryEnter(ref PhysicsResolver result)
         {
-            if (Ground.Check(out _)) return;
-            else
+            if (!Body.Anchor.SweepStandable(out PhysicsSweep hit))
             {
-                if (airborneResolver) ChooseNext(airborneResolver);
-                else
-                {
-                    if (Ground.InstantSnapToFloor(out _)) return;
-                    else Body.enabled = false;
-                }
+                if (altGroundResolver && altGroundResolver.TryEnter(ref result)) return true;
+                else if (result && result.TryEnter(ref result)) return false;
+                else if (Body.airResolver && Body.airResolver.TryEnter(ref result)) return true;
+
             }
+            return base.TryEnter(ref result);
         }
 
         public override void Move(Vector3 stepVelocity)
@@ -35,17 +38,23 @@ namespace SLS.Physics3D
 
             Print(() => $"Physics Step {Body.Step} - Collide and Slide - Velocity {stepVelocity}");
 
-            stepVelocity = stepVelocity.ProjectAndScale(anchor.normal);
+            stepVelocity = stepVelocity.ProjectAndScale(CurrentAnchor.normal);
 
             float stopDistance = -1;
             Vector3 nextNormal = Vector3.zero;
-            bool scaleByDot = false;
-            bool negateVerticalLefover = false;
 
             // Sweep for any obstacle in the trajectory (ignore flat-floor hits when moving purely horizontally).
-            bool sweepHit = Body.Sweep(stepVelocity, out RaycastHit hit, checkBuffer);
+            PhysicsSweep hit = Body.Sweep(stepVelocity, false, checkBuffer);
 
-            if (!sweepHit) //No Hit
+            if (hit)
+            {
+                //If Collision Override manually disables the hit flag, recalculate the Collision.
+                //This should make it fairly easy to implement Metroid Speed Booster/Screw Attack style functionality.
+                Body.CollisionOverride(ref hit);
+                if (!hit) hit = Body.Sweep(stepVelocity, false, checkBuffer); 
+            }
+
+            if (!hit)
             {
                 /*
                 // Keep platform lock behavior for grounded movement (attempt to detect unreachable edges and snap behavior).
@@ -73,89 +82,81 @@ namespace SLS.Physics3D
 
                 Print(() => $"Didn't hit anything.");
 
-                if (stopDistance == -1)
-                {
-                    // Snap down to a slightly lower ground if detected (small ledge correction).
-                    if (Body.Sweep(Vector3.down, out RaycastHit downHit, Body.Ground.groundCheckBuffer) && downHit.distance < downSnap)
-                    {
-                        if (!CheckCorner(downHit))
-                        {
-                            Print(() => $"Snapping down at near platform or slope {downHit.distance}");
-                            Body.Position += Vector3.down * downHit.distance;
-                            Ground.Land(downHit);
-                        }
-                    }
-                    else Body.WalkOff();
+                // Make sure we aren't moving off into the void at the destination
+                //if (!Body.Sweep(Vector3.down * 5000, out RaycastHit _, checkBuffer, Position + stepVelocity, QueryTriggerInteraction.Collide)) return;
 
-                    bool CheckCorner(RaycastHit downHit)
+                // Snap down to a slightly lower ground if detected (small ledge correction).
+                if (Body.Sweep(-Body.Direction.Up, out PhysicsSweep downHit)
+                    && downHit.distance < downSnap)
+                {
+                    Ray cornerCheckRay = new(downHit.barycentricCoordinate + new Vector3(0, .1f, 0), Vector3.down);
+                    if (downHit.anchorPoint.collider.Raycast(cornerCheckRay, out RaycastHit baryHit, .11f)
+                        && baryHit.normal != downHit.normal)
                     {
-                        Ray cornerCheckRay = new(downHit.barycentricCoordinate + new Vector3(0, .1f, 0), Vector3.down);
-                        bool different = downHit.collider.Raycast(cornerCheckRay, out RaycastHit baryHit, .11f)
-                            && baryHit.normal != downHit.normal;
-                        return different;
+                        Print(() => $"Snapping down at near platform or slope {downHit.distance}");
+                        Body.Position += stepVelocity;
+                        Body.Position += -Body.Direction.Up * downHit.distance;
+                        Anchor.Anchor(downHit.anchorPoint);
                     }
                 }
-            }
-            else // Hit
-            {
-                stopDistance = hit.distance;
-                nextNormal = hit.normal;
-
-                if (Mathf.Approximately(hit.normal.y, 0)) // Hit a Wall
+                else
                 {
-                    Print(() => $"Hit a wall, normal: {hit.normal}");
-                    scaleByDot = true;
-                    negateVerticalLefover = true;
-                    nextNormal = nextNormal.XZ().normalized;
+                    Body.Position += stepVelocity;
+                    Body.WalkOff();
                 }
-                else if (hit.normal.y > 0 && !Ground.WithinSlopeAngle(hit.normal)) // Hit a steep slope
-                {
-                    Print(() => $"Hit a steep slope, normal: {hit.normal}");
-                    scaleByDot = true;
-                    negateVerticalLefover = true;
-                    nextNormal = nextNormal.XZ().normalized;
-                }
-
-                if (anchor.normal.y > 0 && hit.normal.y < 0) FloorCeilingLock(anchor, hit.normal);
-                else if (anchor.normal.y < 0 && hit.normal.y > 0) FloorCeilingLock(hit.normal, anchor);
-
-                void FloorCeilingLock(Vector3 floorNormal, Vector3 ceilingNormal)
-                {
-                    Print(() => $"Floor/Ceiling Lock Triggered. Floor Normal: {floorNormal}, Ceiling Normal: {ceilingNormal}");
-                    scaleByDot = true;
-                    nextNormal = floorNormal.y != floorNormal.magnitude ? floorNormal : ceilingNormal;
-                }
-
-                // If we hit a valid ground surface and are moving downwards or flat, land on it.
-                if (hit.normal.y > 0 && Ground.WithinSlopeAngle(hit.normal))
-                {
-                    Print(() => $"Found Landable ground, normal: {nextNormal}");
-                    Ground.Land(hit);
-                }
+                return;
             }
 
-            Vector3 snapToSurface = stopDistance != -1 ? stepVelocity.normalized * stopDistance : stepVelocity;
-
-            // Make sure we aren't moving off into the void at the destination
-            if (!Body.Sweep(Vector3.down * 5000, out _, checkBuffer, snapToSurface, QueryTriggerInteraction.Collide)) return;
-
-            Body.Position += snapToSurface;
+            stopDistance = hit.distance;
+            nextNormal = hit.normal;
 
             if (ContinueCheck(stopDistance)) return;
-            else if (Body.LastChanceStopper(stepVelocity.XZ(), nextNormal.XZ())) return;
 
-            Vector3 leftover = stepVelocity - snapToSurface;
-            Print(() => $"Beginning next step. Leftover: {leftover}");
-            if (negateVerticalLefover)
+            Vector3 move = stepVelocity.normalized * stopDistance;
+            Body.Position += move;
+            Vector3 leftover = stepVelocity - move;
+
+            if (ContinueCheck(stopDistance) || Body.CancelResolverContinuance()) return;
+            switch (hit.angle)
             {
-                leftover.y = 0;
-                Ground.Land(hit);
+                case AnchorPoint.Angle.Floor:
+                    Print(() => $"Hit flatish ground with normal {hit.normal}.");
+                    Anchor.Anchor(hit.anchorPoint);
+                    AlterLeftover(nextNormal, false, false);
+                    break;
+                case AnchorPoint.Angle.Slope:
+                    Print(() => $"Hit sloped ground with normal {hit.normal}.");
+                    Anchor.Anchor(hit.anchorPoint);
+                    AlterLeftover(nextNormal, false, false);
+                    break;
+                case AnchorPoint.Angle.SteepSlope:
+                    Print(() => $"Hit steep slope, normal: {hit.normal}.");
+                    AlterLeftover(nextNormal.XZ().normalized, true, true);
+                    break;
+                case AnchorPoint.Angle.Wall:
+                    Print(() => $"Hit a wall, normal: {hit.normal}");
+                    AlterLeftover(nextNormal.XZ().normalized, true, true);
+                    break;
+                case AnchorPoint.Angle.InvertedSlope:
+                    Print(() => $"Hit an inward curve, normal: {hit.normal}. Try to Slide up.");
+                    AlterLeftover(nextNormal.XZ().normalized, true, true);
+                    break;
+                case AnchorPoint.Angle.Ceiling:
+                    AlterLeftover(nextNormal.XZ().normalized, true, true);
+                    break;
+                default: throw new System.Exception($"Unknown AnchorPoint.Type {hit.angle} for normal {hit.normal}");
             }
-            Vector3 newDir = leftover.ProjectAndScale(nextNormal);
-            if (scaleByDot) newDir *= Vector3.Dot(leftover.normalized, nextNormal) + 1;
+            void AlterLeftover(Vector3 nextNormal, bool flatten, bool scaleByDot)
+            {
+                leftover = leftover.ProjectAndScale(nextNormal);
+                if (flatten) leftover.y = 0;
+                if (scaleByDot) leftover *= Vector3.Dot(leftover.normalized, nextNormal) + 1;
+            }
 
-            ChooseNext();
-            Next.Move(newDir);
+            Print(() => $"Beginning next step. Leftover: {leftover}");
+            ChooseNext(Body.groundResolver);
+            if (Body.CancelResolverContinuance()) return;
+            Next.Move(leftover);
         }
     }
 

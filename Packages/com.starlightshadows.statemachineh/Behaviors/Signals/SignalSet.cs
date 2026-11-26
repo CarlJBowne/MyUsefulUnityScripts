@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using SLS.StateMachineH.Utils;
+using SLS.StateMachineUltimate.Utils;
 using SLS.ListUtilities;
 
 
@@ -13,7 +13,7 @@ using EVENT = UltEvents.UltEvent;
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
-namespace SLS.StateMachineH.Signals
+namespace SLS.StateMachineUltimate.Signals
 {
     /// <summary>  
     /// Represents a dictionary of signals, where each signal is associated with a unique string name and int key 

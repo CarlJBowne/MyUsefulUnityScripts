@@ -6,6 +6,6 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 
-namespace SLS.StateMachineH.Editor
+namespace SLS.StateMachineUltimate.Editor
 {
 }

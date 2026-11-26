@@ -1,0 +1,19 @@
+{
+    "name": "SLS.Physics2D.States",
+    "rootNamespace": "SLS.Physics2D.States",
+    "references": [
+        "SLS.StateMachineUltimate",
+        "SLS.Physics2D",
+        "SLS.GeneralUtilities",
+        "Kybernetik.UltEvents"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,19 @@
+{
+    "name": "SLS.Physics3D",
+    "rootNamespace": "SLS.Physics3D",
+    "references": [
+        "SLS.GeneralUtilities",
+        "SLS.EditorUtilities",
+        "SLS.Polymorphs",
+        "SLS.TimeUtilities"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

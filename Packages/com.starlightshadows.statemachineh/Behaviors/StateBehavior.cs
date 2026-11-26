@@ -1,10 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SLS.EditorUtilities.ComponentHeaders;
+using SLS.StateMachineUltimate.Timelines;
 using UnityEditor;
 using UnityEngine;
 
-namespace SLS.StateMachineH 
+namespace SLS.StateMachineUltimate
 {
 
     /// <summary>  
@@ -53,17 +55,17 @@ namespace SLS.StateMachineH
         /// <summary>  
         /// Called during the <see cref="StateMachine"/>'s setup process. Override to add custom setup logic. 
         /// </summary>  
-        protected virtual void OnSetup() { }
+        protected virtual void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+        }
 
         /// <summary>  
         /// Happens when the <see cref="StateBehavior"/> is created/reset in the editor. Override to add custom reset logic. (Remember to call base.Reset())
         /// <br /> Resets the <see cref="StateBehavior"/> to its default state.  
         /// <br /> Ensures the <see cref="State"/> and <see cref="StateMachine"/> references are properly initialized.  
         /// </summary>  
-        protected virtual void Reset()
-        {
-            if (State == null) State = GetComponent<State>();
-        }
+        protected virtual void Reset() => OnSetup();
 
         /// <summary>  
         /// Called during the Awake phase of the <see cref="StateMachine"/>. Override to add custom logic.
@@ -75,13 +77,21 @@ namespace SLS.StateMachineH
         /// Called when this <see cref="StateBehavior"/>'s <see cref="State"/> is active during the <see cref="StateMachine"/>'s Update phase. Override to add custom logic. 
         /// </summary>  
         protected virtual void OnUpdate() { }
-        internal void DoUpdate() => OnUpdate();
+        internal void DoUpdate()
+        {
+            if (blockedForCycle) return;
+            OnUpdate();
+        }
 
         /// <summary>  
         /// Called when this <see cref="StateBehavior"/>'s <see cref="State"/> is active during the <see cref="StateMachine"/>'s FixedUpdate. Override to add custom logic.  
         /// </summary>  
         protected virtual void OnFixedUpdate() { }
-        internal void DoFixedUpdate() => OnFixedUpdate();
+        internal void DoFixedUpdate()
+        {
+            if (blockedForCycle) return;
+            OnFixedUpdate();
+        }
 
         /// <summary>  
         /// Called when entering this <see cref="StateBehavior"/>'s <see cref="State"/>. Override to add custom logic. 
@@ -89,14 +99,26 @@ namespace SLS.StateMachineH
         /// <param name="prev">The previous <see cref="State"/> being left in this transition process.</param>  
         /// <param name="isFinal">Whether this is the end <see cref="State"/> being entered or if it has children.</param>
         protected virtual void OnEnter(State prev, bool isFinal) { }
-        internal void DoEnter(State prev, bool isFinal)=> OnEnter(prev, isFinal);
+        internal void DoEnter(State prev, bool isFinal)
+        {
+            if (blockedForCycle) return;
+            OnEnter(prev, isFinal);
+        }
 
         /// <summary>  
         /// Called when exiting this <see cref="StateBehavior"/>'s <see cref="State"/>. Override to add custom logic. 
         /// </summary>  
         /// <param name="next">The new <see cref="State"/> being entered in this transition process.</param>  
         protected virtual void OnExit(State next) { }
-        internal void DoExit(State next) => OnExit(next);
+        internal void DoExit(State next)
+        {
+            if (blockedForCycle)
+            {
+                blockedForCycle = false;
+                return;
+            }
+            OnExit(next);
+        }
 
         /// <summary>  
         /// Retrieves a <see cref="Component"/> from the associated <see cref="StateMachine"/>.  
@@ -117,5 +139,83 @@ namespace SLS.StateMachineH
         /// Gets whether the <see cref="StateMachineH.State"> is currently active. 
         /// </summary>  
         public static implicit operator bool(StateBehavior B) => B != null && B.State.Active;
+
+        /// <summary>
+        /// Blocks this <see cref="StateBehavior"/> from doing anything for the duration of the <see cref="SLS.StateMachineUltimate.State"/>'s activation. <br/>
+        /// Automatically undone when the State is exited.<br/>
+        /// Can be undone with <see cref="UnBlockForThisCycle"/>
+        /// </summary>
+        public void BlockForThisCycle()
+        {
+            blockedForCycle = true;
+        }
+
+        /// <summary>
+        /// Undoes the effects of <see cref="BlockForThisCycle"/>, re-enabling functionality. <br/>
+        /// If run while the current <see cref="SLS.StateMachineUltimate.State"/> is active, will cause OnEnter like functionality unless manually disabled. <br/>
+        /// Be very intentional with how you use this.
+        /// </summary>
+        public void UnBlockForThisCycle(bool doEnterLogic = true)
+        {
+            blockedForCycle = false;
+            if (State.Active && doEnterLogic)
+                OnEnter(null, Machine.CurrentState == State);
+        }
+        private bool blockedForCycle;
+
+        public void AssertMachineComponent<T>(ref T slot) where T : Component
+        {
+            if (slot != null) return;
+            if (TryGetComponentFromMachine(out slot)) return;
+            this.GetExecutionDetails(out _, out bool playing, out _);
+            if (playing) DestroyImmediate(this);
+            else
+            {
+                slot = State.Machine.origin.AddComponent<T>();
+#if UNITY_EDITOR
+                UnityEditor.EditorUtility.SetDirty(State.Machine.origin);
+#endif
+            }
+        }
+    }
+
+    [RequireComponent(typeof(State))]
+    public abstract class StateBehavior<T> : StateBehavior where T : Component
+    {
+        [SerializeField, HeaderItem(true)] protected T CoreComp;
+
+        protected override void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+            AssertMachineComponent(ref CoreComp);
+        }
+    }
+    [RequireComponent(typeof(State))]
+    public abstract class StateBehavior<T, Y> : StateBehavior where T : Component where Y : Component
+    {
+        [SerializeField, HeaderItem(true)] protected T CoreComp1;
+        [SerializeField, HeaderItem(true)] protected Y CoreComp2;
+
+        protected override void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+            AssertMachineComponent(ref CoreComp1);
+            AssertMachineComponent(ref CoreComp2);
+        }
+    }
+    [RequireComponent(typeof(State))]
+    public abstract class StateBehavior<T, Y, U> : StateBehavior where T : Component where Y : Component where U : Component
+    {
+        [SerializeField, HeaderItem(true)] protected T CoreComp1;
+        [SerializeField, HeaderItem(true)] protected Y CoreComp2;
+        [SerializeField, HeaderItem(true)] protected U CoreComp3;
+
+        protected override void OnSetup()
+        {
+            if (State == null) State = GetComponent<State>();
+            AssertMachineComponent(ref CoreComp1);
+            AssertMachineComponent(ref CoreComp2);
+            AssertMachineComponent(ref CoreComp3);
+        }
     }
 }

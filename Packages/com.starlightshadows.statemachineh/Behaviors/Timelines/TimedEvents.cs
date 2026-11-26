@@ -13,7 +13,7 @@ using EVENT = UltEvents.UltEvent;
 using EVENT = UnityEngine.Events.UnityEvent;
 #endif
 
-namespace SLS.StateMachineH.Timelines
+namespace SLS.StateMachineUltimate.Timelines
 {
     public class TimedEvents : StateTimeline
     {
@@ -94,7 +94,7 @@ namespace SLS.StateMachineH.Timelines
 
                 if (animEvent.functionName == "FireSignalBasic" || animEvent.functionName == "FinishAction")
                 {
-                    TryGetComponent(out SLS.StateMachineH.Signals.SignalNode signal);
+                    TryGetComponent(out SLS.StateMachineUltimate.Signals.SignalNode signal);
                     timedEvent.output = signal[animEvent.functionName == "FireSignalBasic" ? animEvent.stringParameter : "Finish"];
                     signal.signals.Remove(animEvent.functionName == "FireSignalBasic" ? animEvent.stringParameter : "Finish");
                     converted[i] = true;
@@ -102,7 +102,7 @@ namespace SLS.StateMachineH.Timelines
 
                 if (animEvent.functionName == "Lock" || animEvent.functionName == "Unlock" || animEvent.functionName == "ReadyNextAction")
                 {
-                    TryGetComponentFromMachine(out SLS.StateMachineH.Signals.SignalManager signalManager);
+                    TryGetComponentFromMachine(out SLS.StateMachineUltimate.Signals.SignalManager signalManager);
 
                     UltEvent.AddPersistentCall(ref timedEvent.output,
                         animEvent.functionName == "Lock" ? signalManager.Lock

@@ -1,15 +1,10 @@
-using System;
-using System.Linq;
-using System.Reflection;
+using SLS.ObjectUtilities;
 using UnityEngine;
-using UnityEngine.UIElements;
-using UnityEditor;
-using UnityEditor.UIElements;
-using SLS.EditorUtilities.ComponentHeaders;
 
-public class TestScript : MonoBehaviour
+public class TestScript : MonoBehaviour, ITestable
 {
-    [SceneField]
-    public string sceneName;
+    public Color color;
+    public InterfaceList<ITestable, MonoBehaviour> Int;
 }
 
+public interface ITestable { }
